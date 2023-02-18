@@ -3,7 +3,6 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -33,16 +32,32 @@ func init() {
 			panic(fmt.Errorf("failed to create robin directory: %w", err))
 		}
 	}
+
+	for _, rc := range []ReleaseChannel{ReleaseChannelStable, ReleaseChannelBeta, ReleaseChannelNightly} {
+		rcPath := path.Join(robinPath, string(rc))
+		if err := os.MkdirAll(rcPath, 0755); err != nil {
+			panic(fmt.Errorf("failed to create robin directory: %w", err))
+		}
+	}
 }
 
-func GetProjectName() string {
+func GetRobinPath() string {
+	return robinPath
+}
+
+func GetProjectName() (string, error) {
 	if projectName != "" {
-		return projectName
+		return projectName, nil
 	}
 
-	packageJsonPath := path.Join(GetProjectPath(), "package.json")
-	packageJson, err := LoadPackageJson(packageJsonPath)
+	projectPath, err := GetProjectPath()
 	if err != nil {
+		return "", err
+	}
+
+	packageJsonPath := path.Join(projectPath, "package.json")
+	var packageJson PackageJson
+	if err := LoadPackageJson(packageJsonPath, &packageJson); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load %s: %v", packageJsonPath, err)
 		os.Exit(1)
 	}
@@ -51,14 +66,17 @@ func GetProjectName() string {
 	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name
 	projectAlias = regexp.MustCompile("[^a-zA-Z0-9]+").ReplaceAllString(projectName, "")
 
-	return projectName
+	return projectName, nil
 }
 
-func GetProjectAlias() string {
+func GetProjectAlias() (string, error) {
 	if projectAlias == "" {
-		GetProjectName()
+		_, err := GetProjectName()
+		if err != nil {
+			return "", err
+		}
 	}
-	return projectAlias
+	return projectAlias, nil
 }
 
 type RobinConfig struct {
@@ -84,20 +102,57 @@ type RobinConfig struct {
 	EnableKeyMappings bool `json:"enableKeyMappings"`
 }
 
-func LoadProjectConfig() (*RobinConfig, error) {
-	var config RobinConfig
-	robinConfigPath = path.Join(robinPath, GetProjectAlias(), "config.json")
+var defaultRobinConfig = RobinConfig{
+	ReleaseChannel:         ReleaseChannelStable,
+	ShowReactQueryDebugger: false,
+	MinifyExtensionClients: true,
+	EnableKeyMappings:      true,
+}
+
+func LoadProjectConfig() (RobinConfig, error) {
+	alias, err := GetProjectAlias()
+	if err != nil {
+		return defaultRobinConfig, err
+	}
+
+	robinConfigPath = path.Join(robinPath, alias, "config.json")
 
 	// Load the config file from robinConfigPath
-	configFileBuf, err := ioutil.ReadFile(robinConfigPath)
+	configFileBuf, err := os.ReadFile(robinConfigPath)
+	if os.IsNotExist(err) {
+		return defaultRobinConfig, nil
+	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
+		return defaultRobinConfig, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	// Unmarshal the config file
+	var config RobinConfig
 	if err := json.Unmarshal(configFileBuf, &config); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal config file: %w", err)
+		return defaultRobinConfig, fmt.Errorf("failed to unmarshal config file: %w", err)
 	}
 
-	return &config, nil
+	return config, nil
+}
+
+func UpdateProjectConfig(projectConfig RobinConfig) error {
+	alias, err := GetProjectAlias()
+	if err != nil {
+		return fmt.Errorf("failed to get project name: %w", err)
+	}
+
+	robinConfigPath = path.Join(robinPath, alias, "config.json")
+
+	// Marshal the config file
+	buf, err := json.Marshal(&projectConfig)
+	if err != nil {
+		return fmt.Errorf("failed to marshal config file: %w", err)
+	}
+
+	// Save the file
+	if err := os.WriteFile(robinConfigPath, buf, 0755); err != nil {
+		return fmt.Errorf("failed to read config file: %w", err)
+	}
+
+	return nil
 }

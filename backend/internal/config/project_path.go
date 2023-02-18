@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"strings"
 )
 
 var (
@@ -18,41 +19,45 @@ func fileExists(filename string) bool {
 	return !info.IsDir()
 }
 
-func bailProjectPathSearch(visited []string) {
-	fmt.Fprintf(os.Stderr, "Could not find robin.config.ts file\n\n")
-	fmt.Fprintf(os.Stderr, "Checked:\n")
-	for _, dir := range visited {
-		fmt.Fprintf(os.Stderr, "\t%s\n", dir)
-	}
-	fmt.Fprintf(os.Stderr, "\n")
-
-	os.Exit(1)
+type ProjectPathNotFoundError struct {
+	visited []string
 }
 
-func findProjectPath(currentDir string, visited []string) string {
+func (e ProjectPathNotFoundError) Error() string {
+	var sb strings.Builder
+
+	sb.WriteString("Could not find robin.config.ts file\n\n")
+	sb.WriteString("Checked:\n")
+	for _, dir := range e.visited {
+		sb.WriteString(fmt.Sprintf("\t%s\n", dir))
+	}
+	sb.WriteString("\n")
+
+	return sb.String()
+}
+
+func findProjectPath(currentDir string, visited []string) (string, error) {
 	if currentDir == "/" {
-		bailProjectPathSearch(visited)
+		return "", ProjectPathNotFoundError{visited: visited}
 	}
 
-	if fileExists(path.Join(currentDir, "robin.config.ts")) {
+	if !fileExists(path.Join(currentDir, "robin.config.ts")) {
 		return findProjectPath(path.Dir(currentDir), append(visited, currentDir))
 	}
-	return currentDir
+	return currentDir, nil
 }
 
-func SetProjectPath(givenProjectPath string) string {
+func SetProjectPath(givenProjectPath string) (string, error) {
 	givenProjectPath = path.Clean(givenProjectPath)
 	if fileExists(path.Join(givenProjectPath, "robin.config.ts")) {
 		projectPath = givenProjectPath
-		return projectPath
+		return projectPath, nil
 	}
 
-	bailProjectPathSearch([]string{givenProjectPath})
-	// This will never be reached, but the compiler doesn't know that.
-	return ""
+	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
 }
 
-func GetProjectPath() string {
+func GetProjectPath() (string, error) {
 	if projectPath == "" {
 		// First try to load it from the env. We don't use this as a hint, but rather as an
 		// exact path to the project. We just perform a quick check to make sure it is a valid
@@ -67,7 +72,20 @@ func GetProjectPath() string {
 		if err != nil {
 			panic(fmt.Errorf("failed to get cwd: %s", err))
 		}
-		projectPath = findProjectPath(cwd, nil)
+
+		projectPath, err = findProjectPath(cwd, nil)
+		if err != nil {
+			return "", err
+		}
+	}
+	return projectPath, nil
+}
+
+func GetProjectPathOrExit() string {
+	projectPath, err := GetProjectPath()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s", err)
+		os.Exit(1)
 	}
 	return projectPath
 }
