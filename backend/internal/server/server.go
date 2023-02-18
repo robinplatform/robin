@@ -19,9 +19,6 @@ func init() {
 
 var logger log.Logger = log.New("server")
 
-func (server *Server) loadRoutes() {
-}
-
 func (server *Server) Run(portBinding string) error {
 	if server.router == nil {
 		// TODO: More reasonable defaults?

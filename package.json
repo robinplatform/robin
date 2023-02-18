@@ -6,7 +6,8 @@
   "author": "Robin Developers",
   "private": true,
   "workspaces": [
-    "backend"
+    "backend",
+    "frontend"
   ],
   "license": "MIT",
   "dependencies": {},
