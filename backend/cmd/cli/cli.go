@@ -4,17 +4,21 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/spf13/pflag"
 	"robin.dev/internal/config"
+	"robin.dev/internal/log"
 )
 
 type Command interface {
 	Name() string
 	Description() string
+
 	// Parse is given an allocated flagSet, and the set of args that are specific to this command.
 	// It should parse the args, and return an error if unexpected values were received in the flags.
 	Parse(flagSet *pflag.FlagSet, args []string) error
+
 	// Run should run the command, and return an error if something went wrong.
 	Run() error
 }
@@ -22,11 +26,29 @@ type Command interface {
 var (
 	commands = []Command{
 		&StartCommand{},
+		&VersionCommand{},
 	}
 )
 
-func showUsage() {
+func showUsageFooter() {
 	fmt.Fprintf(os.Stderr, "\n")
+
+	releaseChannel := "unknown"
+	projectConfig, err := config.LoadProjectConfig()
+	if err == nil {
+		releaseChannel = string(projectConfig.ReleaseChannel)
+	}
+
+	fmt.Fprintf(
+		os.Stderr,
+		"robin v%s on %s\n",
+		config.GetRobinVersion(),
+		releaseChannel,
+	)
+	fmt.Fprintf(os.Stderr, "\n")
+}
+
+func showUsage() {
 	fmt.Fprintf(os.Stderr, "Usage: robin [-p $ROBIN_PROJECT_PATH] [command] [options]\n")
 	fmt.Fprintf(os.Stderr, "\n")
 	fmt.Fprintf(os.Stderr, "All commands must be run from a valid robin project directory, or a sub-directory of a valid robin project directory.\n")
@@ -43,20 +65,36 @@ func showUsage() {
 	}
 
 	for _, cmd := range commands {
-		fmt.Fprintf(os.Stderr, "  %s%s%s\n", cmd.Name(), strings.Repeat(" ", 2+longestCmdNameLength-len(cmd.Name())), cmd.Description())
+		fmt.Fprintf(os.Stderr, "\t%s\t%s%s\n", cmd.Name(), strings.Repeat(" ", 1+longestCmdNameLength-len(cmd.Name())), cmd.Description())
 	}
 
+	showUsageFooter()
+	os.Exit(1)
+}
+
+func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
+	fmt.Fprintf(os.Stderr, "Usage: robin %s [options]\n", cmd.Name())
+	fmt.Fprintf(os.Stderr, "%s\n", cmd.Description())
 	fmt.Fprintf(os.Stderr, "\n")
 
-	// TODO: Print version too
+	fmt.Fprintf(os.Stderr, "Options:\n\n")
+	fmt.Fprintf(os.Stderr, "%s\n", flagSet.FlagUsages())
+	fmt.Fprintf(os.Stderr, "\n")
 
+	showUsageFooter()
 	os.Exit(1)
 }
 
 func main() {
+	fmt.Printf("\n")
 	args := os.Args[1:]
 
-	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" {
+	logger := log.New("cli")
+	logger.Debug("CLI called", log.Ctx{
+		"args": args,
+	})
+
+	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		showUsage()
 	}
 
@@ -67,7 +105,18 @@ func main() {
 			showUsage()
 		}
 
-		config.SetProjectPath(args[1])
+		projectPath := args[1]
+		if projectPath[0] != '/' {
+			cwd, err := os.Getwd()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: failed to get cwd: %s\n", err)
+				os.Exit(1)
+			}
+
+			projectPath = cwd + "/" + projectPath
+		}
+
+		config.SetProjectPath(projectPath)
 		args = args[2:]
 	}
 
@@ -88,6 +137,10 @@ func main() {
 			break
 		}
 	}
+
+	logger.Debug("Parsed Args, found command", log.Ctx{
+		"command": command.Name(),
+	})
 	if command == nil {
 		fmt.Fprintf(os.Stderr, "unrecognized command: %s\n", commandName)
 		showUsage()
@@ -97,14 +150,16 @@ func main() {
 	flagSet := pflag.NewFlagSet(commandName, pflag.ExitOnError)
 	if err := command.Parse(flagSet, args); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
-
-		// TODO: show usage of specific command
-		showUsage()
+		showCommandUsage(command, flagSet)
 	}
 
 	// Run the command
+	startTime := time.Now()
 	if err := command.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "error: %s\n\n", err)
 		os.Exit(1)
 	}
+
+	execDuration := (time.Since(startTime) + time.Millisecond).Truncate(time.Millisecond)
+	fmt.Printf("\n⚡️%s completed in %s\n", commandName, execDuration)
 }
