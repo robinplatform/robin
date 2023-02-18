@@ -2,7 +2,7 @@
   "name": "robin",
   "version": "0.0.0",
   "main": "index.js",
-  "repository": "git@github.com:robinplatform/robin.git",
+  "repository": "github.com/robinplatform/robin",
   "author": "Robin Developers",
   "private": true,
   "workspaces": [
