@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "main": "index.js",
   "repository": "git@github.com:robinplatform/robin.git",
-  "author": "Albert Liu <albertymliu@gmail.com>",
+  "author": "Robin Developers,
   "private": true,
   "workspaces": [
     "backend"
