@@ -2,7 +2,7 @@
   "name": "robin",
   "version": "0.0.0",
   "main": "index.js",
-  "repository": "git@github.com:A1Liu/robin.git",
+  "repository": "git@github.com:robinplatform/robin.git",
   "author": "Albert Liu <albertymliu@gmail.com>",
   "private": true,
   "workspaces": [
