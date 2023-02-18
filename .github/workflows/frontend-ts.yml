@@ -1,0 +1,34 @@
+name: CI
+on: [push]
+
+jobs:
+  check-ts:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node + Yarn
+        uses: actions/setup-node@v3
+        with:
+          cache: "yarn"
+
+      # https://nextjs.org/docs/advanced-features/ci-build-caching
+      - name: Cache NextJS Files
+        uses: actions/cache@v3
+        with:
+          path: |
+            ${{ github.workspace }}/frontend/.next/cache
+          # Generate a new cache whenever packages or source files change.
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**.[jt]s', '**.[jt]sx') }}
+          # If source files changed but packages didn't, rebuild from a prior cache.
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/yarn.lock') }}-
+
+      - name: Install JS Dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Test TypeScript Types
+        run: |
+          cd ./frontend
+          yarn tsc

@@ -22,7 +22,7 @@ func (cmd *StartCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
 		return err
 	}
 	if cmd.port < 1 || cmd.port > 65535 {
-		return fmt.Errorf("Invalid port number: %d", cmd.port)
+		return fmt.Errorf("invalid port number: %d", cmd.port)
 	}
 
 	return nil
