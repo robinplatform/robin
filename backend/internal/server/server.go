@@ -17,7 +17,7 @@ func init() {
 func (server *Server) loadRoutes() {
 }
 
-func (server *Server) Run(portBinding string) {
+func (server *Server) Run(portBinding string) error {
 	if server.router == nil {
 		// TODO: More reasonable defaults?
 		server.router = gin.New()
@@ -27,5 +27,5 @@ func (server *Server) Run(portBinding string) {
 	}
 
 	fmt.Printf("Starting robin on http://%s\n", portBinding)
-	server.router.Run(portBinding)
+	return server.router.Run(portBinding)
 }

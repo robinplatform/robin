@@ -3,7 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 type PackageJson struct {
@@ -14,17 +14,20 @@ type PackageJson struct {
 	DevDependencies map[string]string
 }
 
-// LoadPackageJson loads the package.json file from the file that exists at `filename`
-func LoadPackageJson(filename string) (*PackageJson, error) {
-	buf, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read package.json file: %w", err)
-	}
-
-	var packageJson PackageJson
+// ParsePackageJson parses the given package.json file from the buffer
+func ParsePackageJson(buf []byte, packageJson *PackageJson) error {
 	if err := json.Unmarshal(buf, &packageJson); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal package.json file: %w", err)
+		return fmt.Errorf("failed to unmarshal package.json file: %w", err)
+	}
+	return nil
+}
+
+// LoadPackageJson loads the package.json file from the file that exists at `filename`
+func LoadPackageJson(filename string, packageJson *PackageJson) error {
+	buf, err := os.ReadFile(filename)
+	if err != nil {
+		return fmt.Errorf("failed to read package.json file: %w", err)
 	}
 
-	return &packageJson, nil
+	return ParsePackageJson(buf, packageJson)
 }
