@@ -1,0 +1,24 @@
+{
+  "name": "robin",
+  "version": "0.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:A1Liu/robin.git",
+  "author": "Albert Liu <albertymliu@gmail.com>",
+  "private": true,
+  "workspaces": [
+    "backend"
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "kill-port": "2.0.1",
+    "nodemon": "2.0.20",
+    "prettier": "2.7.1"
+  },
+  "prettier": {
+    "trailingComma": "es5",
+    "tabWidth": 2,
+    "semi": true,
+    "singleQuote": false
+  }
+}
