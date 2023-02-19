@@ -23,11 +23,13 @@ export default function Home() {
 	}, []);
 
 	return (
-		<div>
-			Hello world!
-			<pre>
-				<code>{JSON.stringify(config, null, '  ')}</code>
-			</pre>
+		<div className={'robin-bg-dark-slate robin-pad full'}>
+			<div className={'full col robin-rounded robin-bg-slate robin-pad'}>
+				Hello world!
+				<pre>
+					<code>{JSON.stringify(config, null, '  ')}</code>
+				</pre>
+			</div>
 		</div>
 	);
 }
