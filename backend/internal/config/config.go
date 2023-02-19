@@ -9,12 +9,12 @@ import (
 )
 
 var (
+	pathRegex *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9]+")
+
 	robinPath string
 
-	// This should only be loaded once, since robin will with a target project
+	// This should only be loaded once, since robin will start up with a target project
 	projectName string
-	// This is a path-safe version of 'projectName'
-	projectAlias string
 )
 
 func init() {
@@ -62,20 +62,19 @@ func GetProjectName() (string, error) {
 	}
 	projectName = packageJson.Name
 
-	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name
-	projectAlias = regexp.MustCompile("[^a-zA-Z0-9]+").ReplaceAllString(projectName, "")
-
 	return projectName, nil
 }
 
 func GetProjectAlias() (string, error) {
-	if projectAlias == "" {
+	if projectName == "" {
 		_, err := GetProjectName()
 		if err != nil {
 			return "", err
 		}
 	}
-	return projectAlias, nil
+
+	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name
+	return pathRegex.ReplaceAllString(projectName, ""), nil
 }
 
 type RobinConfig struct {
