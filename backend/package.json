@@ -1,17 +1,16 @@
 {
-  "name": "@robin/backend",
-  "version": "0.0.0",
-  "license": "MIT",
-  "bin": {
-    "robin": "./bin/cli"
-  },
-  "scripts": {
-    "dev": "nodemon -w . -e go -x 'yarn dev-run'",
-    "format": "go fmt ./... && go vet ./...",
-    "dev-run": "kill-port 9010 && go run ./cmd/cli start",
-    "build": "yarn build-cli",
-    "go-generate": "go generate ./...",
-    "build-cli": "go build -o ./bin/cli -tags prod ./cmd/cli"
-  },
-  "devDependencies": {}
+	"name": "@robin/backend",
+	"version": "0.0.0",
+	"license": "MIT",
+	"bin": {
+		"robin": "./bin/cli"
+	},
+	"scripts": {
+		"dev": "go run github.com/mitranim/gow run ./cmd/cli start",
+		"format": "go fmt ./... && go vet ./...",
+		"build": "yarn build-cli",
+		"go-generate": "go generate ./...",
+		"build-cli": "go build -o ./bin/cli -tags prod ./cmd/cli"
+	},
+	"devDependencies": {}
 }
