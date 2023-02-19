@@ -2,7 +2,7 @@ import type { AppProps } from 'next/app';
 import React from 'react';
 import { QueryClient, QueryClientProvider, useQuery } from 'react-query';
 import { ReactQueryDevtools } from 'react-query/devtools';
-import { getConfig, getHeartbeat } from '@robin/toolkit';
+import { getConfig } from '@robin/toolkit';
 
 import './globals.scss';
 
