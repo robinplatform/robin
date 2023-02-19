@@ -18,7 +18,6 @@ type Config = {
 	releaseChannel: 'dev' | 'beta' | 'stable' | 'nightly';
 	environments: Record<string, Record<string, string>>;
 	extensions: Record<string, Record<string, any>>;
-	showReactQueryDebugger: boolean;
 	minifyExtensionClients: boolean;
 	keyMappings: Record<string, string>;
 	enableKeyMappings: boolean;

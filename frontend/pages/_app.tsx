@@ -15,21 +15,9 @@ const queryClient = new QueryClient({
 	},
 });
 
-function QueryDevtools() {
-	const { data: config } = useQuery({
-		queryKey: ['getConfig'],
-		queryFn: getConfig,
-	});
-	if (!config?.showReactQueryDebugger) {
-		return null;
-	}
-	return <ReactQueryDevtools position="top-right" />;
-}
-
 export default function Robin({ Component, pageProps }: AppProps) {
 	return (
 		<QueryClientProvider client={queryClient}>
-			<QueryDevtools />
 			<Sidebar />
 
 			<main className={'robin-text-white full'}>

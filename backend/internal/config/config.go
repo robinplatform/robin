@@ -87,9 +87,6 @@ type RobinConfig struct {
 	// Extensions is a map of extension names to a map of extension settings
 	Extensions map[string]map[string]interface{} `json:"extensions"`
 
-	// ShowReactQueryDebugger is a flag to show the react-query debugger
-	ShowReactQueryDebugger bool `json:"showReactQueryDebugger"`
-
 	// MinifyExtensionClients is a flag to minify extension clients
 	MinifyExtensionClients bool `json:"minifyExtensionClients"`
 
@@ -102,7 +99,6 @@ type RobinConfig struct {
 
 var defaultRobinConfig = RobinConfig{
 	ReleaseChannel:         ReleaseChannelStable,
-	ShowReactQueryDebugger: false,
 	MinifyExtensionClients: true,
 	EnableKeyMappings:      true,
 }
