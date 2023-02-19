@@ -1,4 +1,5 @@
 import { getConfig, getHeartbeat } from '@robin/toolkit';
+import Head from 'next/head';
 import React from 'react';
 import { useQuery } from 'react-query';
 
@@ -24,6 +25,10 @@ export default function Home() {
 
 	return (
 		<div className={'robin-bg-dark-slate robin-pad full'}>
+			<Head>
+				<title>Robin</title>
+			</Head>
+
 			<div className={'full col robin-rounded robin-bg-slate robin-pad'}>
 				Hello world!
 				<pre>
