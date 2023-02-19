@@ -14,7 +14,17 @@ export const getDefaultFetchSettings = () =>
 		method: 'POST',
 	} as const);
 
-export const getConfig = async () => {
+type Config = {
+	releaseChannel: 'dev' | 'beta' | 'stable' | 'nightly';
+	environments: Record<string, Record<string, string>>;
+	extensions: Record<string, Record<string, any>>;
+	showReactQueryDebugger: boolean;
+	minifyExtensionClients: boolean;
+	keyMappings: Record<string, string>;
+	enableKeyMappings: boolean;
+};
+
+export const getConfig = async (): Promise<Config> => {
 	const resp = await fetch('/api/rpc/GetConfig', {
 		...getDefaultFetchSettings(),
 	});
@@ -22,7 +32,14 @@ export const getConfig = async () => {
 	return value;
 };
 
-export const updateConfig = async () => {};
+export const updateConfig = async (newValue: string) => {
+	const resp = await fetch('/api/rpc/UpdateConfig', {
+		...getDefaultFetchSettings(),
+		body: newValue,
+	});
+	const value = await resp.json();
+	return value;
+};
 
 export const getExtensions = async () => [] as any[];
 

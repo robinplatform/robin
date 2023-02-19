@@ -40,3 +40,18 @@ var GetConfig = rpc.Method[struct{}, config.RobinConfig]{
 		return robinConfig, nil
 	},
 }
+
+var UpdateConfig = rpc.Method[config.RobinConfig, struct{}]{
+	Name: "UpdateConfig",
+	Run: func(c config.RobinConfig) (struct{}, *rpc.HttpError) {
+		var empty struct{}
+		if err := config.UpdateProjectConfig(c); err != nil {
+			return empty, &rpc.HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    err.Error(),
+			}
+		}
+
+		return empty, nil
+	},
+}

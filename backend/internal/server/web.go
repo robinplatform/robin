@@ -16,19 +16,12 @@ func ReverseProxy() gin.HandlerFunc {
 		panic(err)
 	}
 
-	return func(c *gin.Context) {
-		proxy := httputil.NewSingleHostReverseProxy(remote)
-		proxy.Director = func(req *http.Request) {
-			logger.Debug(fmt.Sprintf("Req proxied to dev server with path=%s", c.Request.URL.Path), log.Ctx{
-				"uri": c.Request.URL.Path,
-			})
+	proxy := httputil.NewSingleHostReverseProxy(remote)
 
-			req.Header = c.Request.Header
-			req.Host = remote.Host
-			req.URL.Scheme = remote.Scheme
-			req.URL.Host = remote.Host
-			req.URL.Path = c.Request.URL.Path
-		}
+	return func(c *gin.Context) {
+		logger.Debug(fmt.Sprintf("Req proxied to dev server with path=%s", c.Request.URL.Path), log.Ctx{
+			"uri": c.Request.URL.Path,
+		})
 
 		defer func() {
 			// https://github.com/gin-gonic/gin/issues/1714

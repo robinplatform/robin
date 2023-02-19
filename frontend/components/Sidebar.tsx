@@ -29,7 +29,7 @@ export function Sidebar() {
 		<div className={cx(styles.wrapper, 'col robin-bg-slate robin-text-white')}>
 			<div className="col">
 				{icons.map(({ icon, href, label }) => (
-					<Tooltip content={label} placement={'right'}>
+					<Tooltip key={href} content={label} placement={'right'}>
 						<Link
 							href={href}
 							className={cx(
