@@ -45,6 +45,18 @@ jobs:
           path: '**/node_modules'
           key: ${{ runner.os }}-modules-${{ hashFiles('**/yarn.lock') }}-node-v${{ matrix.node }}
 
-      - name: Run all linting tasks
+      - name: Lint toolkit
         run: |
-          yarn workspaces run lint
+          yarn workspace @robinplatform/toolkit run lint
+
+      - name: Build toolkit
+        run: |
+          yarn workspace @robinplatform/toolkit run build
+
+      - name: Lint frontend
+        run: |
+          yarn workspace @robinplatform/frontend run lint
+
+      - name: Build frontend
+        run: |
+          yarn workspace @robinplatform/frontend run build
