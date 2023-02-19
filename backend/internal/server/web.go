@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -19,10 +18,6 @@ func ReverseProxy() gin.HandlerFunc {
 	proxy := httputil.NewSingleHostReverseProxy(remote)
 
 	return func(c *gin.Context) {
-		logger.Debug(fmt.Sprintf("Req proxied to dev server with path=%s", c.Request.URL.Path), log.Ctx{
-			"uri": c.Request.URL.Path,
-		})
-
 		defer func() {
 			// https://github.com/gin-gonic/gin/issues/1714
 			if err := recover(); err != nil && err != http.ErrAbortHandler {

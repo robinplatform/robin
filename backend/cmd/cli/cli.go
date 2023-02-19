@@ -90,9 +90,6 @@ func main() {
 	args := os.Args[1:]
 
 	logger := log.New("cli")
-	logger.Debug("CLI called", log.Ctx{
-		"args": args,
-	})
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		showUsage()

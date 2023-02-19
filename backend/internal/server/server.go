@@ -2,9 +2,11 @@ package server
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/health"
 	"robinplatform.dev/internal/log"
 )
@@ -20,6 +22,11 @@ func init() {
 var logger log.Logger = log.New("server")
 
 func (server *Server) Run(portBinding string) error {
+	logger.Print("Starting robin", log.Ctx{
+		"projectPath": config.GetProjectPathOrExit(),
+		"pid":         os.Getpid(),
+	})
+
 	if server.router == nil {
 		// TODO: More reasonable defaults?
 		server.router = gin.New()
@@ -37,7 +44,7 @@ func (server *Server) Run(portBinding string) error {
 	// TODO: Switch to using net/http for the server, and let
 	// gin be the router
 
-	fmt.Printf("Starting robin ...\r")
+	fmt.Printf("Starting server ...\r")
 	go func() {
 		healthCheck := health.HttpHealthCheck{
 			Method: "GET",
@@ -46,9 +53,7 @@ func (server *Server) Run(portBinding string) error {
 		for !health.CheckHttp(healthCheck) {
 			time.Sleep(1 * time.Second)
 		}
-		logger.Print(fmt.Sprintf("Started robin on http://%s\n", portBinding), log.Ctx{
-			"portBinding": portBinding,
-		})
+		logger.Print(fmt.Sprintf("Started robin server on http://%s\n", portBinding), log.Ctx{})
 	}()
 
 	if err := server.router.Run(portBinding); err != nil {

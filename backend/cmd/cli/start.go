@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/pflag"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/server"
 )
 
@@ -37,9 +35,6 @@ func (cmd *StartCommand) Description() string {
 }
 
 func (cmd *StartCommand) Run() error {
-	fmt.Printf("Project path: %s\n", config.GetProjectPathOrExit())
-	fmt.Printf("Robin PID: %d\n", os.Getpid())
-
 	app := server.Server{}
 	return app.Run("[::1]:9010")
 }
