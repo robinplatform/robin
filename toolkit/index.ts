@@ -33,16 +33,16 @@ export const getVersion = async () => ({
 	},
 });
 
-export const checkForSidekickUpdates = async () => ({
+export const checkForUpdates = async () => ({
 	needsUpgrade: false,
 	currentVersion: '',
 	latestVersion: '',
 	channel: 'dev' as 'dev' | 'stable' | 'beta' | 'nightly',
 });
 
-export const upgradeSidekick = async () => {};
+export const upgradeRobin = async () => {};
 
-export const setSidekickChannel = async () => {};
+export const setRobinChannel = async () => {};
 
 export const getHeartbeat = async (): Promise<Stream> => {
 	return Stream.callStreamRpc('GetHeartbeat', Math.random() + 'adsf');
