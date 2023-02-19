@@ -4,9 +4,6 @@
 	"license": "MIT",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"engines": {
-		"node": "^14 || ^16 || ^18"
-	},
 	"scripts": {
 		"build": "rm -rf ./dist && tsc -p tsconfig.json && cp global-styles.css ./dist",
 		"format": "prettier --no-color --write 'src/**/*.{ts,tsx}'",

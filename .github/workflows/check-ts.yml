@@ -5,13 +5,9 @@ jobs:
   check-ts:
     runs-on: ubuntu-22.04
 
-    continue-on-error: ${{ matrix.experimental }}
-
-    # TODO: include 16, 18, and latest
     strategy:
       matrix:
-        node: [14]
-        experimental: [false]
+        node: [18]
 
     steps:
       - uses: actions/checkout@v3
