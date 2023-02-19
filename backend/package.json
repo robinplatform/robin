@@ -6,9 +6,8 @@
 		"robin": "./bin/cli"
 	},
 	"scripts": {
-		"dev": "nodemon -w . -e go -x 'yarn dev-run'",
+		"dev": "go run github.com/mitranim/gow run ./cmd/cli start",
 		"format": "go fmt ./... && go vet ./...",
-		"dev-run": "kill-port 9010 && go run ./cmd/cli start",
 		"build": "yarn build-cli",
 		"go-generate": "go generate ./...",
 		"build-cli": "go build -o ./bin/cli -tags prod ./cmd/cli"

@@ -5,6 +5,7 @@ go 1.19
 require (
 	github.com/gin-gonic/gin v1.8.2
 	github.com/gorilla/websocket v1.5.0
+	github.com/mitranim/gow v0.0.0-20230208153212-36c8536a96b8
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
@@ -20,9 +21,11 @@ require (
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mitranim/gg v0.0.13 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
+	github.com/rjeczalik/notify v0.9.2 // indirect
 	github.com/ugorji/go/codec v1.2.7 // indirect
 	golang.org/x/crypto v0.0.0-20211215153901-e495a2d5b3d3 // indirect
 	golang.org/x/net v0.4.0 // indirect
