@@ -10,7 +10,6 @@ export default function Settings() {
 	const { data: config, isLoading } = useQuery({
 		queryKey: ['getConfig'],
 		queryFn: getConfig,
-		onSuccess: (res) => {},
 	});
 	const configJson = React.useMemo(
 		() => JSON.stringify(config, null, '\t'),
