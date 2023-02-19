@@ -1,22 +1,7 @@
-.robin-bg-dark-green {
-	background-color: rgb(6 95 70);
-}
-
-.robin-bg-green {
-	background-color: rgb(4 120 87);
-}
-
-.robin-bg-red {
-	background-color: rgb(220 38 38);
-}
-
-.robin-bg-slate {
-	background-color: #282828;
-}
-
-.robin-bg-dark-slate {
-	background-color: #1e1e1e;
-}
+.robin-bg-yellow { background-color: #FCBF49; }
+.robin-bg-red { background-color: #DC2626; }
+.robin-bg-dark-blue { background-color: #003049; }
+.robin-bg-light-blue { background-color: #006AA3 }
 
 .robin-text-white {
 	color: rgb(255 255 255);

@@ -60,13 +60,13 @@ export default function Settings() {
 	);
 
 	return (
-		<div className={'full robin-bg-dark-slate robin-pad'}>
+		<div className={'full robin-bg-yellow robin-pad'}>
 			<Head>
 				<title>Settings | Robin</title>
 			</Head>
 
 			<div
-				className={'full col robin-gap robin-rounded robin-bg-slate robin-pad'}
+				className={'full col robin-gap robin-rounded robin-bg-light-blue robin-pad'}
 			>
 				<h1 className={'robin-text-bold robin-no-pad robin-text-xl'}>
 					Settings

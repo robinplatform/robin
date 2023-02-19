@@ -5,7 +5,7 @@
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"scripts": {
-		"build": "rm -rf ./dist && tsc -p tsconfig.json && cp global-styles.css ./dist",
+		"build": "rm -rf ./dist && tsc -p tsconfig.json",
 		"format": "prettier --no-color --write 'src/**/*.{ts,tsx}'",
 		"lint": "npm-run-all -p lint:*",
 		"lint:prettier": "prettier --no-color --check 'src/**/*.{ts,tsx}'",

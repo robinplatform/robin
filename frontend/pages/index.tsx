@@ -24,12 +24,12 @@ export default function Home() {
 	}, []);
 
 	return (
-		<div className={'robin-bg-dark-slate robin-pad full'}>
+		<div className={'robin-bg-dark-blue robin-pad full'}>
 			<Head>
 				<title>Robin</title>
 			</Head>
 
-			<div className={'full col robin-rounded robin-bg-slate robin-pad'}>
+			<div className={'full col robin-rounded robin-bg-light-blue robin-pad'}>
 				Hello world!
 				<pre>
 					<code>{JSON.stringify(config, null, '  ')}</code>

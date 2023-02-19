@@ -2,9 +2,10 @@ import type { AppProps } from 'next/app';
 import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
+import 'normalize.css/normalize.css'
 import 'tippy.js/dist/tippy.css';
 import './globals.scss';
-import '@robinplatform/toolkit/dist/global-styles.css';
+import '@robinplatform/toolkit/styles.css';
 import { Sidebar } from '../components/Sidebar';
 
 const queryClient = new QueryClient({

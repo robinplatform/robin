@@ -6,9 +6,6 @@
 .primaryButton {
 	display: flex;
 	color: inherit;
-	border-right: 1px solid #282828;
-	border-top: none;
-	border-bottom: none;
 }
 
 .primaryButton:hover {

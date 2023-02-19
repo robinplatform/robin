@@ -17,7 +17,7 @@ export function Sidebar() {
 	const icons = React.useMemo<SidebarIcon[]>(
 		() => [
 			{
-				icon: <ToolsIcon size={24} />,
+				icon: <ToolsIcon />,
 				href: '/settings',
 				label: 'Settings',
 			},
@@ -26,7 +26,7 @@ export function Sidebar() {
 	);
 
 	return (
-		<div className={cx(styles.wrapper, 'col robin-bg-slate robin-text-white')}>
+		<div className={cx(styles.wrapper, 'col robin-bg-dark-blue robin-text-white')}>
 			<div className="col">
 				{icons.map(({ icon, href, label }) => (
 					<Tooltip key={href} content={label} placement={'right'}>
@@ -34,8 +34,10 @@ export function Sidebar() {
 							href={href}
 							className={cx(
 								styles.primaryButton,
-								href === router.asPath && 'robin-bg-green',
 								'robin-pad',
+								{
+									'robin-bg-red': href === router.asPath,
+								}
 							)}
 						>
 							{icon}
@@ -48,7 +50,7 @@ export function Sidebar() {
 				<div className={styles.homeWrapper}>
 					<Link
 						href="/"
-						className={cx(styles.home, 'robin-rounded robin-bg-dark-slate')}
+						className={cx(styles.home, 'robin-rounded robin-bg-red')}
 					>
 						<HomeIcon />
 					</Link>
