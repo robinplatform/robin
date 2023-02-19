@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/pflag"
-	"robin.dev/internal/config"
-	"robin.dev/internal/server"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/server"
 )
 
 type StartCommand struct {

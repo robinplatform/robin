@@ -7,7 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"robin.dev/internal/log"
+	"robinplatform.dev/internal/log"
 )
 
 type Stream[Context any, Input any, Output any] struct {

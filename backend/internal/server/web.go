@@ -7,7 +7,7 @@ import (
 	"net/url"
 
 	"github.com/gin-gonic/gin"
-	"robin.dev/internal/log"
+	"robinplatform.dev/internal/log"
 )
 
 func ReverseProxy() gin.HandlerFunc {

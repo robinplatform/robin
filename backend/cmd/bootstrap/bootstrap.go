@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"robin.dev/internal/config"
+	"robinplatform.dev/internal/config"
 )
 
 func main() {

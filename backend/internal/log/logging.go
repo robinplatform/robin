@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"gopkg.in/natefinch/lumberjack.v2"
-	"robin.dev/internal/config"
+	"robinplatform.dev/internal/config"
 )
 
 // Lumberjack implements log file rotation

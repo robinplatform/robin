@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"robin.dev/internal/log"
+	"robinplatform.dev/internal/log"
 )
 
 type HttpError struct {

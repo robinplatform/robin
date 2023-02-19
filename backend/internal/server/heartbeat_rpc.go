@@ -3,7 +3,7 @@ package server
 import (
 	"time"
 
-	"robin.dev/internal/rpc"
+	"robinplatform.dev/internal/rpc"
 )
 
 type Heartbeat struct {

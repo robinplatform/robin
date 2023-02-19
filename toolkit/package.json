@@ -1,26 +1,31 @@
 {
-	"name": "@robin/toolkit",
+	"name": "@robinplatform/toolkit",
 	"version": "0.0.0",
+	"license": "MIT",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
 	"scripts": {
 		"build": "rm -rf ./dist && tsc -p tsconfig.json && cp global-styles.css ./dist",
-		"format": "prettier --no-color --write --plugin-search-dir=. 'src/**/*.{ts,js,tsx}'"
+		"format": "prettier --no-color --write 'src/**/*.{ts,tsx}'",
+		"lint": "npm-run-all -p lint:*",
+		"lint:prettier": "prettier --no-color --check 'src/**/*.{ts,tsx}'",
+		"lint:tsc": "tsc --noEmit"
 	},
 	"devDependencies": {
 		"@types/react": "18.0.2",
 		"@types/react-dom": "18.0.2",
-		"zod": "^3",
-		"react-query": "^3",
 		"react": "*",
 		"react-dom": "*",
-		"react-error-boundary": "^3"
+		"react-error-boundary": "^3",
+		"react-query": "^3",
+		"typescript": "4.9.5",
+		"zod": "^3"
 	},
 	"peerDependencies": {
-		"zod": "^3",
-		"react-query": "^3",
 		"react": "*",
 		"react-dom": "*",
-		"react-error-boundary": "^3"
+		"react-error-boundary": "^3",
+		"react-query": "^3",
+		"zod": "^3"
 	}
 }

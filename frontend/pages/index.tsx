@@ -1,4 +1,4 @@
-import { getConfig, getHeartbeat } from '@robin/toolkit';
+import { getConfig, getHeartbeat } from '@robinplatform/toolkit';
 import Head from 'next/head';
 import React from 'react';
 import { useQuery } from 'react-query';

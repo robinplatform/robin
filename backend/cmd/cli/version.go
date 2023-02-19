@@ -7,7 +7,7 @@ import (
 	"runtime"
 
 	"github.com/spf13/pflag"
-	"robin.dev/internal/config"
+	"robinplatform.dev/internal/config"
 )
 
 type VersionCommand struct{}

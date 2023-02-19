@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/spf13/pflag"
-	"robin.dev/internal/config"
-	"robin.dev/internal/log"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/log"
 )
 
 type Command interface {

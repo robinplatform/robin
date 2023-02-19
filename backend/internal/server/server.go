@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"robin.dev/internal/health"
-	"robin.dev/internal/log"
+	"robinplatform.dev/internal/health"
+	"robinplatform.dev/internal/log"
 )
 
 type Server struct {

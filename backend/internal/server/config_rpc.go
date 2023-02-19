@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"runtime"
 
-	"robin.dev/internal/config"
-	"robin.dev/internal/rpc"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/rpc"
 )
 
 type GetVersionResponse struct {

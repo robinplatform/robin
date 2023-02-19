@@ -1,16 +1,10 @@
 {
-	"name": "robin",
-	"version": "0.0.0",
-	"main": "index.js",
-	"repository": "github.com/robinplatform/robin",
-	"author": "Robin Developers",
 	"private": true,
+	"name": "robinplatform",
 	"workspaces": [
-		"backend",
 		"frontend",
 		"toolkit"
 	],
-	"license": "MIT",
 	"dependencies": {},
 	"devDependencies": {
 		"kill-port": "2.0.1",
