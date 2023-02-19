@@ -3,14 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import cx from 'classnames';
 import { useRouter } from 'next/router';
-import {
-	ArrowLeftIcon,
-	ArrowRightIcon,
-	PackageIcon,
-	ToolsIcon,
-	HomeIcon,
-	RocketIcon,
-} from '@primer/octicons-react';
+import { ToolsIcon, HomeIcon } from '@primer/octicons-react';
 import Tooltip from '@tippyjs/react';
 
 type SidebarIcon = {
@@ -37,7 +30,14 @@ export function Sidebar() {
 			<div className="col">
 				{icons.map(({ icon, href, label }) => (
 					<Tooltip content={label} placement={'right'}>
-						<Link href={href} className={cx(styles.primaryButton, href === router.asPath && 'robin-bg-green', 'robin-pad')}>
+						<Link
+							href={href}
+							className={cx(
+								styles.primaryButton,
+								href === router.asPath && 'robin-bg-green',
+								'robin-pad',
+							)}
+						>
 							{icon}
 						</Link>
 					</Tooltip>
