@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider, useQuery } from 'react-query';
 import { ReactQueryDevtools } from 'react-query/devtools';
 import { getConfig } from '@robin/toolkit';
 
+import 'tippy.js/dist/tippy.css';
 import './globals.scss';
+import '@robin/toolkit/dist/global-styles.css';
+import { Sidebar } from '../components/Sidebar';
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -27,8 +30,9 @@ export default function Robin({ Component, pageProps }: AppProps) {
 	return (
 		<QueryClientProvider client={queryClient}>
 			<QueryDevtools />
+			<Sidebar />
 
-			<main>
+			<main className={'robin-text-white full'}>
 				<Component {...pageProps} />
 			</main>
 		</QueryClientProvider>
