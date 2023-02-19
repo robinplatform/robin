@@ -32,6 +32,7 @@ func (server *Server) Run(portBinding string) error {
 	group := server.router.Group("/api/rpc")
 	GetVersion.Register(group)
 	GetConfig.Register(group)
+	UpdateConfig.Register(group)
 
 	// TODO: Switch to using net/http for the server, and let
 	// gin be the router

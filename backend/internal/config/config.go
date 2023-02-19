@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	robinPath       string
-	robinConfigPath string
+	robinPath string
 
 	// This should only be loaded once, since robin will with a target project
 	projectName string
@@ -28,14 +27,14 @@ func init() {
 
 	// If it doesn't exist, create it
 	if _, err := os.Stat(robinPath); os.IsNotExist(err) {
-		if err := os.Mkdir(robinPath, 0755); err != nil {
+		if err := os.MkdirAll(robinPath, 0777); err != nil {
 			panic(fmt.Errorf("failed to create robin directory: %w", err))
 		}
 	}
 
 	for _, rc := range []ReleaseChannel{ReleaseChannelStable, ReleaseChannelBeta, ReleaseChannelNightly} {
 		rcPath := path.Join(robinPath, string(rc))
-		if err := os.MkdirAll(rcPath, 0755); err != nil {
+		if err := os.MkdirAll(rcPath, 0777); err != nil {
 			panic(fmt.Errorf("failed to create robin directory: %w", err))
 		}
 	}
@@ -115,7 +114,7 @@ func LoadProjectConfig() (RobinConfig, error) {
 		return defaultRobinConfig, err
 	}
 
-	robinConfigPath = path.Join(robinPath, alias, "config.json")
+	robinConfigPath := path.Join(robinPath, "projects", alias, "config.json")
 
 	// Load the config file from robinConfigPath
 	configFileBuf, err := os.ReadFile(robinConfigPath)
@@ -141,7 +140,7 @@ func UpdateProjectConfig(projectConfig RobinConfig) error {
 		return fmt.Errorf("failed to get project name: %w", err)
 	}
 
-	robinConfigPath = path.Join(robinPath, alias, "config.json")
+	robinConfigPath := path.Join(robinPath, "projects", alias, "config.json")
 
 	// Marshal the config file
 	buf, err := json.Marshal(&projectConfig)
@@ -149,9 +148,13 @@ func UpdateProjectConfig(projectConfig RobinConfig) error {
 		return fmt.Errorf("failed to marshal config file: %w", err)
 	}
 
+	if err := os.MkdirAll(path.Join(robinPath, "projects", alias), 0777); err != nil {
+		return fmt.Errorf("failed to create folder for config file: %w", err)
+	}
+
 	// Save the file
 	if err := os.WriteFile(robinConfigPath, buf, 0755); err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		return fmt.Errorf("failed to write config file: %w", err)
 	}
 
 	return nil
