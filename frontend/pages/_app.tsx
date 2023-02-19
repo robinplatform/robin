@@ -1,8 +1,6 @@
 import type { AppProps } from 'next/app';
 import React from 'react';
-import { QueryClient, QueryClientProvider, useQuery } from 'react-query';
-import { ReactQueryDevtools } from 'react-query/devtools';
-import { getConfig } from '@robinplatform/toolkit';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import 'tippy.js/dist/tippy.css';
 import './globals.scss';

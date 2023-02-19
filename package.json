@@ -5,6 +5,9 @@
 		"frontend",
 		"toolkit"
 	],
+	"engines": {
+		"node": "^14 || ^16 || ^18"
+	},
 	"dependencies": {},
 	"devDependencies": {
 		"kill-port": "2.0.1",

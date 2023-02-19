@@ -3,7 +3,7 @@ import React from 'react';
 import { Monaco } from '../components/Monaco';
 import styles from './settings.module.css';
 import { getConfig, updateConfig } from '@robinplatform/toolkit';
-import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMonaco } from '@monaco-editor/react';
 
 export default function Settings() {

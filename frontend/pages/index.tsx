@@ -1,7 +1,7 @@
 import { getConfig, getHeartbeat } from '@robinplatform/toolkit';
 import Head from 'next/head';
 import React from 'react';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 
 export default function Home() {
 	const { data: config } = useQuery({
