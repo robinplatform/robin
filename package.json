@@ -1,25 +1,26 @@
 {
-  "name": "robin",
-  "version": "0.0.0",
-  "main": "index.js",
-  "repository": "github.com/robinplatform/robin",
-  "author": "Robin Developers",
-  "private": true,
-  "workspaces": [
-    "backend",
-    "frontend"
-  ],
-  "license": "MIT",
-  "dependencies": {},
-  "devDependencies": {
-    "kill-port": "2.0.1",
-    "nodemon": "2.0.20",
-    "prettier": "2.7.1"
-  },
-  "prettier": {
-    "trailingComma": "es5",
-    "tabWidth": 2,
-    "semi": true,
-    "singleQuote": false
-  }
+	"name": "robin",
+	"version": "0.0.0",
+	"main": "index.js",
+	"repository": "github.com/robinplatform/robin",
+	"author": "Robin Developers",
+	"private": true,
+	"workspaces": [
+		"backend",
+		"frontend",
+		"toolkit"
+	],
+	"license": "MIT",
+	"dependencies": {},
+	"devDependencies": {
+		"kill-port": "2.0.1",
+		"nodemon": "2.0.20",
+		"prettier": "2.7.1"
+	},
+	"prettier": {
+		"trailingComma": "all",
+		"useTabs": true,
+		"semi": true,
+		"singleQuote": true
+	}
 }

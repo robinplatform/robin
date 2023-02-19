@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/gin-gonic/gin v1.8.2
+	github.com/gorilla/websocket v1.5.0
 	github.com/rs/zerolog v1.29.0
 	github.com/spf13/pflag v1.0.5
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
