@@ -14,27 +14,30 @@ type DiffEditorProps = Omit<MonacoDiffEditorProps, 'original' | 'modified'> & {
 	value: string;
 };
 
-type MonacoProps =
+type MonacoProps = { disabled: boolean } & (
 	| ({ diffEditor: true } & DiffEditorProps)
-	| ({ diffEditor?: false } & EditorProps);
+	| ({ diffEditor?: false } & EditorProps)
+);
 
 export const Monaco: React.FC<MonacoProps> = (props) => (
 	<div className={cx(styles.editor, 'robin-border-white')}>
-		{props.diffEditor ? (
-			<DiffEditor
-				theme={'vs-dark'}
-				height={'100%'}
-				original={props.defaultValue}
-				modified={props.value}
-				{...props}
-			/>
-		) : (
-			<Editor
-				theme={'vs-dark'}
-				height={'100%'}
-				language={'javascript'}
-				{...props}
-			/>
-		)}
+		<div className={cx('full', props.disabled && styles.disabled)}>
+			{props.diffEditor ? (
+				<DiffEditor
+					theme={'vs-dark'}
+					height={'100%'}
+					original={props.defaultValue}
+					modified={props.value}
+					{...props}
+				/>
+			) : (
+				<Editor
+					theme={'vs-dark'}
+					height={'100%'}
+					language={'javascript'}
+					{...props}
+				/>
+			)}
+		</div>
 	</div>
 );

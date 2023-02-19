@@ -6,3 +6,8 @@
 
 	overflow: hidden;
 }
+
+.disabled {
+	filter: brightness(70%) blur(5px);
+	pointer-events: none;
+}
