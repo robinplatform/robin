@@ -23,7 +23,7 @@ function QueryDevtools() {
 	if (!config?.showReactQueryDebugger) {
 		return null;
 	}
-	return <ReactQueryDevtools />;
+	return <ReactQueryDevtools position="top-right" />;
 }
 
 export default function Robin({ Component, pageProps }: AppProps) {
