@@ -11,6 +11,7 @@ const (
 	ReleaseChannelStable  ReleaseChannel = "stable"
 	ReleaseChannelBeta    ReleaseChannel = "beta"
 	ReleaseChannelNightly ReleaseChannel = "nightly"
+	ReleaseChannelDev     ReleaseChannel = "dev"
 )
 
 func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
