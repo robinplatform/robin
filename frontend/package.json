@@ -9,6 +9,9 @@
 		"format": "prettier --no-color --write components hooks pages"
 	},
 	"dependencies": {
+		"@monaco-editor/loader": "1.2.0",
+		"@monaco-editor/react": "4.3.1",
+		"classnames": "^2.3.2",
 		"next": "^13.1.6",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",

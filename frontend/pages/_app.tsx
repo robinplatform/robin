@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from 'react-query/devtools';
 import { getConfig } from '@robin/toolkit';
 
 import './globals.scss';
+import '@robin/toolkit/dist/global-styles.css';
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -28,7 +29,7 @@ export default function Robin({ Component, pageProps }: AppProps) {
 		<QueryClientProvider client={queryClient}>
 			<QueryDevtools />
 
-			<main>
+			<main className={"robin-text-white"} style={{ width: '100%', height: '100%' }}>
 				<Component {...pageProps} />
 			</main>
 		</QueryClientProvider>

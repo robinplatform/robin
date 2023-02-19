@@ -11,13 +11,27 @@
 }
 
 .robin-bg-slate {
-	background-color: rgb(51 65 85);
+	background-color: #282828;
 }
 
-.robing-bg-dark-slate {
-	background-color: rgb(15 23 42);
+.robin-bg-dark-slate {
+	background-color: #1e1e1e;
 }
 
-.robin-text-whilte {
+.robin-text-white {
 	color: rgb(255 255 255);
+}
+
+.robin-border-white {
+	border: 2px solid rgb(255 255 255);
+	border-radius: 0.25rem;
+}
+
+.robin-text-bold {
+	font-weight: 700;
+}
+
+.robin-text-xl {
+	font-size: 1.25rem;
+	line-height: 1.75rem;
 }
