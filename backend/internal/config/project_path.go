@@ -48,6 +48,15 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 }
 
 func SetProjectPath(givenProjectPath string) (string, error) {
+	if givenProjectPath[0] != '/' {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("error: failed to get cwd: %s", err)
+		}
+
+		givenProjectPath = cwd + "/" + givenProjectPath
+	}
+
 	givenProjectPath = path.Clean(givenProjectPath)
 	if fileExists(path.Join(givenProjectPath, "robin.config.ts")) {
 		projectPath = givenProjectPath
@@ -73,10 +82,11 @@ func GetProjectPath() (string, error) {
 			panic(fmt.Errorf("failed to get cwd: %s", err))
 		}
 
-		projectPath, err = findProjectPath(cwd, nil)
+		discoveredProjectPath, err := findProjectPath(cwd, nil)
 		if err != nil {
 			return "", err
 		}
+		return SetProjectPath(discoveredProjectPath)
 	}
 	return projectPath, nil
 }
