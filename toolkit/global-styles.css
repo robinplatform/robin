@@ -22,6 +22,10 @@
 	color: rgb(255 255 255);
 }
 
+.robin-rounded {
+	border-radius: 0.25rem;
+}
+
 .robin-border-white {
 	border: 2px solid rgb(255 255 255);
 	border-radius: 0.25rem;
@@ -34,4 +38,12 @@
 .robin-text-xl {
 	font-size: 1.25rem;
 	line-height: 1.75rem;
+}
+
+.robin-pad {
+	padding: 1.25rem;
+}
+
+.robin-gap {
+	gap: 1.25rem;
 }

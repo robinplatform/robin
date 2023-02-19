@@ -28,13 +28,17 @@ export default function Settings() {
 	);
 
 	return (
-		<div className={cx(styles.wrapper, 'robin-bg-dark-slate')}>
+		<div className={'full robin-bg-dark-slate robin-pad'}>
 			<Head>
 				<title>Settings | Robin</title>
 			</Head>
 
-			<div className={cx(styles.body, 'robin-bg-slate')}>
-				<h1>Settings</h1>
+			<div
+				className={'full col robin-gap robin-rounded robin-bg-slate robin-pad'}
+			>
+				<h1 className={'robin-text-bold robin-no-pad robin-text-xl'}>
+					Settings
+				</h1>
 
 				<Monaco
 					diffEditor={showDiff}
