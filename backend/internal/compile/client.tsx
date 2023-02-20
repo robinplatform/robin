@@ -1,3 +1,4 @@
+// @ts-ignore
 import { Page } from '__SCRIPT_PATH__';
 import React from 'react';
 import ReactDOM from 'react-dom';
