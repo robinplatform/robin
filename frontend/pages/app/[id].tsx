@@ -7,5 +7,9 @@ export default function Page() {
 
 	const id = `${router.query['id']}`;
 
-	return <AppWindow id={id} />;
+	return (
+		<div className={'full col'}>
+			<AppWindow id={id} />
+		</div>
+	);
 }
