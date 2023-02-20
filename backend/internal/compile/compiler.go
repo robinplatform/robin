@@ -9,10 +9,16 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/log"
 )
 
 //go:embed client.html
 var clientHtml string
+
+//go:embed client.tsx
+var clientJsBootstrap string
+
+var logger log.Logger = log.New("compiler")
 
 type Compiler struct {
 }
@@ -43,14 +49,25 @@ func (c *Compiler) GetClientJs(id string) (string, error) {
 	}
 
 	result := es.Build(es.BuildOptions{
-		EntryPoints: []string{scriptPath},
-		Bundle:      true,
-		Platform:    es.PlatformBrowser,
-		Write:       false,
-		Plugins:     []es.Plugin{},
+		Stdin: &es.StdinOptions{
+			Contents: strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", scriptPath, -1),
+
+			// These are all optional:
+			ResolveDir: path.Dir(scriptPath),
+			Loader:     es.LoaderTSX,
+		},
+		Bundle:   true,
+		Platform: es.PlatformBrowser,
+		Write:    false,
+		Plugins:  []es.Plugin{},
 	})
 
 	if len(result.Errors) != 0 {
+		for _, message := range result.Errors {
+			logger.Debug("OOOOFFEFEFEFE "+message.Text+": "+message.Location.File+":"+message.Location.LineText, log.Ctx{})
+
+		}
+
 		return "", fmt.Errorf("FFUFUFUFUFUU")
 	}
 
