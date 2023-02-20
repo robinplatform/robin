@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/health"
 	"robinplatform.dev/internal/log"
@@ -35,6 +37,39 @@ func (server *Server) Run(portBinding string) error {
 
 		server.loadRoutes()
 	}
+
+	var compiler compile.Compiler
+
+	// Apps
+	server.router.GET("/app-resources/html/:id", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		markdown, err := compiler.GetClientHtml(id)
+		if err != nil {
+			ctx.AbortWithStatus(404)
+			logger.Err(err, "Ooooops", log.Ctx{
+				"id": id,
+			})
+		} else {
+			ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(markdown))
+		}
+	})
+
+	server.router.GET("/app-resources/js/:id", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		logger.Debug("Hello", log.Ctx{})
+
+		markdown, err := compiler.GetClientJs(id)
+		if err != nil {
+			ctx.AbortWithStatus(404)
+			logger.Err(err, "Ooooops "+err.Error(), log.Ctx{
+				"id": id,
+			})
+		} else {
+			ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(markdown))
+		}
+	})
 
 	group := server.router.Group("/api/rpc")
 	GetVersion.Register(group)

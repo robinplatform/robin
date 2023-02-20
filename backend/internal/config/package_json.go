@@ -12,11 +12,12 @@ type PackageJson struct {
 	Scripts         map[string]string
 	Dependencies    map[string]string
 	DevDependencies map[string]string
+	Robin           string
 }
 
 // ParsePackageJson parses the given package.json file from the buffer
 func ParsePackageJson(buf []byte, packageJson *PackageJson) error {
-	if err := json.Unmarshal(buf, &packageJson); err != nil {
+	if err := json.Unmarshal(buf, packageJson); err != nil {
 		return fmt.Errorf("failed to unmarshal package.json file: %w", err)
 	}
 	return nil
