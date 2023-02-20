@@ -44,9 +44,15 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		markdown, err := compiler.GetClientHtml(id)
+		a, err := compiler.GetApp(id)
 		if err != nil {
 			ctx.AbortWithStatus(404)
+			return
+		}
+
+		markdown, err := a.GetClientHtml()
+		if err != nil {
+			ctx.AbortWithStatus(500)
 			logger.Err(err, "Ooooops", log.Ctx{
 				"id": id,
 			})
@@ -58,9 +64,15 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		markdown, err := compiler.GetClientJs(id)
+		a, err := compiler.GetApp(id)
 		if err != nil {
 			ctx.AbortWithStatus(404)
+			return
+		}
+
+		markdown, err := a.GetClientJs()
+		if err != nil {
+			ctx.AbortWithStatus(500)
 			logger.Err(err, "Ooooops "+err.Error(), log.Ctx{
 				"id": id,
 			})

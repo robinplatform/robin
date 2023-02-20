@@ -23,15 +23,21 @@ var logger log.Logger = log.New("compiler")
 type Compiler struct {
 }
 
-func (c *Compiler) GetClientHtml(id string) (string, error) {
-	text := strings.Replace(clientHtml, "__APP_ID__", id, -1)
+type App struct {
+	Id string
+}
+
+func (c *Compiler) GetApp(id string) (*App, error) {
+	return &App{Id: id}, nil
+}
+
+func (a *App) GetClientHtml() (string, error) {
+	text := strings.Replace(clientHtml, "__APP_ID__", a.Id, -1)
 
 	return text, nil
 }
 
-func (c *Compiler) GetClientJs(id string) (string, error) {
-	_ = id
-
+func (a *App) GetClientJs() (string, error) {
 	projectPath, err := config.GetProjectPath()
 	if err != nil {
 		return "", err
@@ -76,7 +82,7 @@ func (c *Compiler) GetClientJs(id string) (string, error) {
 	return string(output.Contents), nil
 }
 
-func (c *Compiler) GetServerJs(id string) (string, error) {
+func (a *App) GetServerJs(id string) (string, error) {
 	_ = id
 
 	return "", nil
