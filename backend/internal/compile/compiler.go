@@ -14,7 +14,7 @@ import (
 )
 
 //go:embed client.html
-var clientHtml string
+var clientHtmlTemplate string
 
 //go:embed client.tsx
 var clientJsBootstrap string
@@ -40,12 +40,19 @@ func (c *Compiler) GetApp(id string) *App {
 	c.m.Lock()
 	defer c.m.Unlock()
 
+	// TODO: For testing
+	if id == "robin-invalid-id" {
+		return nil
+	}
+
 	if app, found := c.appCache[id]; found {
-		_ = app
-		// return app
 		logger.Debug("Found existing app bundle", log.Ctx{
 			"id": id,
 		})
+
+		// TODO: Don't want to cache until updates to the source are propagated
+		_ = app
+		// return app
 	}
 
 	if c.appCache == nil {
@@ -54,18 +61,20 @@ func (c *Compiler) GetApp(id string) *App {
 
 	// TODO: Check if ID is valid
 
+	clientHtml := clientHtmlTemplate
+	clientHtml = strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1)
+	clientHtml = strings.Replace(clientHtml, "__APP_ID__", id, -1)
+
+	clientJs, err := getClientJs(id)
+
 	// TODO: Make this API actually make sense
 	app := &App{
 		Id:          id,
-		Html:        strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
-		ClientJs:    "",
-		BundleError: nil,
+		Html:        clientHtml,
+		ClientJs:    clientJs,
+		BundleError: err,
 	}
 	c.appCache[id] = app
-
-	clientJs, err := getClientJs(id)
-	app.ClientJs = clientJs
-	app.BundleError = err
 
 	return app
 }
