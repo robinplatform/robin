@@ -4,6 +4,10 @@ import Link from 'next/link';
 import cx from 'classnames';
 import { useRouter } from 'next/router';
 import { ToolsIcon, HomeIcon } from '@primer/octicons-react';
+import { useQuery } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
+import { useRpcQuery } from '../hooks/useRpcQuery';
+import { z } from 'zod';
 
 type SidebarIcon = {
 	icon: React.ReactNode;
@@ -24,6 +28,21 @@ export function Sidebar() {
 		[],
 	);
 
+	const { data: apps } = useRpcQuery({
+		method: 'GetApps',
+		data: {},
+		result: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string(),
+				pageIcon: z.string(),
+			})
+		),
+		onError: err => {
+			toast.error(`Failed to load robin apps: ${(err as Error).message}`);
+		}
+	});
+
 	return (
 		<div
 			className={cx(styles.wrapper, 'col robin-bg-dark-blue robin-text-white')}
@@ -41,6 +60,19 @@ export function Sidebar() {
 						</Link>
 						<span className={styles.sidebarLabel}>{label}</span>
 					</div>
+				))}
+				{apps?.map(app => (
+					<div key={app.name} className={styles.sidebarIconContainer}>
+					<Link
+						href={`/app/${app.id}`}
+						className={cx(styles.primaryButton, 'robin-pad', {
+							'robin-bg-dark-purple': window.location.pathname.startsWith(`/app/${app.id}`),
+						})}
+					>
+						{app.pageIcon}
+					</Link>
+					<span className={styles.sidebarLabel}>{app.name}</span>
+				</div>
 				))}
 			</div>
 

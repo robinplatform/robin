@@ -27,7 +27,7 @@ type ProjectPathNotFoundError struct {
 func (e ProjectPathNotFoundError) Error() string {
 	var sb strings.Builder
 
-	sb.WriteString("Could not find robin.config.ts file\n\n")
+	sb.WriteString("Could not find a robin.json file\n\n")
 	sb.WriteString("Checked:\n")
 	for _, dir := range e.visited {
 		sb.WriteString(fmt.Sprintf("\t%s\n", dir))
@@ -42,7 +42,7 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 		return "", ProjectPathNotFoundError{visited: visited}
 	}
 
-	if !fileExists(path.Join(currentDir, "robin.config.ts")) {
+	if !fileExists(path.Join(currentDir, "robin.json")) {
 		return findProjectPath(path.Dir(currentDir), append(visited, currentDir))
 	}
 	return currentDir, nil
@@ -59,7 +59,7 @@ func SetProjectPath(givenProjectPath string) (string, error) {
 	}
 
 	givenProjectPath = path.Clean(givenProjectPath)
-	if fileExists(path.Join(givenProjectPath, "robin.config.ts")) {
+	if fileExists(path.Join(givenProjectPath, "robin.json")) {
 		projectPath = givenProjectPath
 		return projectPath, nil
 	}
