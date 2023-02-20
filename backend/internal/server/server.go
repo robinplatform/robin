@@ -73,8 +73,9 @@ func (server *Server) Run(portBinding string) error {
 		markdown, err := a.GetClientJs()
 		if err != nil {
 			ctx.AbortWithStatus(500)
-			logger.Err(err, "Ooooops "+err.Error(), log.Ctx{
-				"id": id,
+			logger.Err(err, "Failed to get ClientJS", log.Ctx{
+				"id":  id,
+				"err": err.Error(),
 			})
 		} else {
 			ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(markdown))

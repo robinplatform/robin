@@ -3,23 +3,58 @@ import { Page } from '__SCRIPT_PATH__';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-class ErrorBoundary extends React.Component<
-	React.PropsWithChildren,
-	{ hasError: boolean }
-> {
+type State = { hasError: boolean; error?: any };
+
+class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 	constructor(props) {
 		super(props);
 		this.state = { hasError: false };
 	}
 
-	componentDidCatch(error, errorInfo) {
-		console.log('OOOF YOU HAD AN ERROR', error);
-		this.setState({ hasError: true });
+	componentDidCatch(error) {
+		this.setState({ hasError: true, error });
 	}
 
 	render() {
 		if (this.state.hasError) {
-			return <h1>Something went wrong.</h1>;
+			const error = this.state.error;
+			return (
+				<div
+					style={{
+						width: '100%',
+						height: '100%',
+						maxHeight: '100vh',
+						display: 'flex',
+						flexDirection: 'column',
+						padding: '1.25rem',
+						gap: '1.25rem',
+						boxSizing: 'border-box',
+					}}
+				>
+					<h1
+						style={{
+							padding: 0,
+							margin: 0,
+						}}
+					>
+						The extension crashed
+					</h1>
+
+					<pre
+						style={{
+							margin: 0,
+							boxSizing: 'border-box',
+							padding: '1.25rem',
+							backgroundColor: 'lightgray',
+							borderRadius: '5px',
+							width: '100%',
+							overflowY: 'auto',
+						}}
+					>
+						{error?.message || error}
+					</pre>
+				</div>
+			);
 		}
 
 		return this.props.children;

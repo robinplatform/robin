@@ -69,14 +69,18 @@ func (a *App) GetClientJs() (string, error) {
 	})
 
 	if len(result.Errors) != 0 {
-		for _, message := range result.Errors {
-			logger.Debug("OOOOFFEFEFEFE "+message.Text+": "+message.Location.File+":"+message.Location.LineText, log.Ctx{})
+		logger.Info("Failed to compile extension", log.Ctx{
+			"id":          a.Id,
+			"projectPath": projectPath,
+			"scriptPath":  scriptPath,
+			"errors":      result.Errors,
+		})
 
-		}
-
-		return "", fmt.Errorf("FFUFUFUFUFUU")
+		e := result.Errors[0]
+		return "", fmt.Errorf("%s,%s: %s", e.Location.File, e.Location.LineText, e.Text)
 	}
 
+	// TODO: Output all files in the case of more crazy bundling things
 	output := result.OutputFiles[0]
 
 	return string(output.Contents), nil
