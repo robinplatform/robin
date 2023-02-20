@@ -39,10 +39,7 @@ func (c *Compiler) GetClientJs(id string) (string, error) {
 
 	scriptPath := packageJson.Robin
 	if !filepath.IsAbs(scriptPath) {
-		scriptPath, err = filepath.Rel(projectPath, scriptPath)
-		if err != nil {
-			return "", err
-		}
+		scriptPath = path.Clean(path.Join(projectPath, scriptPath))
 	}
 
 	result := es.Build(es.BuildOptions{

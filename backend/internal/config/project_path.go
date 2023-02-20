@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -48,13 +49,13 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 }
 
 func SetProjectPath(givenProjectPath string) (string, error) {
-	if givenProjectPath[0] != '/' {
+	if !filepath.IsAbs(givenProjectPath) {
 		cwd, err := os.Getwd()
 		if err != nil {
 			return "", fmt.Errorf("error: failed to get cwd: %s", err)
 		}
 
-		givenProjectPath = cwd + "/" + givenProjectPath
+		givenProjectPath = path.Join(cwd, givenProjectPath)
 	}
 
 	givenProjectPath = path.Clean(givenProjectPath)
