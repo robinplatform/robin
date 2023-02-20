@@ -35,6 +35,7 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 						style={{
 							padding: 0,
 							margin: 0,
+							fontSize: '2.25rem',
 						}}
 					>
 						The app crashed
