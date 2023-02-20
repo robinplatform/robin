@@ -6,6 +6,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/config"
@@ -21,6 +22,8 @@ var clientJsBootstrap string
 var logger log.Logger = log.New("compiler")
 
 type Compiler struct {
+	m        sync.Mutex
+	appCache map[string]*App
 }
 
 type App struct {
@@ -28,7 +31,25 @@ type App struct {
 }
 
 func (c *Compiler) GetApp(id string) (*App, error) {
-	return &App{Id: id}, nil
+	c.m.Lock()
+	defer c.m.Unlock()
+
+	if app, found := c.appCache[id]; found {
+		return app, nil
+	}
+
+	if c.appCache == nil {
+		c.appCache = make(map[string]*App)
+	}
+
+	// TODO: Check if ID is valid
+
+	app := &App{
+		Id: id,
+	}
+	c.appCache[id] = app
+
+	return app, nil
 }
 
 func (a *App) GetClientHtml() (string, error) {
@@ -56,9 +77,7 @@ func (a *App) GetClientJs() (string, error) {
 
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
-			Contents: strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", scriptPath, -1),
-
-			// These are all optional:
+			Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", scriptPath, -1),
 			ResolveDir: path.Dir(scriptPath),
 			Loader:     es.LoaderTSX,
 		},
