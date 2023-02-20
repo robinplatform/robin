@@ -4,7 +4,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 
 type State = { hasError: boolean; error?: any };
-
 class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 	constructor(props) {
 		super(props);
