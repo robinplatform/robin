@@ -19,8 +19,8 @@ var clientHtml string
 //go:embed client.tsx
 var clientJsBootstrap string
 
-//go:embed not-found.html
-var clientNotFoundHtml string
+//go:embed error.html
+var clientErrorHtml string
 
 var logger log.Logger = log.New("compiler")
 
@@ -30,8 +30,10 @@ type Compiler struct {
 }
 
 type App struct {
-	Id   string
-	Html string
+	Id          string
+	Html        string
+	ClientJs    string
+	BundleError error
 }
 
 func (c *Compiler) GetApp(id string) *App {
@@ -39,7 +41,11 @@ func (c *Compiler) GetApp(id string) *App {
 	defer c.m.Unlock()
 
 	if app, found := c.appCache[id]; found {
-		return app
+		_ = app
+		// return app
+		logger.Debug("Found existing app bundle", log.Ctx{
+			"id": id,
+		})
 	}
 
 	if c.appCache == nil {
@@ -48,20 +54,32 @@ func (c *Compiler) GetApp(id string) *App {
 
 	// TODO: Check if ID is valid
 
+	// TODO: Make this API actually make sense
 	app := &App{
-		Id:   id,
-		Html: strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
+		Id:          id,
+		Html:        strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
+		ClientJs:    "",
+		BundleError: nil,
 	}
 	c.appCache[id] = app
+
+	clientJs, err := getClientJs(id)
+	app.ClientJs = clientJs
+	app.BundleError = err
 
 	return app
 }
 
 func GetNotFoundHtml(id string) string {
-	return strings.Replace(clientNotFoundHtml, "__APP_ID__", id, -1)
+	text := `App not found: "` + id + `" is an invalid ID`
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", text, -1)
 }
 
-func (a *App) GetClientJs() (string, error) {
+func GetErrorHtml(err error) string {
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", err.Error(), -1)
+}
+
+func getClientJs(id string) (string, error) {
 	projectPath, err := config.GetProjectPath()
 	if err != nil {
 		return "", err
@@ -92,14 +110,14 @@ func (a *App) GetClientJs() (string, error) {
 
 	if len(result.Errors) != 0 {
 		logger.Info("Failed to compile extension", log.Ctx{
-			"id":          a.Id,
+			"id":          id,
 			"projectPath": projectPath,
 			"scriptPath":  scriptPath,
 			"errors":      result.Errors,
 		})
 
 		e := result.Errors[0]
-		return "", fmt.Errorf("%s,%s: %s", e.Location.File, e.Location.LineText, e.Text)
+		return "", fmt.Errorf("%v,%v: %v", e.Location.File, e.Location.Line, e.Text)
 	}
 
 	// TODO: Output all files in the case of more crazy bundling things
