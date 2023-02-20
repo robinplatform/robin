@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"io"
+	stdlog "log"
 
 	"github.com/gin-gonic/gin"
 	"robinplatform.dev/internal/log"
@@ -16,6 +18,7 @@ func ReverseProxy() gin.HandlerFunc {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy.ErrorLog = stdlog.New(io.Discard, "", 0)
 
 	return func(c *gin.Context) {
 		defer func() {
