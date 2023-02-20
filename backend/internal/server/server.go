@@ -58,8 +58,6 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/js/:id", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		logger.Debug("Hello", log.Ctx{})
-
 		markdown, err := compiler.GetClientJs(id)
 		if err != nil {
 			ctx.AbortWithStatus(404)
