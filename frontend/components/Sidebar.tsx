@@ -1,10 +1,9 @@
-import styles from './sidebar.module.css';
+import styles from './sidebar.module.scss';
 import React from 'react';
 import Link from 'next/link';
 import cx from 'classnames';
 import { useRouter } from 'next/router';
 import { ToolsIcon, HomeIcon } from '@primer/octicons-react';
-import Tooltip from '@tippyjs/react';
 
 type SidebarIcon = {
 	icon: React.ReactNode;
@@ -31,7 +30,7 @@ export function Sidebar() {
 		>
 			<div className="col">
 				{icons.map(({ icon, href, label }) => (
-					<Tooltip key={href} content={label} placement={'right'}>
+					<div key={href} className={styles.sidebarIconContainer}>
 						<Link
 							href={href}
 							className={cx(styles.primaryButton, 'robin-pad', {
@@ -40,20 +39,20 @@ export function Sidebar() {
 						>
 							{icon}
 						</Link>
-					</Tooltip>
+						<span className={styles.sidebarLabel}>{label}</span>
+					</div>
 				))}
 			</div>
 
-			<Tooltip content={'Home'} placement={'top'}>
-				<div className={styles.homeWrapper}>
-					<Link
-						href="/"
-						className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
-					>
-						<HomeIcon />
-					</Link>
-				</div>
-			</Tooltip>
+			<div className={cx(styles.homeWrapper, styles.sidebarIconContainer)}>
+				<Link
+					href="/"
+					className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
+				>
+					<HomeIcon />
+				</Link>
+				<span className={styles.sidebarLabel}>Home</span>
+			</div>
 		</div>
 	);
 }

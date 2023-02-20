@@ -1,0 +1,60 @@
+.wrapper {
+	height: 100%;
+	justify-content: space-between;
+}
+
+.primaryButton {
+	display: flex;
+	color: inherit;
+}
+
+.primaryButton:hover {
+	background-color: #ab81cd;
+}
+
+.homeWrapper {
+	width: 100%;
+	padding: 0.5rem;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.home {
+	padding: 0.5rem;
+	cursor: pointer;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: inherit;
+}
+
+.sidebarIconContainer {
+	position: relative;
+}
+
+.sidebarLabel {
+	position: absolute;
+	top: 50%;
+	left: 100%;
+
+	padding: 0.25rem;
+	margin-left: 0.5rem;
+
+	// padding + (1/2)fontSize
+	margin-top: -0.75rem;
+
+	background-color: rgba(0, 0, 0, 0.7);
+	border-radius: 0.25rem;
+
+	opacity: 0;
+	visibility: hidden;
+	transition: 0.3s opacity ease, 0.3s visibility ease;
+}
+
+.sidebarIconContainer:hover {
+	.sidebarLabel {
+		opacity: 1;
+		visibility: visible;
+	}
+}
