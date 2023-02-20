@@ -5,7 +5,7 @@ import Editor, {
 } from '@monaco-editor/react';
 import cx from 'classnames';
 import * as React from 'react';
-import styles from './monaco.module.css';
+import styles from './monaco.module.scss';
 
 type DiffEditorProps = Omit<MonacoDiffEditorProps, 'original' | 'modified'> & {
 	// Uses `defaultValue` as `original` in Monaco diff editor
