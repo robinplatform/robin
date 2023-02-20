@@ -27,7 +27,8 @@ type Compiler struct {
 }
 
 type App struct {
-	Id string
+	Id   string
+	Html string
 }
 
 func (c *Compiler) GetApp(id string) (*App, error) {
@@ -45,17 +46,12 @@ func (c *Compiler) GetApp(id string) (*App, error) {
 	// TODO: Check if ID is valid
 
 	app := &App{
-		Id: id,
+		Id:   id,
+		Html: strings.Replace(clientHtml, "__APP_ID__", id, -1),
 	}
 	c.appCache[id] = app
 
 	return app, nil
-}
-
-func (a *App) GetClientHtml() (string, error) {
-	text := strings.Replace(clientHtml, "__APP_ID__", a.Id, -1)
-
-	return text, nil
 }
 
 func (a *App) GetClientJs() (string, error) {

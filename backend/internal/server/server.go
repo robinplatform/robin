@@ -50,15 +50,7 @@ func (server *Server) Run(portBinding string) error {
 			return
 		}
 
-		markdown, err := a.GetClientHtml()
-		if err != nil {
-			ctx.AbortWithStatus(500)
-			logger.Err(err, "Ooooops", log.Ctx{
-				"id": id,
-			})
-		} else {
-			ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(markdown))
-		}
+		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(a.Html))
 	})
 
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
