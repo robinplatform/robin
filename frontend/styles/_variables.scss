@@ -6,3 +6,12 @@ $light-purple: #AB81CD;
 
 $red: #D62828;
 $white: #FFFFFF;
+
+$colors: (
+  'dark-blue': $dark-blue,
+  'light-blue': $light-blue,
+  'dark-purple': $dark-purple,
+  'light-purple': $light-purple,
+  'red': $red,
+  'white': $white
+);
