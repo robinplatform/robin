@@ -19,6 +19,9 @@ var clientHtml string
 //go:embed client.tsx
 var clientJsBootstrap string
 
+//go:embed not-found.js
+var clientNotFoundJs string
+
 var logger log.Logger = log.New("compiler")
 
 type Compiler struct {
@@ -31,12 +34,12 @@ type App struct {
 	Html string
 }
 
-func (c *Compiler) GetApp(id string) (*App, error) {
+func (c *Compiler) GetApp(id string) *App {
 	c.m.Lock()
 	defer c.m.Unlock()
 
 	if app, found := c.appCache[id]; found {
-		return app, nil
+		return app
 	}
 
 	if c.appCache == nil {
@@ -47,11 +50,19 @@ func (c *Compiler) GetApp(id string) (*App, error) {
 
 	app := &App{
 		Id:   id,
-		Html: strings.Replace(clientHtml, "__APP_ID__", id, -1),
+		Html: strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
 	}
 	c.appCache[id] = app
 
-	return app, nil
+	return app
+}
+
+func GetNotFoundHtml() string {
+	return strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-not-found.js", -1)
+}
+
+func GetNotFoundJs() string {
+	return clientNotFoundJs
 }
 
 func (a *App) GetClientJs() (string, error) {

@@ -44,8 +44,9 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		a, err := compiler.GetApp(id)
-		if err != nil {
+		a := compiler.GetApp(id)
+		if a == nil {
+			ctx.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(compile.GetNotFoundHtml()))
 			ctx.AbortWithStatus(404)
 			return
 		}
@@ -53,11 +54,17 @@ func (server *Server) Run(portBinding string) error {
 		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(a.Html))
 	})
 
+	server.router.GET("/app-not-found.js", func(ctx *gin.Context) {
+		markdown := compile.GetNotFoundJs()
+
+		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(markdown))
+	})
+
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		a, err := compiler.GetApp(id)
-		if err != nil {
+		a := compiler.GetApp(id)
+		if a == nil {
 			ctx.AbortWithStatus(404)
 			return
 		}
