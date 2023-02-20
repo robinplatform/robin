@@ -41,7 +41,7 @@ func (server *Server) Run(portBinding string) error {
 	var compiler compile.Compiler
 
 	// Apps
-	server.router.GET("/app-resources/html/:id", func(ctx *gin.Context) {
+	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
 		markdown, err := compiler.GetClientHtml(id)
@@ -55,7 +55,7 @@ func (server *Server) Run(portBinding string) error {
 		}
 	})
 
-	server.router.GET("/app-resources/js/:id", func(ctx *gin.Context) {
+	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
 		markdown, err := compiler.GetClientJs(id)
