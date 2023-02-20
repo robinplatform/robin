@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 
 import 'normalize.css/normalize.css';
-import 'tippy.js/dist/tippy.css';
 import './globals.scss';
 import '@robinplatform/toolkit/styles.css';
 import { Sidebar } from '../components/Sidebar';
