@@ -19,8 +19,8 @@ var clientHtml string
 //go:embed client.tsx
 var clientJsBootstrap string
 
-//go:embed not-found.js
-var clientNotFoundJs string
+//go:embed not-found.html
+var clientNotFoundHtml string
 
 var logger log.Logger = log.New("compiler")
 
@@ -57,12 +57,8 @@ func (c *Compiler) GetApp(id string) *App {
 	return app
 }
 
-func GetNotFoundHtml() string {
-	return strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-not-found.js", -1)
-}
-
-func GetNotFoundJs() string {
-	return clientNotFoundJs
+func GetNotFoundHtml(id string) string {
+	return strings.Replace(clientNotFoundHtml, "__APP_ID__", id, -1)
 }
 
 func (a *App) GetClientJs() (string, error) {
