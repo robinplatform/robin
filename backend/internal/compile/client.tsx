@@ -37,7 +37,7 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 							margin: 0,
 						}}
 					>
-						The extension crashed
+						The app crashed
 					</h1>
 
 					<pre
