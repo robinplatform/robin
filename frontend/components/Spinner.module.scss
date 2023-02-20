@@ -1,0 +1,21 @@
+@keyframes rotateSpinner {
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
+}
+
+.spinner {
+	width: 1.25rem;
+	height: 1.25rem;
+
+	border: 3px solid #fff;
+	border-bottom-color: transparent;
+
+	border-radius: 50%;
+
+	display: inline-block;
+	animation: rotateSpinner 1s linear infinite;
+}

@@ -1,0 +1,20 @@
+@import '../styles/variables';
+
+.alertContainer {
+	padding: 1rem;
+	border-radius: 0.5rem;
+	background: #fff;
+	color: #000;
+	border-top: solid 3px;
+}
+
+.alertTitle {
+	font-weight: bold;
+	color: $red;
+	margin: 0;
+	margin-bottom: 1rem;
+}
+
+.alertError {
+	border-color: $red;
+}

@@ -1,0 +1,35 @@
+@import '../styles/variables';
+
+.icon {
+	margin-right: 0.5rem;
+}
+
+@mixin button {
+	border-radius: 0.25rem;
+	padding: 0.5rem 0.75rem;
+	appearance: none;
+	border: none;
+	cursor: pointer;
+}
+
+.btnPrimary {
+	@include button;
+
+	background-color: $dark-purple;
+	color: $white;
+
+	&:hover {
+		background-color: $light-purple;
+	}
+}
+
+.btnSecondary {
+	@include button;
+
+	background-color: $light-blue;
+	color: $white;
+
+	&:hover {
+		background-color: $light-blue;
+	}
+}

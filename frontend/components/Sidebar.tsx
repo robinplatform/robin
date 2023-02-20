@@ -26,19 +26,17 @@ export function Sidebar() {
 	);
 
 	return (
-		<div className={cx(styles.wrapper, 'col robin-bg-dark-blue robin-text-white')}>
+		<div
+			className={cx(styles.wrapper, 'col robin-bg-dark-blue robin-text-white')}
+		>
 			<div className="col">
 				{icons.map(({ icon, href, label }) => (
 					<Tooltip key={href} content={label} placement={'right'}>
 						<Link
 							href={href}
-							className={cx(
-								styles.primaryButton,
-								'robin-pad',
-								{
-									'robin-bg-red': href === router.asPath,
-								}
-							)}
+							className={cx(styles.primaryButton, 'robin-pad', {
+								'robin-bg-dark-purple': href === router.asPath,
+							})}
 						>
 							{icon}
 						</Link>
@@ -50,7 +48,7 @@ export function Sidebar() {
 				<div className={styles.homeWrapper}>
 					<Link
 						href="/"
-						className={cx(styles.home, 'robin-rounded robin-bg-red')}
+						className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
 					>
 						<HomeIcon />
 					</Link>

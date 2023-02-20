@@ -27,6 +27,9 @@ export const getConfig = async (): Promise<Config> => {
 	const resp = await fetch('/api/rpc/GetConfig', {
 		...getDefaultFetchSettings(),
 	});
+	if (!resp.ok) {
+		throw new Error('Could not get config');
+	}
 	const value = await resp.json();
 	return value;
 };
@@ -36,6 +39,9 @@ export const updateConfig = async (newValue: string) => {
 		...getDefaultFetchSettings(),
 		body: newValue,
 	});
+	if (!resp.ok) {
+		throw new Error('Could not update config');
+	}
 	const value = await resp.json();
 	return value;
 };

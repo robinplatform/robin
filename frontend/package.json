@@ -15,7 +15,7 @@
 	"dependencies": {
 		"@monaco-editor/loader": "1.2.0",
 		"@monaco-editor/react": "4.3.1",
-		"@primer/octicons-react": "16.3.0",
+		"@primer/octicons-react": "17.12.0",
 		"@tanstack/react-query": "4.24.9",
 		"@tippyjs/react": "4.2.6",
 		"classnames": "2.3.2",
@@ -34,6 +34,7 @@
 		"eslint-config-next": "13.1.6",
 		"normalize.css": "8.0.1",
 		"npm-run-all": "4.1.5",
+		"react-hot-toast": "2.4.0",
 		"sass": "1.58.3",
 		"typescript": "4.9.5"
 	}
