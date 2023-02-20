@@ -1,6 +1,8 @@
 package log
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"os"
 	"path"
@@ -25,7 +27,34 @@ func init() {
 		MaxBackups: 1,
 	}
 
-	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	console := zerolog.ConsoleWriter{Out: os.Stderr}
+	console.FormatFieldName = func(i interface{}) string {
+		return ""
+	}
+	console.FormatFieldValue = func(i interface{}) string {
+		return ""
+	}
+	console.FormatExtra = func(value map[string]interface{}, buf *bytes.Buffer) error {
+		ctx := make(map[string]any, len(value))
+		for key, value := range value {
+			switch key {
+			case "level", "time", "message":
+				continue
+			}
+			ctx[key] = value
+		}
+
+		data, err := json.MarshalIndent(ctx, "\t", "\t")
+		if err != nil {
+			return err
+		}
+
+		buf.WriteRune(' ')
+		_, err = buf.Write(data)
+		return err
+	}
+
+	log.Logger = log.Output(console)
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 }
 
