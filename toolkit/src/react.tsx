@@ -63,11 +63,9 @@ class ErrorBoundary extends React.Component<
 	}
 }
 
-export function renderApp(content: React.ReactNode) {
+export function renderApp(children: React.ReactNode) {
 	ReactDOM.render(
-		<ErrorBoundary>
-			{content}
-		</ErrorBoundary>,
+		<ErrorBoundary>{children}</ErrorBoundary>,
 		document.getElementById('root'),
 	);
 }
