@@ -40,7 +40,6 @@ jobs:
         run: |
           cd backend/
           go generate -x ./...
-          go generate -x -tags prod ./...
 
           # Generating a pseudo frontend build so that vet
           # does not complain about the lack of an embed target
