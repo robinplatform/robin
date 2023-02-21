@@ -66,32 +66,6 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (string, error) {
 	return string(buf), nil
 }
 
-func (appConfig *RobinAppConfig) validate() error {
-	if appConfig.Id == "" {
-		return fmt.Errorf("'id' is required")
-	}
-
-	if appConfig.Page == "" {
-		return fmt.Errorf("'page' is required")
-	}
-	if !path.IsAbs(appConfig.Page) {
-		appConfig.Page = path.Clean(path.Join(path.Dir(appConfig.ConfigPath), appConfig.Page))
-	}
-	if _, err := os.Stat(appConfig.Page); err != nil {
-		return fmt.Errorf("failed to find page '%s': %s", appConfig.Page, err)
-	}
-
-	if appConfig.PageIcon == "" {
-		return fmt.Errorf("'pageIcon' is required")
-	}
-
-	if appConfig.Name == "" {
-		return fmt.Errorf("'name' is required")
-	}
-
-	return nil
-}
-
 type robinProjectConfig struct {
 	// Name of the app
 	Name string `json:"name"`
@@ -209,29 +183,6 @@ func LoadRobinProjectConfig() (RobinProjectConfig, error) {
 		err := readRobinAppConfig(appConfigPath, &parsedConfig.Apps[i])
 		if err != nil {
 			return parsedConfig, fmt.Errorf("failed to read robin app config in '%s': %s", appConfigPath, err)
-    }
-
-		if path.Base(appConfigPath) != "robin.app.json" {
-			appConfigPath = path.Join(appConfigPath, "robin.app.json")
-		}
-		if !path.IsAbs(appConfigPath) {
-			appConfigPath = path.Clean(path.Join(projectPath, appConfigPath))
-		}
-
-		buf, err := os.ReadFile(appConfigPath)
-		if err != nil {
-			return parsedConfig, fmt.Errorf("failed to read app config from '%s': %s", appConfigPath, err)
-		}
-
-		err = json.Unmarshal(buf, &parsedConfig.Apps[i])
-		if err != nil {
-			return parsedConfig, fmt.Errorf("failed to parse app config from '%s': %s", appConfigPath, err)
-		}
-
-		parsedConfig.Apps[i].ConfigPath = appConfigPath
-
-		if err := parsedConfig.Apps[i].validate(); err != nil {
-			return parsedConfig, fmt.Errorf("invalid robin app config in '%s': %s", appConfigPath, err)
 		}
 	}
 

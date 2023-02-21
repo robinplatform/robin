@@ -3,6 +3,7 @@ package compile
 import (
 	_ "embed"
 	"fmt"
+	"os"
 	"path"
 	"strings"
 	"sync"
@@ -14,9 +15,6 @@ import (
 
 //go:embed client.html
 var clientHtmlTemplate string
-
-//go:embed client.tsx
-var clientJsBootstrap string
 
 //go:embed error.html
 var clientErrorHtml string
@@ -118,6 +116,13 @@ func getClientJs(id string) (string, error) {
 	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
 		return "", err
+	}
+
+	if !path.IsAbs(appConfig.Page) {
+		appConfig.Page = path.Clean(path.Join(path.Dir(appConfig.ConfigPath.Path), appConfig.Page))
+	}
+	if _, err := os.Stat(appConfig.Page); err != nil {
+		return "", fmt.Errorf("failed to find page '%s': %s", appConfig.Page, err)
 	}
 
 	result := es.Build(es.BuildOptions{

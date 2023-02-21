@@ -1,4 +1,4 @@
-import { renderPage } from '@robinplatform/toolkit/dist/react';
+import { renderApp } from '@robinplatform/toolkit/react';
 import React from 'react';
 
 function Page() {
@@ -6,4 +6,4 @@ function Page() {
 	return <div>DERP DERP DERP</div>;
 }
 
-renderPage(<Page></Page>);
+renderApp(<Page></Page>);
