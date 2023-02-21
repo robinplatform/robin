@@ -53,9 +53,7 @@ class ErrorBoundary extends React.Component<
 							overflowY: 'auto',
 						}}
 					>
-						<code>
-							{String((error as Error)?.message || error)}
-						</code>
+						<code>{String(error?.message || error)}</code>
 					</pre>
 				</div>
 			);
