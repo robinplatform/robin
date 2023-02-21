@@ -7,9 +7,8 @@ import (
 	"fmt"
 )
 
-//go:generate cp ../../package.json .
-
 var (
+	//go:generate cp ../../package.json .
 	//go:embed package.json
 	rawPackageJsonRaw []byte
 	rootPackageJson   PackageJson
