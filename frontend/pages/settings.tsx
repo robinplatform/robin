@@ -100,7 +100,7 @@ export default function Settings() {
 					)}
 				</h1>
 
-				{error && (
+				{!!error && (
 					<Alert variant="error" title="Failed to load settings">
 						<pre>
 							<code>{String(error)}</code>
