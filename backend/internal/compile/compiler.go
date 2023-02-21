@@ -68,14 +68,31 @@ func (app *App) GetClientJs() (string, error) {
 
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
-			Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", appConfig.Page, -1),
+			Contents:   clientJsBootstrap,
 			ResolveDir: path.Dir(appConfig.Page),
 			Loader:     es.LoaderTSX,
 		},
 		Bundle:   true,
 		Platform: es.PlatformBrowser,
 		Write:    false,
-		Plugins:  []es.Plugin{},
+		Plugins: []es.Plugin{
+			{
+				Name: "load-robin-app-entrypoint",
+				Setup: func(build es.PluginBuild) {
+					build.OnResolve(es.OnResolveOptions{Filter: "__robinplatform-app-client-entrypoint__"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+						return es.OnResolveResult{Path: args.Path, Namespace: "robin-app-entrypoint"}, nil
+					})
+					build.OnLoad(es.OnLoadOptions{Filter: ".", Namespace: "robin-app-entrypoint"}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+						buf, err := appConfig.ReadFile(appConfig.Page)
+						if err != nil {
+							return es.OnLoadResult{}, err
+						}
+
+						return es.OnLoadResult{Contents: &buf, Loader: es.LoaderTSX}, nil
+					})
+				},
+			},
+		},
 	})
 
 	if len(result.Errors) != 0 {

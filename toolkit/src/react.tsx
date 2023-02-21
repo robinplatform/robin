@@ -1,17 +1,12 @@
-// @ts-ignore
-import { Page } from '__robinplatform-app-client-entrypoint__';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-type State = { hasError: boolean; error?: any };
+type State = { hasError: boolean; error?: unknown };
 
-class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
-	constructor(props) {
-		super(props);
-		this.state = { hasError: false };
-	}
+class ErrorBoundary extends React.Component<React.PropsWithChildren<{}>, State> {
+	state: State = { hasError: false };
 
-	componentDidCatch(error) {
+	componentDidCatch(error: unknown) {
 		this.setState({ hasError: true, error });
 	}
 
@@ -52,7 +47,9 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 							overflowY: 'auto',
 						}}
 					>
-						{error?.message || error}
+						<code>
+							{String((error as Error)?.message || error)}
+						</code>
 					</pre>
 				</div>
 			);
@@ -62,9 +59,11 @@ class ErrorBoundary extends React.Component<React.PropsWithChildren, State> {
 	}
 }
 
-ReactDOM.render(
-	<ErrorBoundary>
-		<Page />
-	</ErrorBoundary>,
-	document.getElementById('root'),
-);
+export function renderApp(content: React.ReactNode) {
+	ReactDOM.render(
+		<ErrorBoundary>
+			{content}
+		</ErrorBoundary>,
+		document.getElementById('root'),
+	);
+}
