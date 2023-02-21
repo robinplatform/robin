@@ -4,9 +4,10 @@ export default function Document() {
 	return (
 		<Html>
 			<Head>
-				{/* This uses a static local copy because otherwise the app gets hyper-slowed by web requests */}
 				<link
-					href={'/monaco-editor.css'}
+					href={
+						'https://cdn.jsdelivr.net/npm/monaco-editor@0.25.2/min/vs/editor/editor.main.css'
+					}
 					data-name={'vs/editor/editor.main'}
 					type={'text/css'}
 					rel={'stylesheet'}
