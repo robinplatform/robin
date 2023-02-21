@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"fmt"
 	"path"
-	"path/filepath"
 	"strings"
 	"sync"
 
@@ -25,7 +24,7 @@ var clientErrorHtml string
 var logger log.Logger = log.New("compiler")
 
 type Compiler struct {
-	m        sync.Mutex
+	mux      sync.Mutex
 	appCache map[string]*App
 }
 
@@ -36,9 +35,9 @@ type App struct {
 	BundleError error
 }
 
-func (c *Compiler) GetApp(id string) *App {
-	c.m.Lock()
-	defer c.m.Unlock()
+func (compiler *Compiler) GetApp(id string) *App {
+	compiler.mux.Lock()
+	defer compiler.mux.Unlock()
 
 	// TODO: For testing
 	if id == "robin-invalid-id" {
@@ -55,8 +54,8 @@ func (c *Compiler) GetApp(id string) *App {
 		// return app
 	}
 
-	if c.appCache == nil {
-		c.appCache = make(map[string]*App)
+	if compiler.appCache == nil {
+		compiler.appCache = make(map[string]*App)
 	}
 
 	// TODO: Check if ID is valid
@@ -74,7 +73,7 @@ func (c *Compiler) GetApp(id string) *App {
 		ClientJs:    clientJs,
 		BundleError: err,
 	}
-	c.appCache[id] = app
+	compiler.appCache[id] = app
 
 	return app
 }
@@ -94,21 +93,10 @@ func getClientJs(id string) (string, error) {
 		return "", err
 	}
 
-	packageJsonPath := path.Join(projectPath, "package.json")
-	var packageJson config.PackageJson
-	if err := config.LoadPackageJson(packageJsonPath, &packageJson); err != nil {
-		return "", err
-	}
-
-	scriptPath := packageJson.Robin
-	if !filepath.IsAbs(scriptPath) {
-		scriptPath = path.Clean(path.Join(projectPath, scriptPath))
-	}
-
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
-			Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", scriptPath, -1),
-			ResolveDir: path.Dir(scriptPath),
+			Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", appConfig.Page, -1),
+			ResolveDir: path.Dir(appConfig.Page),
 			Loader:     es.LoaderTSX,
 		},
 		Bundle:   true,
@@ -118,24 +106,40 @@ func getClientJs(id string) (string, error) {
 	})
 
 	if len(result.Errors) != 0 {
-		logger.Info("Failed to compile extension", log.Ctx{
-			"id":          id,
+		errors := make([]string, len(result.Errors))
+		for i, err := range result.Errors {
+			if err.PluginName == "" {
+				errors[i] = err.Text
+			} else {
+				errors[i] = fmt.Sprintf("%s: %s", err.PluginName, err.Text)
+			}
+		}
+
+		logger.Warn("Failed to compile extension", log.Ctx{
+			"id":         app.Id,
 			"projectPath": projectPath,
-			"scriptPath":  scriptPath,
-			"errors":      result.Errors,
+			"scriptPath": appConfig.Page,
+			"errors":     errors,
 		})
 
-		e := result.Errors[0]
-		return "", fmt.Errorf("%v,%v: %v", e.Location.File, e.Location.Line, e.Text)
+		err := result.Errors[0]
+
+		errMessage := err.Text
+		if len(result.Errors) > 1 {
+			errMessage = fmt.Sprintf("%s (and %d more errors)", errMessage, len(result.Errors)-1)
+		}
+
+		if err.PluginName != "" {
+			return "", fmt.Errorf("%s: %s", err.PluginName, errMessage)
+		}
+		return "", fmt.Errorf("%s", errMessage)
 	}
 
-	// TODO: Output all files in the case of more crazy bundling things
 	output := result.OutputFiles[0]
-
 	return string(output.Contents), nil
 }
 
-func (a *App) GetServerJs(id string) (string, error) {
+func (app *App) GetServerJs(id string) (string, error) {
 	_ = id
 
 	return "", nil

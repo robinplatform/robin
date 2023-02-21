@@ -23,6 +23,13 @@ func init() {
 
 var logger log.Logger = log.New("server")
 
+func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
+	GetVersion.Register(group)
+	GetConfig.Register(group)
+	UpdateConfig.Register(group)
+	GetApps.Register(group)
+}
+
 func (server *Server) Run(portBinding string) error {
 	logger.Print("Starting robin", log.Ctx{
 		"projectPath": config.GetProjectPathOrExit(),
@@ -80,9 +87,7 @@ func (server *Server) Run(portBinding string) error {
 	})
 
 	group := server.router.Group("/api/rpc")
-	GetVersion.Register(group)
-	GetConfig.Register(group)
-	UpdateConfig.Register(group)
+	server.loadRpcMethods(group)
 
 	// TODO: Switch to using net/http for the server, and let
 	// gin be the router
@@ -96,7 +101,7 @@ func (server *Server) Run(portBinding string) error {
 		for !health.CheckHttp(healthCheck) {
 			time.Sleep(1 * time.Second)
 		}
-		logger.Print(fmt.Sprintf("Started robin server on http://%s\n", portBinding), log.Ctx{})
+		logger.Print(fmt.Sprintf("Started robin server on http://%s", portBinding), log.Ctx{})
 	}()
 
 	if err := server.router.Run(portBinding); err != nil {
