@@ -1,16 +1,16 @@
 {
-	"name": "@robinplatform/backend",
+	"name": "@robinplatform/cli",
 	"version": "0.0.0",
 	"license": "GPL-3.0",
 	"bin": {
-		"robin": "./bin/cli"
+		"robin": "./bin/robin"
 	},
 	"scripts": {
+		"test": "go test -v -race ./...",
+		"lint": "if ! test -z \"`gofmt -s -l .`\"; then gofmt -s -l .; exit 1; fi",
 		"dev": "go run github.com/mitranim/gow -e 'go,tsx,html' run ./cmd/cli start",
 		"format": "go fmt ./... && go vet ./...",
-		"build": "yarn build-cli",
-		"go-generate": "go generate ./...",
-		"build-cli": "go build -o ./bin/cli -tags prod ./cmd/cli"
+		"build": "./scripts/build.sh"
 	},
 	"devDependencies": {}
 }
