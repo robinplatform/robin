@@ -8,6 +8,9 @@
 	"engines": {
 		"node": "^18"
 	},
+	"scripts": {
+		"format": "yarn workspaces run format"
+	},
 	"dependencies": {},
 	"devDependencies": {
 		"kill-port": "2.0.1",
