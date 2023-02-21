@@ -1,4 +1,4 @@
-import { renderApp } from '@robinplatform/toolkit/dist/react';
+import { renderApp } from '@robinplatform/toolkit/react';
 import React from 'react';
 
 function Page() {
