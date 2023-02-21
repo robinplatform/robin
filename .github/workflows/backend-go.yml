@@ -39,12 +39,19 @@ jobs:
       - name: Generate
         run: |
           cd backend/
-          go generate ./...
+          go generate -x ./...
+          go generate -x -tags prod ./...
+
+          # Generating a pseudo frontend build so that vet
+          # does not complain about the lack of an embed target
+          mkdir ./internal/server/web
+          echo 'hello' > ./internal/server/web/index.html
 
       - name: Vet
         run: |
           cd backend/
           go vet ./...
+          go vet -tags prod ./...
 
       - name: Test
         run: |
