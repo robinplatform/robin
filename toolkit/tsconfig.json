@@ -12,7 +12,6 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "incremental": true,
     "declaration": true,
     "esModuleInterop": true,
     "module": "esnext",

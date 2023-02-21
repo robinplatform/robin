@@ -3,7 +3,8 @@
 	"name": "robinplatform",
 	"workspaces": [
 		"frontend",
-		"toolkit"
+		"toolkit",
+		"example"
 	],
 	"engines": {
 		"node": "^18"

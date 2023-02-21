@@ -3,7 +3,6 @@ package compile
 import (
 	_ "embed"
 	"fmt"
-	"path"
 	"strings"
 	"sync"
 
@@ -93,15 +92,16 @@ func getClientJs(id string) (string, error) {
 	}
 
 	result := es.Build(es.BuildOptions{
-		Stdin: &es.StdinOptions{
-			Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", appConfig.Page, -1),
-			ResolveDir: path.Dir(appConfig.Page),
-			Loader:     es.LoaderTSX,
-		},
-		Bundle:   true,
-		Platform: es.PlatformBrowser,
-		Write:    false,
-		Plugins:  []es.Plugin{},
+		// Stdin: &es.StdinOptions{
+		// 	Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", appConfig.Page, -1),
+		// 	ResolveDir: path.Dir(appConfig.Page),
+		// 	Loader:     es.LoaderTSX,
+		// },
+		EntryPoints: []string{appConfig.Page},
+		Bundle:      true,
+		Platform:    es.PlatformBrowser,
+		Write:       false,
+		Plugins:     []es.Plugin{},
 	})
 
 	if len(result.Errors) != 0 {
