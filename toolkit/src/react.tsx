@@ -53,7 +53,7 @@ class ErrorBoundary extends React.Component<
 							overflowY: 'auto',
 						}}
 					>
-						{error?.message || error}
+						<code>{String(error?.message || error)}</code>
 					</pre>
 				</div>
 			);
@@ -63,7 +63,7 @@ class ErrorBoundary extends React.Component<
 	}
 }
 
-export function renderPage(children: React.ReactNode) {
+export function renderApp(children: React.ReactNode) {
 	ReactDOM.render(
 		<ErrorBoundary>{children}</ErrorBoundary>,
 		document.getElementById('root'),
