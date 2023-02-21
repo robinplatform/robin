@@ -4,8 +4,8 @@
 	"workspaces": [
 		"frontend",
 		"backend",
-		"toolkit",
-		"example"
+		"example",
+		"toolkit"
 	],
 	"engines": {
 		"node": "^18"

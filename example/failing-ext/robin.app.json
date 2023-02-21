@@ -1,0 +1,6 @@
+{
+	"id": "failing-ext",
+	"name": "Failing Extension",
+	"page": "page.tsx",
+	"pageIcon": "crash"
+}

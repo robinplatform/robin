@@ -14,9 +14,6 @@ import (
 //go:embed client.html
 var clientHtmlTemplate string
 
-//go:embed client.tsx
-var clientJsBootstrap string
-
 //go:embed error.html
 var clientErrorHtml string
 
