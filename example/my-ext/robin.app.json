@@ -1,0 +1,6 @@
+{
+	"id": "my-ext",
+	"name": "My Extension",
+	"page": "page.tsx",
+	"pageIcon": "ex"
+}

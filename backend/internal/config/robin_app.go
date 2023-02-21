@@ -73,12 +73,12 @@ func LoadRobinProjectConfig() (RobinProjectConfig, error) {
 
 	buf, err := os.ReadFile(configPath)
 	if err != nil {
-		return parsedConfig, fmt.Errorf("failed to read robin.app.json: %s", err)
+		return parsedConfig, fmt.Errorf("failed to read robin.json: %s", err)
 	}
 
 	err = json.Unmarshal(buf, &storedConfig)
 	if err != nil {
-		return parsedConfig, fmt.Errorf("failed to parse robin.app.json: %s", err)
+		return parsedConfig, fmt.Errorf("failed to parse robin.json: %s", err)
 	}
 
 	parsedConfig.Name = storedConfig.Name

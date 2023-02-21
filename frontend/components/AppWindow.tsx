@@ -2,7 +2,7 @@ import { useRouter } from 'next/router';
 import React, { useReducer } from 'react';
 
 type Props = {
-	id: string;
+	id: string | undefined;
 	setTitle: (title: string) => void;
 };
 
@@ -36,6 +36,7 @@ export function AppWindow({ id, setTitle }: Props) {
 	}, []);
 
 	React.useEffect(() => {
+		if (!id) return;
 		if (!iframeRef.current) return;
 
 		const iframe = iframeRef.current;
@@ -48,16 +49,18 @@ export function AppWindow({ id, setTitle }: Props) {
 
 		iframe.addEventListener('load', listener);
 		return () => iframe.removeEventListener('load', listener);
-	}, []);
+	}, [id]);
 
 	return (
 		<div className={'full col'}>
-			<iframe
-				ref={iframeRef}
-				className={''}
-				src={`http://localhost:9010/app-resources/${id}/base.html`}
-				style={{ border: '0', flexGrow: 1 }}
-			></iframe>
+			{!!id && (
+				<iframe
+					ref={iframeRef}
+					className={''}
+					src={`http://localhost:9010/app-resources/${id}/base.html`}
+					style={{ border: '0', flexGrow: 1 }}
+				></iframe>
+			)}
 		</div>
 	);
 }

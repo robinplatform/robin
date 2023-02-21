@@ -44,7 +44,7 @@ func (compiler *Compiler) GetApp(id string) *App {
 		return nil
 	}
 
-	if app, found := c.appCache[id]; found {
+	if app, found := compiler.appCache[id]; found {
 		logger.Debug("Found existing app bundle", log.Ctx{
 			"id": id,
 		})
@@ -59,10 +59,14 @@ func (compiler *Compiler) GetApp(id string) *App {
 	}
 
 	// TODO: Check if ID is valid
+	appConfig, err := config.LoadRobinAppById(id)
+	if err != nil {
+		return nil
+	}
 
 	clientHtml := clientHtmlTemplate
 	clientHtml = strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1)
-	clientHtml = strings.Replace(clientHtml, "__APP_ID__", id, -1)
+	clientHtml = strings.Replace(clientHtml, "__APP_NAME__", appConfig.Name, -1)
 
 	clientJs, err := getClientJs(id)
 
@@ -88,7 +92,7 @@ func GetErrorHtml(err error) string {
 }
 
 func getClientJs(id string) (string, error) {
-	projectPath, err := config.GetProjectPath()
+	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
 		return "", err
 	}
@@ -116,8 +120,7 @@ func getClientJs(id string) (string, error) {
 		}
 
 		logger.Warn("Failed to compile extension", log.Ctx{
-			"id":         app.Id,
-			"projectPath": projectPath,
+			"id":         id,
 			"scriptPath": appConfig.Page,
 			"errors":     errors,
 		})
