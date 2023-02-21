@@ -39,11 +39,6 @@ func (compiler *Compiler) GetApp(id string) *App {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
-	// TODO: For testing
-	if id == "robin-invalid-id" {
-		return nil
-	}
-
 	if app, found := compiler.appCache[id]; found {
 		logger.Debug("Found existing app bundle", log.Ctx{
 			"id": id,
