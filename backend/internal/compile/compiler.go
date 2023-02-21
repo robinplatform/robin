@@ -13,13 +13,13 @@ import (
 )
 
 //go:embed client.html
-var clientHtml string
+var clientHtmlTemplate string
 
 //go:embed client.tsx
 var clientJsBootstrap string
 
-//go:embed not-found.html
-var clientNotFoundHtml string
+//go:embed error.html
+var clientErrorHtml string
 
 var logger log.Logger = log.New("compiler")
 
@@ -29,16 +29,29 @@ type Compiler struct {
 }
 
 type App struct {
-	Id   string
-	Html string
+	Id          string
+	Html        string
+	ClientJs    string
+	BundleError error
 }
 
 func (compiler *Compiler) GetApp(id string) *App {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
-	if app, found := compiler.appCache[id]; found {
-		return app
+	// TODO: For testing
+	if id == "robin-invalid-id" {
+		return nil
+	}
+
+	if app, found := c.appCache[id]; found {
+		logger.Debug("Found existing app bundle", log.Ctx{
+			"id": id,
+		})
+
+		// TODO: Don't want to cache until updates to the source are propagated
+		_ = app
+		// return app
 	}
 
 	if compiler.appCache == nil {
@@ -47,9 +60,18 @@ func (compiler *Compiler) GetApp(id string) *App {
 
 	// TODO: Check if ID is valid
 
+	clientHtml := clientHtmlTemplate
+	clientHtml = strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1)
+	clientHtml = strings.Replace(clientHtml, "__APP_ID__", id, -1)
+
+	clientJs, err := getClientJs(id)
+
+	// TODO: Make this API actually make sense
 	app := &App{
-		Id:   id,
-		Html: strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
+		Id:          id,
+		Html:        clientHtml,
+		ClientJs:    clientJs,
+		BundleError: err,
 	}
 	compiler.appCache[id] = app
 
@@ -57,11 +79,16 @@ func (compiler *Compiler) GetApp(id string) *App {
 }
 
 func GetNotFoundHtml(id string) string {
-	return strings.Replace(clientNotFoundHtml, "__APP_ID__", id, -1)
+	text := `App not found: "` + id + `" is an invalid ID`
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", text, -1)
 }
 
-func (app *App) GetClientJs() (string, error) {
-	appConfig, err := config.LoadRobinAppById(app.Id)
+func GetErrorHtml(err error) string {
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", err.Error(), -1)
+}
+
+func getClientJs(id string) (string, error) {
+	projectPath, err := config.GetProjectPath()
 	if err != nil {
 		return "", err
 	}
@@ -90,6 +117,7 @@ func (app *App) GetClientJs() (string, error) {
 
 		logger.Warn("Failed to compile extension", log.Ctx{
 			"id":         app.Id,
+			"projectPath": projectPath,
 			"scriptPath": appConfig.Page,
 			"errors":     errors,
 		})
