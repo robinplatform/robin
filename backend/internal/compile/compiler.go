@@ -13,13 +13,13 @@ import (
 )
 
 //go:embed client.html
-var clientHtml string
+var clientHtmlTemplate string
 
 //go:embed client.tsx
 var clientJsBootstrap string
 
-//go:embed not-found.html
-var clientNotFoundHtml string
+//go:embed error.html
+var clientErrorHtml string
 
 var logger log.Logger = log.New("compiler")
 
@@ -29,8 +29,10 @@ type Compiler struct {
 }
 
 type App struct {
-	Id   string
-	Html string
+	Id          string
+	Html        string
+	ClientJs    string
+	BundleError error
 }
 
 func (compiler *Compiler) GetApp(id string) *App {
@@ -38,7 +40,13 @@ func (compiler *Compiler) GetApp(id string) *App {
 	defer compiler.mux.Unlock()
 
 	if app, found := compiler.appCache[id]; found {
-		return app
+		logger.Debug("Found existing app bundle", log.Ctx{
+			"id": id,
+		})
+
+		// TODO: Don't want to cache until updates to the source are propagated
+		_ = app
+		// return app
 	}
 
 	if compiler.appCache == nil {
@@ -46,10 +54,23 @@ func (compiler *Compiler) GetApp(id string) *App {
 	}
 
 	// TODO: Check if ID is valid
+	appConfig, err := config.LoadRobinAppById(id)
+	if err != nil {
+		return nil
+	}
 
+	clientHtml := clientHtmlTemplate
+	clientHtml = strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1)
+	clientHtml = strings.Replace(clientHtml, "__APP_NAME__", appConfig.Name, -1)
+
+	clientJs, err := getClientJs(id)
+
+	// TODO: Make this API actually make sense
 	app := &App{
-		Id:   id,
-		Html: strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1),
+		Id:          id,
+		Html:        clientHtml,
+		ClientJs:    clientJs,
+		BundleError: err,
 	}
 	compiler.appCache[id] = app
 
@@ -57,42 +78,59 @@ func (compiler *Compiler) GetApp(id string) *App {
 }
 
 func GetNotFoundHtml(id string) string {
-	return strings.Replace(clientNotFoundHtml, "__APP_ID__", id, -1)
+	text := `App not found: "` + id + `" is an invalid ID`
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", text, -1)
 }
 
-func (app *App) GetClientJs() (string, error) {
-	appConfig, err := config.LoadRobinAppById(app.Id)
+//	result := es.Build(es.BuildOptions{
+//		Stdin: &es.StdinOptions{
+//			Contents:   clientJsBootstrap,
+//			ResolveDir: path.Dir(appConfig.Page),
+//			Loader:     es.LoaderTSX,
+//		},
+//		Bundle:   true,
+//		Platform: es.PlatformBrowser,
+//		Write:    false,
+//		Plugins: []es.Plugin{
+//			{
+//				Name: "load-robin-app-entrypoint",
+//				Setup: func(build es.PluginBuild) {
+//					build.OnResolve(es.OnResolveOptions{Filter: "__robinplatform-app-client-entrypoint__"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+//						return es.OnResolveResult{Path: args.Path, Namespace: "robin-app-entrypoint"}, nil
+//					})
+//					build.OnLoad(es.OnLoadOptions{Filter: ".", Namespace: "robin-app-entrypoint"}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+//						buf, err := appConfig.ReadFile(appConfig.Page)
+//						if err != nil {
+//							return es.OnLoadResult{}, err
+//						}
+//
+//						return es.OnLoadResult{Contents: &buf, Loader: es.LoaderTSX}, nil
+//					})
+//				},
+//			},
+//		},
+
+func GetErrorHtml(err error) string {
+	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", err.Error(), -1)
+}
+
+func getClientJs(id string) (string, error) {
+	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
 		return "", err
 	}
 
 	result := es.Build(es.BuildOptions{
-		Stdin: &es.StdinOptions{
-			Contents:   clientJsBootstrap,
-			ResolveDir: path.Dir(appConfig.Page),
-			Loader:     es.LoaderTSX,
-		},
-		Bundle:   true,
-		Platform: es.PlatformBrowser,
-		Write:    false,
-		Plugins: []es.Plugin{
-			{
-				Name: "load-robin-app-entrypoint",
-				Setup: func(build es.PluginBuild) {
-					build.OnResolve(es.OnResolveOptions{Filter: "__robinplatform-app-client-entrypoint__"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-						return es.OnResolveResult{Path: args.Path, Namespace: "robin-app-entrypoint"}, nil
-					})
-					build.OnLoad(es.OnLoadOptions{Filter: ".", Namespace: "robin-app-entrypoint"}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-						buf, err := appConfig.ReadFile(appConfig.Page)
-						if err != nil {
-							return es.OnLoadResult{}, err
-						}
-
-						return es.OnLoadResult{Contents: &buf, Loader: es.LoaderTSX}, nil
-					})
-				},
-			},
-		},
+		// Stdin: &es.StdinOptions{
+		// 	Contents:   strings.Replace(clientJsBootstrap, "__SCRIPT_PATH__", appConfig.Page, -1),
+		// 	ResolveDir: path.Dir(appConfig.Page),
+		// 	Loader:     es.LoaderTSX,
+		// },
+		EntryPoints: []string{appConfig.Page},
+		Bundle:      true,
+		Platform:    es.PlatformBrowser,
+		Write:       false,
+		Plugins:     []es.Plugin{},
 	})
 
 	if len(result.Errors) != 0 {
@@ -106,7 +144,7 @@ func (app *App) GetClientJs() (string, error) {
 		}
 
 		logger.Warn("Failed to compile extension", log.Ctx{
-			"id":         app.Id,
+			"id":         id,
 			"scriptPath": appConfig.Page,
 			"errors":     errors,
 		})

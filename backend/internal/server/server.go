@@ -54,7 +54,11 @@ func (server *Server) Run(portBinding string) error {
 		a := compiler.GetApp(id)
 		if a == nil {
 			ctx.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(compile.GetNotFoundHtml(id)))
-			ctx.AbortWithStatus(404)
+			return
+		}
+
+		if a.BundleError != nil {
+			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(compile.GetErrorHtml(a.BundleError)))
 			return
 		}
 
@@ -70,16 +74,16 @@ func (server *Server) Run(portBinding string) error {
 			return
 		}
 
-		markdown, err := a.GetClientJs()
-		if err != nil {
-			ctx.AbortWithStatus(500)
-			logger.Err(err, "Failed to get ClientJS", log.Ctx{
+		if a.BundleError != nil {
+			logger.Err(a.BundleError, "Failed to get ClientJS", log.Ctx{
 				"id":  id,
-				"err": err.Error(),
+				"err": a.BundleError.Error(),
 			})
-		} else {
-			ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(markdown))
+			ctx.AbortWithStatus(500)
+			return
 		}
+
+		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(a.ClientJs))
 	})
 
 	group := server.router.Group("/api/rpc")

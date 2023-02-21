@@ -1,12 +1,18 @@
+// @ts-ignore
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-type State = { hasError: boolean; error?: unknown };
+type State = { hasError: boolean; error?: any };
+class ErrorBoundary extends React.Component<
+	React.PropsWithChildren<{}>,
+	State
+> {
+	constructor(props: React.PropsWithChildren<{}>) {
+		super(props);
+		this.state = { hasError: false };
+	}
 
-class ErrorBoundary extends React.Component<React.PropsWithChildren<{}>, State> {
-	state: State = { hasError: false };
-
-	componentDidCatch(error: unknown) {
+	componentDidCatch(error: any) {
 		this.setState({ hasError: true, error });
 	}
 
