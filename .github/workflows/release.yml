@@ -1,6 +1,5 @@
 name: Release
-
-on: [workflow_dispatch]
+on: [push]
 
 jobs:
   release:
@@ -46,7 +45,7 @@ jobs:
           yarn workspace @robinplatform/frontend run build
 
       - name: Release nightly
-        if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/build'"
+        if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/release'"
         run: |
           yarn workspace @robinplatform/backend run release nightly
       

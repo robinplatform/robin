@@ -1,5 +1,5 @@
 name: Check Go
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   check-go:
