@@ -1,11 +1,6 @@
 name: Release
 
-on:
-  workflow_run:
-    workflows: ["Check TS", "Check Go"]
-    branches: [main, nightly, build]
-    types: 
-      - completed
+on: []
 
 jobs:
   check-ts:
