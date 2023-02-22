@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -51,39 +52,47 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		a := compiler.GetApp(id)
-		if a == nil {
-			ctx.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(compile.GetNotFoundHtml(id)))
+		app, err := compiler.GetApp(id)
+		if err != nil {
+			serializedErr, err := json.Marshal(err.Error())
+			if err != nil {
+				serializedErr = []byte(`Unknown error occurred`)
+			}
+
+			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(fmt.Sprintf(`
+				<script>
+					window.parent.postMessage({
+						type: 'appError',
+						error: %s,
+					}, '*')
+				</script>
+			`, serializedErr)))
 			return
 		}
 
-		if a.BundleError != nil {
-			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(compile.GetErrorHtml(a.BundleError)))
-			return
-		}
-
-		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(a.Html))
+		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(app.Html))
 	})
 
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		a := compiler.GetApp(id)
-		if a == nil {
-			ctx.AbortWithStatus(404)
+		app, err := compiler.GetApp(id)
+		if err != nil {
+			serializedErr, err := json.Marshal(err.Error())
+			if err != nil {
+				serializedErr = []byte(`Unknown error occurred`)
+			}
+
+			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(fmt.Sprintf(`
+				window.parent.postMessage({
+					type: 'appError',
+					error: %s,
+				}, '*')
+			`, serializedErr)))
 			return
 		}
 
-		if a.BundleError != nil {
-			logger.Err(a.BundleError, "Failed to get ClientJS", log.Ctx{
-				"id":  id,
-				"err": a.BundleError.Error(),
-			})
-			ctx.AbortWithStatus(500)
-			return
-		}
-
-		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(a.ClientJs))
+		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(app.ClientJs))
 	})
 
 	group := server.router.Group("/api/rpc")

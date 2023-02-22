@@ -16,10 +16,9 @@ import (
 //go:embed client.html
 var clientHtmlTemplate string
 
-//go:embed error.html
-var clientErrorHtml string
-
 var logger log.Logger = log.New("compiler")
+
+var cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 
 type Compiler struct {
 	mux      sync.Mutex
@@ -27,13 +26,12 @@ type Compiler struct {
 }
 
 type App struct {
-	Id          string
-	Html        string
-	ClientJs    string
-	BundleError error
+	Id       string
+	Html     string
+	ClientJs string
 }
 
-func (compiler *Compiler) GetApp(id string) *App {
+func (compiler *Compiler) GetApp(id string) (*App, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
@@ -41,20 +39,17 @@ func (compiler *Compiler) GetApp(id string) *App {
 		logger.Debug("Found existing app bundle", log.Ctx{
 			"id": id,
 		})
-
-		// TODO: Don't want to cache until updates to the source are propagated
-		_ = app
-		// return app
+		return app, nil
 	}
 
-	if compiler.appCache == nil {
+	if compiler.appCache == nil && cacheEnabled {
 		compiler.appCache = make(map[string]*App)
 	}
 
 	// TODO: Check if ID is valid
 	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("failed to load app config: %w", err)
 	}
 
 	clientHtml := clientHtmlTemplate
@@ -62,26 +57,21 @@ func (compiler *Compiler) GetApp(id string) *App {
 	clientHtml = strings.Replace(clientHtml, "__APP_NAME__", appConfig.Name, -1)
 
 	clientJs, err := getClientJs(id)
+	if err != nil {
+		return nil, err
+	}
 
 	// TODO: Make this API actually make sense
 	app := &App{
-		Id:          id,
-		Html:        clientHtml,
-		ClientJs:    clientJs,
-		BundleError: err,
+		Id:       id,
+		Html:     clientHtml,
+		ClientJs: clientJs,
 	}
-	compiler.appCache[id] = app
+	if compiler.appCache != nil {
+		compiler.appCache[id] = app
+	}
 
-	return app
-}
-
-func GetNotFoundHtml(id string) string {
-	text := `App not found: "` + id + `" is an invalid ID`
-	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", text, -1)
-}
-
-func GetErrorHtml(err error) string {
-	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", err.Error(), -1)
+	return app, nil
 }
 
 func getClientJs(id string) (string, error) {
