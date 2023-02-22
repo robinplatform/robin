@@ -83,6 +83,7 @@ for platform in darwin linux windows; do
         mkdir -p "${platformDir}"
 
         cp ../LICENSE ${platformDir}
+        echo -n "$ROBIN_VERSION" > "${platformDir}/VERSION"
         mkdir ${platformDir}/bin
 
         GOOS=$platform GOARCH=$arch go build \
@@ -111,13 +112,13 @@ echo ""
 
 cd "$buildDir"
 if test "$TARGET_CHANNEL" == "stable"; then
-    s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/${ROBIN_VERSION}/" --acl-public
+    s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/${ROBIN_VERSION}/" --acl-public --cf-invalidate
 else
-    s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/" --acl-public
+    s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/" --acl-public --cf-invalidate
 fi
 
 echo -n "$ROBIN_VERSION" > latest.txt
-s3cmd put latest.txt "s3://robinplatform/releases/${TARGET_CHANNEL}/latest.txt" --acl-public
+s3cmd put latest.txt "s3://robinplatform/releases/${TARGET_CHANNEL}/latest.txt" --acl-public --cf-invalidate
 
 echo ""
 echo "Released to $TARGET_CHANNEL"

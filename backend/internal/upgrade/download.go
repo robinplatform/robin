@@ -6,15 +6,14 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
-	"time"
 
 	"robinplatform.dev/internal/config"
 )
 
 func getCdnEndpoint(filepath string) string {
-	// Use the timestamp of the start of the day in the UTC timezone as a cache buster
-	cacheBuster := time.Now().UTC().Truncate(24 * time.Hour).Unix()
-	return fmt.Sprintf("https://robinplatform.nyc3.cdn.digitaloceanspaces.com/%s?ts=%d", url.PathEscape(filepath), cacheBuster)
+	// We are not using the actual DO CDN, because the downloads are fast enough without the CDN, but this
+	// way there are no caching issues.
+	return fmt.Sprintf("https://robinplatform.nyc3.digitaloceanspaces.com/%s", url.PathEscape(filepath))
 }
 
 func getTarEndpoint(channel config.ReleaseChannel, version string) string {

@@ -23,9 +23,10 @@ func main() {
 	}
 
 	fmt.Printf("Upgrading %s ...", releaseChannel)
-	if err := upgrade.UpgradeChannel(releaseChannel); err != nil {
+	updatedVersion, err := upgrade.UpgradeChannel(releaseChannel)
+	if err != nil {
 		fmt.Printf("\rFailed to upgrade %s: %s\n", releaseChannel, err)
 		os.Exit(1)
 	}
-	fmt.Printf("\rSuccessfully upgraded %s in %s!\n", releaseChannel, time.Since(startTime).Truncate(time.Millisecond))
+	fmt.Printf("\rSuccessfully upgraded %s to %s in %s!\n", releaseChannel, updatedVersion, time.Since(startTime).Truncate(time.Millisecond))
 }
