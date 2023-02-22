@@ -6,7 +6,7 @@ export default function Document() {
 			<Head>
 				<link
 					href={
-						'https://cdn.jsdelivr.net/npm/monaco-editor@0.25.2/min/vs/editor/editor.main.css'
+						'https://cdn.jsdelivr.net/npm/monaco-editor@0.34.0/min/vs/editor/editor.main.css'
 					}
 					data-name={'vs/editor/editor.main'}
 					type={'text/css'}
