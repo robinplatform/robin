@@ -135,7 +135,14 @@ func getClientJs(id string) (string, error) {
 	}
 
 	output := result.OutputFiles[0]
-	return string(output.Contents), nil
+	errorHandler := `window.addEventListener('error', (event) => {
+		window.parent.postMessage({
+			type: 'appError',
+			error: String(event.error),
+		}, '*')
+	});`
+
+	return errorHandler + string(output.Contents), nil
 }
 
 func (app *App) GetServerJs(id string) (string, error) {
