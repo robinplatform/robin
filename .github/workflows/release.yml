@@ -48,9 +48,9 @@ jobs:
       - name: Release nightly
         if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/build'"
         run: |
-          yarn workspace @robinplatform/backend run build nightly
+          yarn workspace @robinplatform/backend run release nightly
       
       - name: Release beta
         if: "github.ref == 'refs/heads/main'"
         run: |
-          yarn workspace @robinplatform/backend run build beta
+          yarn workspace @robinplatform/backend run release beta
