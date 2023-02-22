@@ -72,7 +72,7 @@ func GetProjectPath() (string, error) {
 		// First try to load it from the env. We don't use this as a hint, but rather as an
 		// exact path to the project. We just perform a quick check to make sure it is a valid
 		// robin project.
-		envProjectPath := os.Getenv("PROJECT_PATH")
+		envProjectPath := os.Getenv("ROBIN_PROJECT_PATH")
 		if envProjectPath != "" {
 			return SetProjectPath(envProjectPath)
 		}
