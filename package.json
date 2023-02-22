@@ -3,6 +3,8 @@
 	"name": "robinplatform",
 	"workspaces": [
 		"frontend",
+		"backend",
+		"example",
 		"toolkit"
 	],
 	"engines": {

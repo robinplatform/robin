@@ -1,4 +1,4 @@
-name: CI
+name: Check Go
 on: [push]
 
 jobs:
@@ -12,16 +12,6 @@ jobs:
         uses: actions/setup-go@v3
         with:
           go-version: ~1.20
-
-      - name: Setup Golang caches
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-golang-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-golang-
 
       - name: Download go modules
         run: |
@@ -38,13 +28,21 @@ jobs:
 
       - name: Generate
         run: |
+          # Generating a pseudo frontend build so that vet
+          # does not complain about the lack of an embed target
+          mkdir ./frontend/out
+          echo 'hello' > ./frontend/out/index.html
+
+          # Run generate for both targets
           cd backend/
-          go generate ./...
+          go generate -x ./...
+          go generate -x -tags prod ./...
 
       - name: Vet
         run: |
           cd backend/
           go vet ./...
+          go vet -tags prod ./...
 
       - name: Test
         run: |
