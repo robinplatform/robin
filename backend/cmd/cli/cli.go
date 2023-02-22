@@ -135,13 +135,14 @@ func main() {
 		}
 	}
 
-	logger.Debug("Parsed Args, found command", log.Ctx{
-		"command": command.Name(),
-	})
 	if command == nil {
 		fmt.Fprintf(os.Stderr, "unrecognized command: %s\n", commandName)
 		showUsage()
 	}
+
+	logger.Debug("Parsed Args, found command", log.Ctx{
+		"command": command.Name(),
+	})
 
 	// Perform parsing
 	flagSet := pflag.NewFlagSet(commandName, pflag.ExitOnError)
