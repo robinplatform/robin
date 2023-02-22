@@ -24,4 +24,5 @@ fi
 
 installer=`mktemp`
 curl -fsSL -o "$installer" "http://robinplatform.nyc3.digitaloceanspaces.com/releases/installers/robin-upgrade-$(get_goos)-$(get_goarch)"
+chmod +x "$installer"
 "$installer" --channel=$CHANNEL
