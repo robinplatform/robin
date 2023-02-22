@@ -37,6 +37,9 @@ fi
 # Generation is not platform specific, so we will just generate once
 go generate -tags prod -x ./...
 
+# Figure out release version
+ROBIN_VERSION=`git describe --tags --always`
+
 buildDir=`mktemp -d`
 
 echo ""
@@ -63,6 +66,7 @@ for platform in darwin linux windows; do
         GOOS=$platform GOARCH=$arch go build \
             -o "${platformDir}/bin/robin${ext}" \
             -tags prod \
+            -ldflags "-X robinplatform.dev/internal/config.RobinVersion=${ROBIN_VERSION}" \
             ./cmd/cli
 
         cd "${platformDir}"

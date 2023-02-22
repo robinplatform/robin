@@ -2,27 +2,12 @@
 
 package config
 
-import (
-	_ "embed"
-	"fmt"
-)
-
-//go:generate cp ../../package.json .
-//go:embed package.json
-var rawPackageJsonRaw []byte
-
-// rootPackageJson is the parsed version of `rawPackageJsonRaw`, but we will
-// probably get rid of all this sillyness once we figure out stable releases.
-var rootPackageJson PackageJson
-
-func init() {
-	if err := ParsePackageJson(rawPackageJsonRaw, &rootPackageJson); err != nil {
-		panic(fmt.Errorf("failed to load package.json: %w", err))
-	}
-}
+// robinVersion is the version of the running robin instance. The value is set
+// by the go linker during the build process.
+var robinVersion string
 
 func GetRobinVersion() string {
-	return rootPackageJson.Version
+	return robinVersion
 }
 
 func GetReleaseChannel() (ReleaseChannel, error) {
