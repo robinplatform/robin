@@ -68,13 +68,11 @@ for platform in darwin linux windows; do
         cd "${platformDir}"
 
         tar czf "../robin-${platform}-${arch}.tar.gz" .
-        cat "../robin-${platform}-${arch}.tar.gz" | shasum -a 256 | awk '{print $1}' > "../robin-${platform}-${arch}.tar.gz.sha256"
 
         binSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
         size=`du -h "../robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
-        sha256=`cat "../robin-${platform}-${arch}.tar.gz.sha256"`
 
-        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize}, sha256: ${sha256})"
+        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize})"
 
         cd $OLDPWD
         rm -rf "${platformDir}"
@@ -86,7 +84,7 @@ echo "Publishing assets to CDN ..."
 echo ""
 
 cd "$buildDir"
-s3cmd put `find . -type f` "s3://robinplatform/releases/${TARGET_CHANNEL}/"
+s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/" --acl-public
 
 echo ""
 echo "Released to $TARGET_CHANNEL"
