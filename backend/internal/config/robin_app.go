@@ -42,11 +42,6 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (string, error) {
 			return "", fmt.Errorf("failed to read file '%s': %s", filePath, err)
 		}
 	} else {
-		switch path.Ext(fileUrl.Path) {
-		case "", ".js", ".jsx", ".ts", ".tsx":
-			fileUrl.RawQuery = "module"
-		}
-
 		req := &http.Request{
 			Method: "GET",
 			URL:    fileUrl,
@@ -99,9 +94,6 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
-	}
-	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "unpkg.com" {
-		return fmt.Errorf("cannot load file from host '%s' (only unpkg.com is supported)", appConfig.ConfigPath.Host)
 	}
 
 	// All paths must end with `robin.app.json`
