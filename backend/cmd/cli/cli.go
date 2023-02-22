@@ -33,15 +33,10 @@ var (
 func showUsageFooter() {
 	fmt.Fprintf(os.Stderr, "\n")
 
-	releaseChannel := "unknown"
-	projectConfig, err := config.LoadProjectConfig()
-	if err == nil {
-		releaseChannel = string(projectConfig.ReleaseChannel)
-	}
-
+	releaseChannel, _ := config.GetReleaseChannel()
 	fmt.Fprintf(
 		os.Stderr,
-		"robin v%s on %s\n",
+		"robin %s on %s\n\n",
 		config.GetRobinVersion(),
 		releaseChannel,
 	)
