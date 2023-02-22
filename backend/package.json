@@ -1,5 +1,5 @@
 {
-	"name": "@robinplatform/cli",
+	"name": "@robinplatform/backend",
 	"version": "0.0.0",
 	"license": "GPL-3.0",
 	"bin": {
@@ -10,7 +10,7 @@
 		"lint": "if ! test -z \"`gofmt -s -l .`\"; then gofmt -s -l .; exit 1; fi",
 		"dev": "go run github.com/mitranim/gow -e 'go,tsx,html' run ./cmd/cli start",
 		"format": "go fmt ./... && go vet ./...",
-		"build": "./scripts/build.sh"
+		"release": "./scripts/release.sh"
 	},
 	"devDependencies": {}
 }

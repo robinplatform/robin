@@ -57,7 +57,6 @@ for platform in darwin linux windows; do
         platformDir="${buildDir}/${platform}-${arch}"
         mkdir -p "${platformDir}"
 
-        cp package.json ${platformDir}
         cp ../LICENSE ${platformDir}
         mkdir ${platformDir}/bin
 
