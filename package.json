@@ -4,7 +4,6 @@
 	"workspaces": [
 		"frontend",
 		"backend",
-		"example",
 		"toolkit"
 	],
 	"engines": {

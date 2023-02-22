@@ -1,2 +1,1 @@
-import React from 'react';
-export declare function renderApp(children: React.ReactNode): void;
+export * from './dist/react';

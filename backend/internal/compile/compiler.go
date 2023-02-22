@@ -3,6 +3,8 @@ package compile
 import (
 	_ "embed"
 	"fmt"
+	"os"
+	"path"
 	"strings"
 	"sync"
 
@@ -78,6 +80,34 @@ func GetNotFoundHtml(id string) string {
 	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", text, -1)
 }
 
+//	result := es.Build(es.BuildOptions{
+//		Stdin: &es.StdinOptions{
+//			Contents:   clientJsBootstrap,
+//			ResolveDir: path.Dir(appConfig.Page),
+//			Loader:     es.LoaderTSX,
+//		},
+//		Bundle:   true,
+//		Platform: es.PlatformBrowser,
+//		Write:    false,
+//		Plugins: []es.Plugin{
+//			{
+//				Name: "load-robin-app-entrypoint",
+//				Setup: func(build es.PluginBuild) {
+//					build.OnResolve(es.OnResolveOptions{Filter: "__robinplatform-app-client-entrypoint__"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+//						return es.OnResolveResult{Path: args.Path, Namespace: "robin-app-entrypoint"}, nil
+//					})
+//					build.OnLoad(es.OnLoadOptions{Filter: ".", Namespace: "robin-app-entrypoint"}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+//						buf, err := appConfig.ReadFile(appConfig.Page)
+//						if err != nil {
+//							return es.OnLoadResult{}, err
+//						}
+//
+//						return es.OnLoadResult{Contents: &buf, Loader: es.LoaderTSX}, nil
+//					})
+//				},
+//			},
+//		},
+
 func GetErrorHtml(err error) string {
 	return strings.Replace(clientErrorHtml, "__ERROR_TEXT__", err.Error(), -1)
 }
@@ -86,6 +116,13 @@ func getClientJs(id string) (string, error) {
 	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
 		return "", err
+	}
+
+	if !path.IsAbs(appConfig.Page) {
+		appConfig.Page = path.Clean(path.Join(path.Dir(appConfig.ConfigPath.Path), appConfig.Page))
+	}
+	if _, err := os.Stat(appConfig.Page); err != nil {
+		return "", fmt.Errorf("failed to find page '%s': %s", appConfig.Page, err)
 	}
 
 	result := es.Build(es.BuildOptions{
