@@ -73,11 +73,13 @@ for platform in darwin linux windows; do
         cd "${platformDir}"
 
         tar czf "../robin-${platform}-${arch}.tar.gz" .
+        cat "../robin-${platform}-${arch}.tar.gz" | sha256sum | awk '{print $1}' > "../robin-${platform}-${arch}.tar.gz.sha256"
 
         binSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
         size=`du -h "../robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
+        sha256sum=`cat "../robin-${platform}-${arch}.tar.gz.sha256"`
 
-        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize})"
+        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize}, sha256: ${sha256sum})"
 
         cd $OLDPWD
         rm -rf "${platformDir}"
