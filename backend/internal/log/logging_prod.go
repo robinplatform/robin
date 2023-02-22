@@ -2,6 +2,8 @@
 
 package log
 
+import "github.com/rs/zerolog/log"
+
 func (l *Logger) Debug(msg string, ctx Ctx) {
 	l.zero.Debug().Interface("data", ctx).Msg(msg)
 }

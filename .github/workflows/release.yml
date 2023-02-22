@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  workflow_run:
+    workflows: ["Check TS", "Check Go"]
+    branches: [main, nightly, build]
+    types: 
+      - completed
+
+jobs:
+  check-ts:
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        node: [18]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Golang
+        uses: actions/setup-go@v3
+        with:
+          go-version: ~1.20
+
+      - name: Download go modules
+        run: |
+          cd backend/
+          go mod download
+
+      - name: Generate
+        run: |
+          cd backend/
+          go generate -x ./...
+
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Build toolkit
+        run: |
+          yarn workspace @robinplatform/toolkit run build
+
+      - name: Build frontend
+        if: "github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nightly'"
+        run: |
+          yarn workspace @robinplatform/frontend run build
+
+      - name: Release nightly
+        if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/build'"
+        run: |
+          yarn workspace @robinplatform/backend run build nightly
+      
+      - name: Release beta
+        if: "github.ref == 'refs/heads/main'"
+        run: |
+          yarn workspace @robinplatform/backend run build beta

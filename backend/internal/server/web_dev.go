@@ -1,3 +1,5 @@
+//go:build !prod
+
 package server
 
 import (
@@ -11,7 +13,7 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
-func ReverseProxy() gin.HandlerFunc {
+func reverseProxy() gin.HandlerFunc {
 	remote, err := url.Parse("http://localhost:9001")
 	if err != nil {
 		panic(err)
@@ -35,6 +37,6 @@ func ReverseProxy() gin.HandlerFunc {
 }
 
 func (server *Server) loadRoutes() {
-	//Create a catchall route
-	server.router.NoRoute(ReverseProxy())
+	// Create a catchall route
+	server.router.NoRoute(reverseProxy())
 }
