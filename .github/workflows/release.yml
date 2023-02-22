@@ -48,6 +48,14 @@ jobs:
         run: |
           pip3 install s3cmd --no-cache
 
+      - name: Build toolkit
+        run: |
+          yarn workspace @robinplatform/toolkit build
+
+      - name: Build frontend
+        run: |
+          yarn workspace @robinplatform/frontend build
+
       - name: Release nightly
         if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/release'"
         run: |
