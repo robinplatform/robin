@@ -1,5 +1,5 @@
 name: Check TS
-on: [workflow_dispatch]
+on: [push]
 
 jobs:
   check-ts:

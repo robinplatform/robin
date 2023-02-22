@@ -1,5 +1,5 @@
 name: Release
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   release:
@@ -54,7 +54,7 @@ jobs:
           echo $S3CFG | base64 --decode > ~/.s3cfg
 
       - name: Release nightly
-        if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/release'"
+        if: "github.ref == 'refs/heads/nightly'"
         run: |
           yarn workspace @robinplatform/backend run release nightly
       
