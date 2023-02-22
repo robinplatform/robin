@@ -14,15 +14,13 @@ const (
 	ReleaseChannelDev     ReleaseChannel = "dev"
 )
 
-func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
-	value := string(buf)
-
+func (channel *ReleaseChannel) Parse(value string) error {
 	switch value {
-	case `"stable"`:
+	case "stable":
 		*channel = ReleaseChannelStable
-	case `"beta"`:
+	case "beta":
 		*channel = ReleaseChannelBeta
-	case `"nightly"`:
+	case "nightly":
 		*channel = ReleaseChannelNightly
 
 	default:
@@ -30,6 +28,13 @@ func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
 	}
 
 	return nil
+}
+
+func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
+	// Assume that it is formatted as a JSON string, and remove the quotes.
+	value := string(buf)
+	value = value[1 : len(value)-1]
+	return channel.Parse(value)
 }
 
 func (channel *ReleaseChannel) GetPath() string {
