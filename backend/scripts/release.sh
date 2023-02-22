@@ -64,6 +64,7 @@ fi
 echo "Building version: $ROBIN_VERSION"
 
 buildDir=`mktemp -d`
+mkdir -p "${buildDir}/tarballs"
 
 echo "Temporary build directory: $buildDir"
 echo ""
@@ -99,12 +100,18 @@ for platform in darwin linux windows; do
 
         cd "${platformDir}"
 
-        tar czf "../robin-${platform}-${arch}.tar.gz" .
+        tar czf "${buildDir}/tarballs/robin-${platform}-${arch}.tar.gz" .
 
         binSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
-        size=`du -h "../robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
+        size=`du -h "${buildDir}/tarballs/robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
 
         echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize})"
+
+        # For stable releases, upload the upgrade binary separately
+        if test "$TARGET_CHANNEL" == "stable"; then
+            mkdir -p "${buildDir}/installers"
+            cp "bin/robin-upgrade${ext}" "${buildDir}/installers/robin-upgrade-${platform}-${arch}${ext}"
+        fi
 
         cd $OLDPWD
         rm -rf "${platformDir}"
@@ -115,7 +122,7 @@ echo ""
 echo "Publishing assets to CDN ..."
 echo ""
 
-cd "$buildDir"
+cd "$buildDir/tarballs"
 if test "$TARGET_CHANNEL" == "stable"; then
     s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/${ROBIN_VERSION}/" --acl-public --cf-invalidate
 else
@@ -125,8 +132,18 @@ fi
 echo -n "$ROBIN_VERSION" > latest.txt
 s3cmd put latest.txt "s3://robinplatform/releases/${TARGET_CHANNEL}/latest.txt" --acl-public --cf-invalidate
 
+if test "$TARGET_CHANNEL" == "stable"; then
+    echo ""
+    echo "Publishing installers to CDN ..."
+    echo ""
+
+    cd "$buildDir/installers"
+    s3cmd put * "s3://robinplatform/releases/installers/" --acl-public --cf-invalidate
+fi
+
 echo ""
 echo "Released to $TARGET_CHANNEL"
 echo ""
 
+cd "$buildDir/.."
 rm -rf "$buildDir"
