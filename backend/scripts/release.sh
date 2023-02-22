@@ -94,13 +94,11 @@ for platform in darwin linux windows; do
         cd "${platformDir}"
 
         tar czf "../robin-${platform}-${arch}.tar.gz" .
-        cat "../robin-${platform}-${arch}.tar.gz" | shasum -a 256 | awk '{print $1}' > "../robin-${platform}-${arch}.tar.gz.sha256"
 
         binSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
         size=`du -h "../robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
-        sha256sum=`cat "../robin-${platform}-${arch}.tar.gz.sha256"`
 
-        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize}, sha256: ${sha256sum})"
+        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize})"
 
         cd $OLDPWD
         rm -rf "${platformDir}"
@@ -118,7 +116,7 @@ else
     s3cmd put * "s3://robinplatform/releases/${TARGET_CHANNEL}/" --acl-public
 fi
 
-echo "$ROBIN_VERSION" > latest.txt
+echo -n "$ROBIN_VERSION" > latest.txt
 s3cmd put latest.txt "s3://robinplatform/releases/${TARGET_CHANNEL}/latest.txt" --acl-public
 
 echo ""
