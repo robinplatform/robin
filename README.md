@@ -2,6 +2,12 @@
 
 🚧 Coming soon 🚧 
 
+## Installation
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/robinplatform/robin/main/install.sh | bash
+```
+
 ## License
 
 Copyright &copy; 2023-present Karim Alibhai.
