@@ -14,7 +14,7 @@ var startTime = time.Now()
 
 func main() {
 	var channel string
-	pflag.StringVar(&channel, "channel", "stable", "The release channel to use")
+	pflag.StringVar(&channel, "channel", "", "The release channel to use")
 	pflag.Parse()
 
 	var releaseChannel config.ReleaseChannel

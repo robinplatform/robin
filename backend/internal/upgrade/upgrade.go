@@ -130,6 +130,7 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 	// Make sure symlink exists for the new version
 	targetExecName := "robin"
 	linkExecName := "robin"
+	upgradeExecName := "robin-upgrade"
 
 	if releaseChannel != config.ReleaseChannelStable {
 		linkExecName += "-" + string(releaseChannel)
@@ -137,10 +138,18 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 	if runtime.GOOS == "windows" {
 		targetExecName += ".exe"
 		linkExecName += ".exe"
+		upgradeExecName += ".exe"
 	}
 
 	if err := os.Symlink(path.Join(channelDir, "bin", "robin"), path.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsExist(err) {
 		return robinVersion, fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 	}
+
+	if releaseChannel == config.ReleaseChannelStable {
+		if err := os.Symlink(path.Join(channelDir, "bin", upgradeExecName), path.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsExist(err) {
+			return robinVersion, fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
+		}
+	}
+
 	return robinVersion, nil
 }

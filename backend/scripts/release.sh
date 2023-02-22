@@ -91,6 +91,11 @@ for platform in darwin linux windows; do
             -tags prod \
             -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION}" \
             ./cmd/cli
+        GOOS=$platform GOARCH=$arch go build \
+            -o "${platformDir}/bin/robin-upgrade${ext}" \
+            -tags prod \
+            -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION}" \
+            ./cmd/upgrade
 
         cd "${platformDir}"
 
