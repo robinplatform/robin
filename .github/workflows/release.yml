@@ -40,21 +40,18 @@ jobs:
           yarn workspace @robinplatform/toolkit run build
 
       - name: Build frontend
-        if: "github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nightly'"
         run: |
           yarn workspace @robinplatform/frontend run build
-
+      
       - name: Install s3cmd
         run: |
           pip3 install s3cmd --no-cache
-
-      - name: Build toolkit
+      
+      - name: Configure s3cmd
+        env:
+          S3CFG: ${{ secrets.S3CFG }}
         run: |
-          yarn workspace @robinplatform/toolkit build
-
-      - name: Build frontend
-        run: |
-          yarn workspace @robinplatform/frontend build
+          echo $S3CFG | base64 --decode > ~/.s3cfg
 
       - name: Release nightly
         if: "github.ref == 'refs/heads/nightly' || github.ref == 'refs/heads/release'"
