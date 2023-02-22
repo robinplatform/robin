@@ -2,10 +2,12 @@ package server
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/health"
 	"robinplatform.dev/internal/log"
@@ -20,6 +22,13 @@ func init() {
 }
 
 var logger log.Logger = log.New("server")
+
+func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
+	GetVersion.Register(group)
+	GetConfig.Register(group)
+	UpdateConfig.Register(group)
+	GetApps.Register(group)
+}
 
 func (server *Server) Run(portBinding string) error {
 	logger.Print("Starting robin", log.Ctx{
@@ -36,10 +45,49 @@ func (server *Server) Run(portBinding string) error {
 		server.loadRoutes()
 	}
 
+	var compiler compile.Compiler
+
+	// Apps
+	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		a := compiler.GetApp(id)
+		if a == nil {
+			ctx.Data(http.StatusNotFound, "text/html; charset=utf-8", []byte(compile.GetNotFoundHtml(id)))
+			return
+		}
+
+		if a.BundleError != nil {
+			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(compile.GetErrorHtml(a.BundleError)))
+			return
+		}
+
+		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(a.Html))
+	})
+
+	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		a := compiler.GetApp(id)
+		if a == nil {
+			ctx.AbortWithStatus(404)
+			return
+		}
+
+		if a.BundleError != nil {
+			logger.Err(a.BundleError, "Failed to get ClientJS", log.Ctx{
+				"id":  id,
+				"err": a.BundleError.Error(),
+			})
+			ctx.AbortWithStatus(500)
+			return
+		}
+
+		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(a.ClientJs))
+	})
+
 	group := server.router.Group("/api/rpc")
-	GetVersion.Register(group)
-	GetConfig.Register(group)
-	UpdateConfig.Register(group)
+	server.loadRpcMethods(group)
 
 	// TODO: Switch to using net/http for the server, and let
 	// gin be the router
@@ -53,7 +101,7 @@ func (server *Server) Run(portBinding string) error {
 		for !health.CheckHttp(healthCheck) {
 			time.Sleep(1 * time.Second)
 		}
-		logger.Print(fmt.Sprintf("Started robin server on http://%s\n", portBinding), log.Ctx{})
+		logger.Print(fmt.Sprintf("Started robin server on http://%s", portBinding), log.Ctx{})
 	}()
 
 	if err := server.router.Run(portBinding); err != nil {

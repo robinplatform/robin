@@ -6,7 +6,7 @@
 		"robin": "./bin/cli"
 	},
 	"scripts": {
-		"dev": "go run github.com/mitranim/gow run ./cmd/cli start",
+		"dev": "go run github.com/mitranim/gow -e 'go,tsx,html' run ./cmd/cli start",
 		"format": "go fmt ./... && go vet ./...",
 		"build": "yarn build-cli",
 		"go-generate": "go generate ./...",

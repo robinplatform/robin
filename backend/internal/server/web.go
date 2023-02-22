@@ -1,6 +1,8 @@
 package server
 
 import (
+	"io"
+	stdlog "log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -16,6 +18,7 @@ func ReverseProxy() gin.HandlerFunc {
 	}
 
 	proxy := httputil.NewSingleHostReverseProxy(remote)
+	proxy.ErrorLog = stdlog.New(io.Discard, "", 0)
 
 	return func(c *gin.Context) {
 		defer func() {
