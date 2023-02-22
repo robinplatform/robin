@@ -5,17 +5,18 @@ jobs:
   check-ts:
     runs-on: ubuntu-22.04
 
-    strategy:
-      matrix:
-        node: [18]
-
     steps:
       - uses: actions/checkout@v3
+
+      - id: node-version
+        name: Get node version
+        run: |
+          echo "version=`cat .nvmrc`" >> $GITHUB_OUTPUT
 
       - name: Setup Node.js for use with actions
         uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node }}
+          node-version: ${{ steps.node-version.outputs.version }}
 
       - name: Install Node.js dependencies
         run: |

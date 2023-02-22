@@ -20,7 +20,7 @@ func getTarEndpoint(channel config.ReleaseChannel, version string) string {
 	if channel == config.ReleaseChannelStable {
 		return fmt.Sprintf("releases/stable/%s/robin-%s-%s.tar.gz", version, runtime.GOOS, runtime.GOARCH)
 	}
-	return fmt.Sprintf("releases/nightly/robin-%s-%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+	return fmt.Sprintf("releases/%s/robin-%s-%s.tar.gz", channel, runtime.GOOS, runtime.GOARCH)
 }
 
 func fetchString(filepath string) (string, error) {
