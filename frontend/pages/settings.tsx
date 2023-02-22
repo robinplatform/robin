@@ -76,7 +76,7 @@ export default function Settings() {
 	);
 
 	return (
-		<div className={'full robin-bg-light-blue robin-pad'}>
+		<div className={'full robin-pad'}>
 			<Head>
 				<title>Settings | Robin</title>
 			</Head>
