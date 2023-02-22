@@ -3,7 +3,7 @@ name: Release
 on: [workflow_dispatch]
 
 jobs:
-  check-ts:
+  release:
     runs-on: ubuntu-22.04
 
     strategy:
@@ -32,6 +32,9 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node }}
+
+      - name: Install Node.js dependencies
+        run: yarn
 
       - name: Build toolkit
         run: |
