@@ -1,12 +1,6 @@
 name: Release
 
-on:
-  workflow_dispatch:
-    inputs:
-      branch:
-        required: true
-        description: Branch to release
-      
+on: [workflow_dispatch]
 
 jobs:
   check-ts:
@@ -18,8 +12,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-        with:
-          ref: "refs/head/${{ github.event.inputs.branch }}"
 
       - name: Setup Golang
         uses: actions/setup-go@v3
