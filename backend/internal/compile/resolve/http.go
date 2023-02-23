@@ -9,10 +9,21 @@ import (
 	"time"
 )
 
+// HttpResolverFs is an implementation of fs.FS that resolves files from a CDN. Right now, we
+// only use this to load files from unpkg.com.
+//
+// This design makes two assumptions:
+//  1. The remote CDN is setup so that all files are visible and layed out in the same way
+//     as a local file system. This is only true for unpkg.com for now.
+//  2. The cost of a HEAD+GET request is more expensive than a GET request that returns a 404.
+//     With this assumption, the resolver struct only has an "Open" (no stat) method, even though
+//     on a local filesystem, you would usually use a statcache to perform resolution.
 type HttpResolverFs struct {
 	BaseURL *url.URL
 }
 
+// NewHttpResolver creates a new resolver that is backed by a CDN. Only the scheme, host, and
+// user information are used from the given URL. The path is ignored.
 func NewHttpResolver(givenUrl *url.URL) *Resolver {
 	baseUrl := &url.URL{
 		Scheme: givenUrl.Scheme,
@@ -26,6 +37,8 @@ func NewHttpResolver(givenUrl *url.URL) *Resolver {
 	}
 }
 
+// HttpFileEntry is an implementation of fs.File that is backed by an HTTP response.
+// This lines up with assumption (2) above.
 type HttpFileEntry struct {
 	res *http.Response
 }

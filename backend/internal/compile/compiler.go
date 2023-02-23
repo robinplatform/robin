@@ -112,7 +112,8 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 						importerModuleName = importerModuleName + "/" + importerUrlPath[2]
 					}
 
-					// Resolve local files
+					// Resolve local file paths relative to the remote importer's path
+					// The logic for this almost entirely lives in the resolve package
 					if args.Path[0] == '.' {
 						resolver := resolve.NewHttpResolver(importerUrl)
 						resolver.EnableDebugLogs = true
@@ -143,6 +144,9 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 
 					// Resolve modules
 
+					// We want to parse the pathname, which will look something like: `react/jsx-runtime`
+					// The output should be the moduleName as `react` (with a possible scope name prefix), and then
+					// the rest of the filepath being imported _from_ react, which is `jsx-runtime`.
 					pathPieces := strings.Split(args.Path, "/")
 					moduleName := pathPieces[0]
 					if moduleName[0] == '@' {
@@ -150,8 +154,18 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 					}
 					moduleSourceFilePath := strings.Join(pathPieces[1:], "/")
 
+					// To load the source of the module, we need to know the relative version of the module (unpkg supports
+					// semver ranges, and will resolve the "latest" version that matches the range).
+					//
+					// But there is N places that the version of the module might exist. The highest priority is in the package.json
+					// of the immediate importer. If that doesn't exist, the node resolution algorithm would actually look up a single
+					// parent directory at a time (i.e. if foo imports bar which then imports baz, bar might satisfy a peer dep of baz
+					// which is a higher priority than a version of baz in foo).
+					//
+					// However, it is now 4 AM and I'm not going to implement that. Instead, we will limit the search to the immediate
+					// importer, and then finally hope that the robin app itself has the module as a dependency.
+					//
 					var moduleVersion string
-
 					for _, packageJsonPath := range []string{fmt.Sprintf("/%s/package.json", importerModuleName), "package.json"} {
 						_, rawPackageJson, err := appConfig.ReadFile(packageJsonPath)
 						if err != nil {
@@ -173,9 +187,11 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
-					// TODO: This is really silly, but it works for now
 					var reqPath *url.URL
 					var contents []byte
+					// If we're given a request to load the module itself, we can first try to use unpkg's beta module
+					// export feature. Unfortunately it does not work with TS files, so we can't use it to load the entire package.
+					// It also refuses to work for CJS, so tons of popular packages like react also don't work with it :D
 					if moduleSourceFilePath == "" {
 						reqPath, contents, err = appConfig.ReadFile(fmt.Sprintf("/%s@%s?module", moduleName, moduleVersion))
 						if err != nil {
@@ -207,6 +223,7 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 					}, nil
 				})
 
+				// The fake loader will just return the contents of the module that we loaded in the resolver.
 				build.OnLoad(es.OnLoadOptions{
 					Namespace: "robin-resolver",
 					Filter:    ".",
@@ -251,7 +268,10 @@ func getClientJs(id string) (string, error) {
 		Bundle:   true,
 		Platform: es.PlatformBrowser,
 		Write:    false,
-		Plugins:  getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig)),
+
+		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
+		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
+		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig)),
 	})
 
 	if len(result.Errors) != 0 {
