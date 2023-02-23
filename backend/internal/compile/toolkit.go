@@ -14,6 +14,7 @@ import (
 
 func DisableEmbeddedToolkit() {
 	toolkitFS = nil
+	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
 func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {

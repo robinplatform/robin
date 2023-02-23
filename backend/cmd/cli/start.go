@@ -19,8 +19,7 @@ func (cmd *StartCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
 	flagSet.IntVar(&cmd.port, "port", 9010, "The port to listen on")
 	flagSet.StringVar(&cmd.bindAddress, "bind", "[::1]", "The address to bind to")
 
-	releaseChannel, _ := config.GetReleaseChannel()
-	if releaseChannel != config.ReleaseChannelStable {
+	if config.GetReleaseChannel() != config.ReleaseChannelStable {
 		flagSet.BoolVar(&cmd.forceStableToolkit, "use-stable-toolkit", false, "Force the use of the stable toolkit")
 	}
 
