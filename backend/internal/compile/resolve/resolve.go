@@ -73,6 +73,9 @@ func (resolver *Resolver) resolveLocal(target string) (string, error) {
 
 func (resolver *Resolver) resolveModule(source, target string) (string, error) {
 	searchDir := filepath.Dir(source)
+
+	// TODO: Maybe put a numeric iteration limit here, to prevent infinite loops due
+	// to bad code
 	for searchDir != "/" {
 		nodeModulesDir := filepath.Join(searchDir, "node_modules")
 		if result, err := resolver.resolveLocal(filepath.Join(nodeModulesDir, target)); err == nil {
@@ -117,7 +120,7 @@ func (resolver *Resolver) ReadFile(target string) ([]byte, bool) {
 func (resolver *Resolver) Resolve(target string) (string, error) {
 	// If the path does not start with a dot, it's referring to a node module
 	if target[0] != '.' {
-		return "", fmt.Errorf("cannot resolve module relative to root: %s", target)
+		return resolver.resolveModule("./index.js", target)
 	}
 	return resolver.resolveLocal(target)
 }

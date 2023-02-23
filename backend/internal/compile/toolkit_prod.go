@@ -4,18 +4,26 @@ package compile
 
 import (
 	"embed"
-	"os"
-	"path/filepath"
+	"io/fs"
+	"path"
 
-	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/log"
 )
 
-var toolkitPath = filepath.Join(os.TempDir(), "robin-toolkit")
+var toolkitPath = ""
 
-//go:generate cp -R ../../toolkit toolkit
+type toolkitFsWrapper embed.FS
+
+func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
+	return embed.FS(e).Open(path.Join("toolkit", name))
+}
+
+//go:generate rm -rf toolkit
+//go:generate cp -vR ../../../toolkit toolkit
+//go:generate rm -rf toolkit/node_modules toolkit/src
 //go:embed all:toolkit
-var toolkitFS embed.FS
+var embedToolkitFS embed.FS
+var toolkitFS fs.FS = toolkitFsWrapper(embedToolkitFS)
 
 func init() {
 	logger.Debug("Using embedded toolkit", log.Ctx{})

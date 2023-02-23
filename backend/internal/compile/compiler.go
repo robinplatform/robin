@@ -92,7 +92,7 @@ func getClientJs(id string) (string, error) {
 		Bundle:      true,
 		Platform:    es.PlatformBrowser,
 		Write:       false,
-		Plugins:     append([]es.Plugin{}, getToolkitPlugins()...),
+		Plugins:     append([]es.Plugin{}, getToolkitPlugins(appConfig)...),
 	})
 
 	if len(result.Errors) != 0 {

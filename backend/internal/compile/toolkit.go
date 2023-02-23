@@ -2,33 +2,55 @@ package compile
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/log"
 )
 
-func getToolkitPlugins() []es.Plugin {
+func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 	if toolkitFS == nil {
 		return nil
+	}
+
+	resolver := resolve.Resolver{
+		FS: toolkitFS,
+	}
+
+	projectPath := config.GetProjectPathOrExit()
+	moduleResolver := resolve.Resolver{
+		FS:              os.DirFS(projectPath),
+		EnableDebugLogs: resolver.EnableDebugLogs,
 	}
 
 	return []es.Plugin{
 		{
 			Name: "load-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
-				resolver := resolve.Resolver{
-					FS: toolkitFS,
-				}
-
 				build.OnResolve(es.OnResolveOptions{
 					Namespace: "robin-toolkit",
 					Filter:    ".",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					if args.Path[0] != '.' {
-						fmt.Printf("refusing to resolve: %#v\n", args)
-						return es.OnResolveResult{}, nil
+						logger.Debug("Resolving module", log.Ctx{
+							"args":      args,
+							"appConfig": appConfig,
+						})
+
+						resolvedPath, err := moduleResolver.ResolveFrom(
+							strings.TrimPrefix(appConfig.Page, projectPath+string(filepath.Separator)),
+							args.Path,
+						)
+
+						// We don't want to namespace this, since it is a regular node module and can
+						// be loaded by esbuild
+						return es.OnResolveResult{
+							Path: filepath.Join(projectPath, resolvedPath),
+						}, err
 					}
 
 					resolvedPath, err := resolver.Resolve(args.Path)
@@ -48,8 +70,10 @@ func getToolkitPlugins() []es.Plugin {
 						return es.OnResolveResult{}, nil
 					}
 
+					// Update the path to be relative to the resolver's FS root
 					sourcePath := "." + strings.TrimPrefix(args.Path, "@robinplatform/toolkit")
 					resolvedPath, err := resolver.Resolve(sourcePath)
+
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
 						Path:      filepath.Join(toolkitPath, resolvedPath),
@@ -63,9 +87,14 @@ func getToolkitPlugins() []es.Plugin {
 					Filter:    ".",
 					Namespace: "robin-toolkit",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					fsPath := (args.PluginData.(map[string]string))["fsPath"]
+					pluginData, ok := args.PluginData.(map[string]string)
 
-					contents, ok := resolver.ReadFile(fsPath)
+					// this should never happen, since we are scoped to the namespace
+					if !ok {
+						return es.OnLoadResult{}, fmt.Errorf("could not find pluginData for %s", args.Path)
+					}
+
+					contents, ok := resolver.ReadFile(pluginData["fsPath"])
 					if !ok {
 						return es.OnLoadResult{}, fmt.Errorf("could not read file %s", args.Path)
 					}
