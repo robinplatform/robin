@@ -12,6 +12,10 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
+func DisableEmbeddedToolkit() {
+	toolkitFS = nil
+}
+
 func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 	if toolkitFS == nil {
 		return nil
