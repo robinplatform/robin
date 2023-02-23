@@ -96,8 +96,11 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 					if err != nil {
 						return es.OnResolveResult{}, fmt.Errorf("expected source to be a valid URL: %w", err)
 					}
-					if importerUrl.Scheme != "http" && importerUrl.Scheme != "https" {
+					if importerUrl.Scheme != "https" {
 						return es.OnResolveResult{}, fmt.Errorf("expected source to be a valid URL: %s", importerUrl)
+					}
+					if importerUrl.Host != appConfig.ConfigPath.Host {
+						return es.OnResolveResult{}, fmt.Errorf("expected all app imports to come from the same host: %s", importerUrl)
 					}
 
 					// Path will be something like: '/@foo/bar@version/src/index.js'
