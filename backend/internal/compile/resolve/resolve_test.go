@@ -11,11 +11,11 @@ type resolverTester struct {
 	resolver *Resolver
 }
 
-func createTester(t *testing.T, fs map[string]*fstest.MapFile) resolverTester {
+func createTester(t *testing.T, vfs map[string]*fstest.MapFile) resolverTester {
 	return resolverTester{
 		t:        t,
-		fs:       fs,
-		resolver: &Resolver{FS: fstest.MapFS(fs)},
+		fs:       vfs,
+		resolver: &Resolver{FS: fstest.MapFS(vfs)},
 	}
 }
 
@@ -100,4 +100,20 @@ func TestDirResolvers(t *testing.T) {
 		tester.resolver.Extensions = []string{".js"}
 		tester.assertNotExists("./src")
 	}
+}
+
+func TestModuleFileResolvers(t *testing.T) {
+	tester := createTester(t, map[string]*fstest.MapFile{
+		"src/index.js":              {},
+		"src/foo.js":                {},
+		"src/data.json":             {},
+		"node_modules/bar/index.js": {},
+		"node_modules/bar/foo.js":   {},
+		"node_modules/bar/node_modules/lodash/index.js": {},
+	})
+
+	tester.assertNotExists("./src/bar")
+	tester.assertResolvedFrom("./src/foo.js", "bar", "node_modules/bar/index.js")
+	tester.assertResolvedFrom("./node_modules/bar/index.js", "./foo", "node_modules/bar/foo.js")
+	tester.assertResolvedFrom("./node_modules/bar/index.js", "lodash", "node_modules/bar/node_modules/lodash/index.js")
 }
