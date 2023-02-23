@@ -1,12 +1,23 @@
 <!DOCTYPE html>
-<html>
-	<head>
-		<title>__APP_NAME__ | Robin</title>
-	</head>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-	<body>
-		<div id="root"></div>
+	<title>{{.AppConfig.Name}}</title>
+</head>
+<body>
+	<div id="root"></div>
 
-		<script src="__APP_SCRIPT_URL__"></script>
-	</body>
+	<script>
+		window.addEventListener('error', (event) => {
+			window.parent.postMessage({
+				type: 'appError',
+				error: String(event.error?.stack || event.error),
+			}, '*');
+		});
+	</script>
+	<script src="{{.ScriptURL}}"></script>
+</body>
 </html>

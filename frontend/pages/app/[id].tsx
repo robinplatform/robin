@@ -6,13 +6,13 @@ import { AppWindow } from '../../components/AppWindow';
 export default function Page() {
 	const router = useRouter();
 
-	const id = router.query['id'];
-	const [title, setTitle] = React.useState<string>('App | Robin');
+	const id = typeof router.query.id === 'string' ? router.query.id : null;
+	const [title, setTitle] = React.useState<string>(id??'Loading');
 
 	return (
 		<div className={'full col'}>
 			<Head>
-				<title>{title}</title>
+				<title>{title} | Robin</title>
 			</Head>
 
 			<AppWindow id={id ? `${id}` : undefined} setTitle={setTitle} />

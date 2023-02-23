@@ -1,6 +1,7 @@
 package compile
 
 import (
+	"bytes"
 	_ "embed"
 	"fmt"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
@@ -16,7 +18,9 @@ import (
 )
 
 //go:embed client.html
-var clientHtmlTemplate string
+var clientHtmlTemplateRaw string
+
+var clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
 
 var logger log.Logger = log.New("compiler")
 
@@ -33,6 +37,8 @@ type App struct {
 	ClientJs string
 }
 
+// TODO: The cache accesses here are not thread safe
+
 func (compiler *Compiler) GetApp(id string) (*App, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
@@ -48,16 +54,22 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 		compiler.appCache = make(map[string]*App)
 	}
 
-	// TODO: Check if ID is valid
 	appConfig, err := config.LoadRobinAppById(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load app config: %w", err)
 	}
 
-	clientHtml := clientHtmlTemplate
-	clientHtml = strings.Replace(clientHtml, "__APP_SCRIPT_URL__", "/app-resources/"+id+"/bootstrap.js", -1)
-	clientHtml = strings.Replace(clientHtml, "__APP_NAME__", appConfig.Name, -1)
+	// TODO: this is stupid, we should just expose methods that render directly
+	// onto the response
+	htmlOutput := bytes.NewBuffer(nil)
+	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
+		"AppConfig": appConfig,
+		"ScriptURL": fmt.Sprintf("/app-resources/%s/bootstrap.js", id),
+	}); err != nil {
+		return nil, fmt.Errorf("failed to render client html: %w", err)
+	}
 
+	// TODO: If we are going to render the JS at the same time, might as well inline it
 	clientJs, err := getClientJs(id)
 	if err != nil {
 		return nil, err
@@ -66,7 +78,7 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 	// TODO: Make this API actually make sense
 	app := &App{
 		Id:       id,
-		Html:     clientHtml,
+		Html:     htmlOutput.String(),
 		ClientJs: clientJs,
 	}
 	if compiler.appCache != nil {
@@ -116,8 +128,6 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 					// The logic for this almost entirely lives in the resolve package
 					if args.Path[0] == '.' {
 						resolver := resolve.NewHttpResolver(importerUrl)
-						resolver.EnableDebugLogs = true
-
 						resolved, err := resolver.ResolveFrom(importerUrl.Path, args.Path)
 						if err != nil {
 							return es.OnResolveResult{}, fmt.Errorf("could not resolve '%s': %w", args.Path, err)
@@ -304,14 +314,7 @@ func getClientJs(id string) (string, error) {
 	}
 
 	output := result.OutputFiles[0]
-	errorHandler := `window.addEventListener('error', (event) => {
-		window.parent.postMessage({
-			type: 'appError',
-			error: String(event.error),
-		}, '*')
-	});`
-
-	return errorHandler + string(output.Contents), nil
+	return string(output.Contents), nil
 }
 
 func (app *App) GetServerJs(id string) (string, error) {
