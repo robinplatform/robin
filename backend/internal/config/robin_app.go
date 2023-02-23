@@ -112,7 +112,7 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 		appConfig.ConfigPath.Path = path.Clean(path.Join(projectPath, appConfig.ConfigPath.Path))
 	}
 
-	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "http" && appConfig.ConfigPath.Scheme != "https" {
+	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
 	}
 
@@ -126,7 +126,7 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 		if err != nil {
 			return fmt.Errorf("failed to read robin.app.json: %s", err)
 		}
-	} else if appConfig.ConfigPath.Scheme == "http" || appConfig.ConfigPath.Scheme == "https" {
+	} else if appConfig.ConfigPath.Scheme == "https" {
 		resp, err := http.DefaultClient.Do(&http.Request{
 			URL: appConfig.ConfigPath,
 		})
