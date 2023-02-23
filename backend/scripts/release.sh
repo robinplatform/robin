@@ -98,12 +98,12 @@ for platform in darwin linux windows; do
         GOOS=$platform GOARCH=$arch go build \
             -o "${platformDir}/bin/robin${ext}" \
             -tags "${GOTAGS}" \
-            -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION}" \
+            -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION} -X robinplatform.dev/internal/config.builtReleaseChannel=${TARGET_CHANNEL}" \
             ./cmd/cli
         GOOS=$platform GOARCH=$arch go build \
             -o "${platformDir}/bin/robin-upgrade${ext}" \
             -tags prod \
-            -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION}" \
+            -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION} -X robinplatform.dev/internal/config.builtReleaseChannel=${TARGET_CHANNEL}" \
             ./cmd/upgrade
 
         cd "${platformDir}"

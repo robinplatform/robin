@@ -17,9 +17,7 @@ import (
 var writer io.Writer
 
 func init() {
-	// If we fail to get a release channel, we are defaulting to
-	// the stable channel anyways, so select that for logging too
-	channel, _ := config.GetReleaseChannel()
+	channel := config.GetReleaseChannel()
 
 	writer = &lumberjack.Logger{
 		Filename:   path.Join(channel.GetPath(), "logs.db"),

@@ -6,6 +6,6 @@ func GetRobinVersion() string {
 	return "v0.0.0"
 }
 
-func GetReleaseChannel() (ReleaseChannel, error) {
-	return ReleaseChannelDev, nil
+func GetReleaseChannel() ReleaseChannel {
+	return ReleaseChannelDev
 }

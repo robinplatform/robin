@@ -33,7 +33,7 @@ var (
 func showUsageFooter() {
 	fmt.Fprintf(os.Stderr, "\n")
 
-	releaseChannel, _ := config.GetReleaseChannel()
+	releaseChannel := config.GetReleaseChannel()
 	fmt.Fprintf(
 		os.Stderr,
 		"robin %s on %s\n\n",
