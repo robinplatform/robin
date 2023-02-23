@@ -40,9 +40,6 @@ if ! s3cmd ls "s3://robinplatform/releases/${TARGET_CHANNEL}" &>/dev/null; then
     exit 1
 fi
 
-# Generation is not platform specific, so we will just generate once
-go generate -tags prod -x ./...
-
 # Figure out release version
 echo ""
 if test -z "$ROBIN_VERSION"; then
@@ -60,6 +57,17 @@ if test "$TARGET_CHANNEL" == "stable" && ! test -z "`s3cmd ls s3://robinplatform
     echo ""
     exit 1
 fi
+
+GOTAGS="prod"
+if test "$TARGET_CHANNEL" != "stable"; then
+    GOTAGS="${GOTAGS},toolkit"
+fi
+
+# Generation is not platform specific, so we will just generate once
+go generate -tags "${GOTAGS}" -x ./...
+
+# Verify the code with the correct tags
+go vet -tags "${GOTAGS}" ./...
 
 echo "Building version: $ROBIN_VERSION"
 
@@ -89,7 +97,7 @@ for platform in darwin linux windows; do
 
         GOOS=$platform GOARCH=$arch go build \
             -o "${platformDir}/bin/robin${ext}" \
-            -tags prod \
+            -tags "${GOTAGS}" \
             -ldflags "-X robinplatform.dev/internal/config.robinVersion=${ROBIN_VERSION} -X robinplatform.dev/internal/config.builtReleaseChannel=${TARGET_CHANNEL}" \
             ./cmd/cli
         GOOS=$platform GOARCH=$arch go build \
