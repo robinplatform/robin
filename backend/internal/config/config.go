@@ -78,9 +78,6 @@ func GetProjectAlias() (string, error) {
 }
 
 type RobinConfig struct {
-	// ReleaseChannel is the release channel to use for upgrades
-	ReleaseChannel ReleaseChannel `json:"releaseChannel"`
-
 	// Environments is a map of environment names to a map of environment variables
 	Environments map[string]map[string]string `json:"environments"`
 
@@ -98,7 +95,6 @@ type RobinConfig struct {
 }
 
 var defaultRobinConfig = RobinConfig{
-	ReleaseChannel:         ReleaseChannelStable,
 	MinifyExtensionClients: true,
 	EnableKeyMappings:      true,
 }

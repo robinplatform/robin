@@ -61,13 +61,15 @@ export function AppWindow({ id, setTitle }: Props) {
 	return (
 		<div className={'full col'}>
 			{error && (
-				<div style={{ width: '100%', padding: '1rem', }}>
-					<Alert variant='error' title={`The '${id}' app has crashed.`}>
-						<pre style={{marginBottom:'1rem'}}>
+				<div style={{ width: '100%', padding: '1rem' }}>
+					<Alert variant="error" title={`The '${id}' app has crashed.`}>
+						<pre style={{ marginBottom: '1rem' }}>
 							<code>{error}</code>
 						</pre>
 
-						<Button variant='primary' onClick={() => setError(null)}>Reload app</Button>
+						<Button variant="primary" onClick={() => setError(null)}>
+							Reload app
+						</Button>
 					</Alert>
 				</div>
 			)}
