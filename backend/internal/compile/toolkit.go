@@ -17,7 +17,7 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
+func getToolkitPlugins(appConfig config.RobinAppConfig, plugins []es.Plugin) []es.Plugin {
 	if toolkitFS == nil {
 		return nil
 	}
@@ -32,30 +32,19 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 		EnableDebugLogs: resolver.EnableDebugLogs,
 	}
 
-	return []es.Plugin{
+	// The first set of plugins aim to resolve the toolkit source itself, and immediately give up on any
+	// third-party module resolution requests. This gives a chance for robin-resolver to attempt to resolve
+	// the module. This is important so we don't end up loading two different versions of react.
+	pluginsStart := []es.Plugin{
 		{
-			Name: "load-robin-toolkit",
+			Name: "resolve-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
 				build.OnResolve(es.OnResolveOptions{
 					Namespace: "robin-toolkit",
 					Filter:    ".",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					if args.Path[0] != '.' {
-						logger.Debug("Resolving module", log.Ctx{
-							"args":      args,
-							"appConfig": appConfig,
-						})
-
-						resolvedPath, err := moduleResolver.ResolveFrom(
-							strings.TrimPrefix(appConfig.Page, projectPath+string(filepath.Separator)),
-							args.Path,
-						)
-
-						// We don't want to namespace this, since it is a regular node module and can
-						// be loaded by esbuild
-						return es.OnResolveResult{
-							Path: filepath.Join(projectPath, resolvedPath),
-						}, err
+						return es.OnResolveResult{}, nil
 					}
 
 					resolvedPath, err := resolver.Resolve(args.Path)
@@ -87,6 +76,36 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 						},
 					}, err
 				})
+			},
+		},
+	}
+
+	// The second set of plugins try to resolve everything that was never resolved, and then load the
+	// toolkit sources.
+	pluginsEnd := []es.Plugin{
+		{
+			Name: "load-robin-toolkit",
+			Setup: func(build es.PluginBuild) {
+				build.OnResolve(es.OnResolveOptions{
+					Namespace: "robin-toolkit",
+					Filter:    ".",
+				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+					logger.Debug("Resolving module", log.Ctx{
+						"args":      args,
+						"appConfig": appConfig,
+					})
+
+					resolvedPath, err := moduleResolver.ResolveFrom(
+						strings.TrimPrefix(appConfig.Page, projectPath+string(filepath.Separator)),
+						args.Path,
+					)
+
+					// We don't want to namespace this, since it is a regular node module and can
+					// be loaded by esbuild
+					return es.OnResolveResult{
+						Path: filepath.Join(projectPath, resolvedPath),
+					}, err
+				})
 
 				build.OnLoad(es.OnLoadOptions{
 					Filter:    ".",
@@ -114,4 +133,8 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 			},
 		},
 	}
+
+	plugins = append(pluginsStart, plugins...)
+	plugins = append(plugins, pluginsEnd...)
+	return plugins
 }

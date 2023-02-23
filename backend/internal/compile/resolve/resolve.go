@@ -128,9 +128,18 @@ func (resolver *Resolver) Resolve(target string) (string, error) {
 // ResolveFrom searches for a file at the target path, relative to the source filepath.
 // Canonically, this means `source` is the file that is trying to import from `target`.
 func (resolver *Resolver) ResolveFrom(source, target string) (string, error) {
+	if source == "" {
+		return "", fmt.Errorf("source path is empty")
+	}
+	if target == "" {
+		return "", fmt.Errorf("target path is empty")
+	}
+
 	if target[0] != '.' {
 		return resolver.resolveModule(source, target)
 	}
+
+	resolver.debugf("resolving from %s: %s", source, target)
 
 	targetRelPath := "." + string(filepath.Separator) + filepath.Join(filepath.Dir(source), target)
 	resolved, err := resolver.Resolve(targetRelPath)

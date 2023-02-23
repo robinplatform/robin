@@ -25,13 +25,18 @@ type RobinAppConfig struct {
 }
 
 func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
+	parsedUrl, err := url.Parse(filePath)
+	if err == nil && parsedUrl.Scheme != "" {
+		return parsedUrl
+	}
+
 	if path.IsAbs(filePath) {
 		return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filePath})
 	}
 	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: path.Join(path.Dir(appConfig.ConfigPath.Path), filePath)})
 }
 
-func (appConfig *RobinAppConfig) ReadFile(filePath string) (string, error) {
+func (appConfig *RobinAppConfig) ReadFile(filePath string) (*url.URL, []byte, error) {
 	var buf []byte
 	var err error
 	fileUrl := appConfig.resolvePath(filePath)
@@ -39,26 +44,41 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (string, error) {
 	if fileUrl.Scheme == "file" {
 		buf, err = os.ReadFile(fileUrl.Path)
 		if err != nil {
-			return "", fmt.Errorf("failed to read file '%s': %s", filePath, err)
+			return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
 		}
-	} else {
-		req := &http.Request{
-			Method: "GET",
-			URL:    fileUrl,
-		}
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			return "", fmt.Errorf("failed to read file '%s': %s", filePath, err)
-		}
-
-		buf, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return "", fmt.Errorf("failed to read file '%s': %s", filePath, err)
-		}
+		return fileUrl, buf, nil
 	}
 
-	return string(buf), nil
+	req := &http.Request{
+		Method: "GET",
+		URL:    fileUrl,
+	}
+	lastReq := req
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 10 {
+				return fmt.Errorf("stopped after 10 redirects")
+			}
+			lastReq = req
+			return nil
+		},
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, resp.Status)
+	}
+
+	buf, err = io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
+	}
+
+	return lastReq.URL, buf, nil
 }
 
 type robinProjectConfig struct {
@@ -94,6 +114,9 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
+	}
+	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "unpkg.com" {
+		return fmt.Errorf("cannot load file from host '%s' (only unpkg.com is supported)", appConfig.ConfigPath.Host)
 	}
 
 	// All paths must end with `robin.app.json`
