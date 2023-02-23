@@ -17,7 +17,7 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
+func getToolkitPlugins(appConfig config.RobinAppConfig, plugins []es.Plugin) []es.Plugin {
 	if toolkitFS == nil {
 		return nil
 	}
@@ -32,7 +32,52 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 		EnableDebugLogs: resolver.EnableDebugLogs,
 	}
 
-	return []es.Plugin{
+	pluginsStart := []es.Plugin{
+		{
+			Name: "resolve-robin-toolkit",
+			Setup: func(build es.PluginBuild) {
+				build.OnResolve(es.OnResolveOptions{
+					Namespace: "robin-toolkit",
+					Filter:    ".",
+				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+					if args.Path[0] != '.' {
+						fmt.Printf("[toolkit] refused to resolve: %#v\n", args)
+						return es.OnResolveResult{}, nil
+					}
+
+					resolvedPath, err := resolver.Resolve(args.Path)
+					return es.OnResolveResult{
+						Namespace: "robin-toolkit",
+						Path:      filepath.Join(toolkitPath, resolvedPath),
+						PluginData: map[string]string{
+							"fsPath": resolvedPath,
+						},
+					}, err
+				})
+
+				build.OnResolve(es.OnResolveOptions{
+					Filter: "@robinplatform/toolkit",
+				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+					if !strings.HasPrefix(args.Path, "@robinplatform/toolkit") {
+						return es.OnResolveResult{}, nil
+					}
+
+					// Update the path to be relative to the resolver's FS root
+					sourcePath := "." + strings.TrimPrefix(args.Path, "@robinplatform/toolkit")
+					resolvedPath, err := resolver.Resolve(sourcePath)
+
+					return es.OnResolveResult{
+						Namespace: "robin-toolkit",
+						Path:      filepath.Join(toolkitPath, resolvedPath),
+						PluginData: map[string]string{
+							"fsPath": resolvedPath,
+						},
+					}, err
+				})
+			},
+		},
+	}
+	pluginsEnd := []es.Plugin{
 		{
 			Name: "load-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
@@ -68,26 +113,6 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 					}, err
 				})
 
-				build.OnResolve(es.OnResolveOptions{
-					Filter: "@robinplatform/toolkit",
-				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					if !strings.HasPrefix(args.Path, "@robinplatform/toolkit") {
-						return es.OnResolveResult{}, nil
-					}
-
-					// Update the path to be relative to the resolver's FS root
-					sourcePath := "." + strings.TrimPrefix(args.Path, "@robinplatform/toolkit")
-					resolvedPath, err := resolver.Resolve(sourcePath)
-
-					return es.OnResolveResult{
-						Namespace: "robin-toolkit",
-						Path:      filepath.Join(toolkitPath, resolvedPath),
-						PluginData: map[string]string{
-							"fsPath": resolvedPath,
-						},
-					}, err
-				})
-
 				build.OnLoad(es.OnLoadOptions{
 					Filter:    ".",
 					Namespace: "robin-toolkit",
@@ -114,4 +139,8 @@ func getToolkitPlugins(appConfig config.RobinAppConfig) []es.Plugin {
 			},
 		},
 	}
+
+	plugins = append(pluginsStart, plugins...)
+	plugins = append(plugins, pluginsEnd...)
+	return plugins
 }
