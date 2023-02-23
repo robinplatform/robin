@@ -47,7 +47,7 @@ func init() {
 			return err
 		}
 
-		buf.WriteRune(' ')
+		buf.WriteString("\n\t")
 		_, err = buf.Write(data)
 		return err
 	}
