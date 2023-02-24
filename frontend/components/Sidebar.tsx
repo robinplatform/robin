@@ -19,7 +19,12 @@ type SidebarIcon = {
 const AppIcon: React.FC<{ icon: string }> = ({ icon }) => {
 	const svg = React.useMemo(() => octicons[icon]?.toSVG(), [icon]);
 	if (svg) {
-		return <span style={{fill:'white'}} dangerouslySetInnerHTML={{ __html: svg }} />
+		return (
+			<span
+				style={{ fill: 'white' }}
+				dangerouslySetInnerHTML={{ __html: svg }}
+			/>
+		);
 	}
 	return <>{icon}</>;
 };

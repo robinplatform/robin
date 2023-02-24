@@ -28,7 +28,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 					}
 
 					case 'titleUpdate':
-						setTitle(title => message.data.title || title);
+						setTitle((title) => message.data.title || title);
 						break;
 
 					case 'appError':
