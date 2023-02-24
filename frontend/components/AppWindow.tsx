@@ -5,7 +5,7 @@ import { Button } from './Button';
 
 type Props = {
 	id: string | undefined;
-	setTitle: (title: string) => void;
+	setTitle: React.Dispatch<React.SetStateAction<string>>;
 };
 
 function AppWindowContent({ id, setTitle }: Props) {
@@ -28,7 +28,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 					}
 
 					case 'titleUpdate':
-						setTitle(message.data.title);
+						setTitle(title => message.data.title || title);
 						break;
 
 					case 'appError':

@@ -12,7 +12,7 @@ export default function Page() {
 	return (
 		<div className={'full col'}>
 			<Head>
-				<title>{title} | Robin</title>
+				<title>{title || 'Error'} | Robin</title>
 			</Head>
 
 			<AppWindow id={id ? `${id}` : undefined} setTitle={setTitle} />
