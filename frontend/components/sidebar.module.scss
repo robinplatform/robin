@@ -3,13 +3,16 @@
 	justify-content: space-between;
 }
 
-.primaryButton {
+.sidebarLink {
 	display: flex;
-	color: inherit;
+	align-items: center;
+	justify-content: center;
 	text-decoration: none;
+	width: 100%;
+	color: #fff;
 }
 
-.primaryButton:hover {
+.sidebarLink:hover {
 	background-color: #ab81cd;
 }
 

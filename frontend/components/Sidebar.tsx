@@ -4,15 +4,24 @@ import Link from 'next/link';
 import cx from 'classnames';
 import { useRouter } from 'next/router';
 import { ToolsIcon, HomeIcon } from '@primer/octicons-react';
-import { useQuery } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import { z } from 'zod';
+// @ts-ignore
+import octicons from '@primer/octicons';
 
 type SidebarIcon = {
 	icon: React.ReactNode;
 	href: string;
 	label: string;
+};
+
+const AppIcon: React.FC<{ icon: string }> = ({ icon }) => {
+	const svg = React.useMemo(() => octicons[icon]?.toSVG(), [icon]);
+	if (svg) {
+		return <span style={{fill:'white'}} dangerouslySetInnerHTML={{ __html: svg }} />
+	}
+	return <>{icon}</>;
 };
 
 export function Sidebar() {
@@ -52,7 +61,7 @@ export function Sidebar() {
 					<div key={href} className={styles.sidebarIconContainer}>
 						<Link
 							href={href}
-							className={cx(styles.primaryButton, 'robin-pad', {
+							className={cx(styles.sidebarLink, 'robin-pad', {
 								'robin-bg-dark-purple': href === router.asPath,
 							})}
 						>
@@ -65,13 +74,15 @@ export function Sidebar() {
 					<div key={app.name} className={styles.sidebarIconContainer}>
 						<Link
 							href={`/app/${app.id}`}
-							className={cx(styles.primaryButton, 'robin-pad', {
+							className={cx(styles.sidebarLink, 'robin-pad', {
 								'robin-bg-dark-purple': window.location.pathname.startsWith(
 									`/app/${app.id}`,
 								),
 							})}
 						>
-							{app.pageIcon}
+							<span>
+								<AppIcon icon={app.pageIcon} />
+							</span>
 						</Link>
 						<span className={styles.sidebarLabel}>{app.name}</span>
 					</div>
