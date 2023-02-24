@@ -98,7 +98,7 @@ func (resolver *Resolver) ReadFile(target string) ([]byte, bool) {
 
 	reader, err := resolver.FS.Open(target)
 	if err != nil {
-		resolver.debugf("miss: %s", target)
+		resolver.debugf("miss: %s (%v)", target, err)
 		resolver.cacheSet(target, resolverResult{false, nil})
 		return nil, false
 	}
@@ -108,7 +108,7 @@ func (resolver *Resolver) ReadFile(target string) ([]byte, bool) {
 	if err == nil {
 		resolver.debugf("found: %s", target)
 	} else {
-		resolver.debugf("miss: %s", target)
+		resolver.debugf("miss: %s (%v)", target, err)
 	}
 
 	resolver.cacheSet(target, resolverResult{err == nil, content})
@@ -135,11 +135,15 @@ func (resolver *Resolver) ResolveFrom(source, target string) (string, error) {
 		return "", fmt.Errorf("target path is empty")
 	}
 
-	if target[0] != '.' {
+	if target[0] != '.' && target[0] != '/' {
 		return resolver.resolveModule(source, target)
 	}
 
 	resolver.debugf("resolving from %s: %s", source, target)
+
+	if target[0] == '/' {
+		return resolver.resolveLocal(target[1:])
+	}
 
 	targetRelPath := "." + string(filepath.Separator) + filepath.Join(filepath.Dir(source), target)
 	resolved, err := resolver.Resolve(targetRelPath)

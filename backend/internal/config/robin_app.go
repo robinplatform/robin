@@ -49,6 +49,7 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (*url.URL, []byte, er
 		return fileUrl, buf, nil
 	}
 
+	fileUrl.RawQuery = "bundle"
 	req := &http.Request{
 		Method: "GET",
 		URL:    fileUrl,
@@ -115,8 +116,8 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
 	}
-	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "unpkg.com" {
-		return fmt.Errorf("cannot load file from host '%s' (only unpkg.com is supported)", appConfig.ConfigPath.Host)
+	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "esm.sh" {
+		return fmt.Errorf("cannot load file from host '%s' (only esm.sh is supported)", appConfig.ConfigPath.Host)
 	}
 
 	// All paths must end with `robin.app.json`

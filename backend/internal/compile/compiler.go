@@ -99,6 +99,27 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig,
 			Name: "robin-resolver",
 			Setup: func(build es.PluginBuild) {
 				build.OnResolve(es.OnResolveOptions{Filter: "."}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+					// If the request is to resolve a resource over HTTP/HTTPS, we should adopt a Just Do It approach
+					if strings.HasPrefix(args.Path, "http:") || strings.HasPrefix(args.Path, "https:") {
+						reqPath, contents, err := appConfig.ReadFile(args.Path)
+						if err != nil {
+							return es.OnResolveResult{}, fmt.Errorf("could not read '%s': %w", args.Path, err)
+						}
+
+						logger.Debug("Loaded remote module", log.Ctx{
+							"importer":     args.Importer,
+							"path":         args.Path,
+							"resolvedPath": reqPath.String(),
+						})
+						return es.OnResolveResult{
+							Namespace: "robin-resolver",
+							Path:      reqPath.String(),
+							PluginData: map[string]string{
+								"contents": string(contents),
+							},
+						}, nil
+					}
+
 					// If we're resolving a module from the virtual toolkit, we should assume that the extension
 					// itself asked for it
 					if args.Namespace == "robin-toolkit" {
@@ -116,18 +137,9 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig,
 						return es.OnResolveResult{}, fmt.Errorf("expected all app imports to come from the same host: %s", importerUrl)
 					}
 
-					// Path will be something like: '/@foo/bar@version/src/index.js'
-					// where the '@version' is optional. We need to extract the module name (+ version), so
-					// we can look up its package.json
-					importerUrlPath := strings.Split(importerUrl.Path, "/")
-					importerModuleName := importerUrlPath[1]
-					if importerModuleName[0] == '@' {
-						importerModuleName = importerModuleName + "/" + importerUrlPath[2]
-					}
-
 					// Resolve local file paths relative to the remote importer's path
 					// The logic for this almost entirely lives in the resolve package
-					if args.Path[0] == '.' {
+					if args.Path[0] == '.' || args.Path[0] == '/' {
 						resolver := resolve.NewHttpResolver(importerUrl)
 						resolved, err := resolver.ResolveFrom(importerUrl.Path, args.Path)
 						if err != nil {
@@ -160,57 +172,39 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig,
 					// the rest of the filepath being imported _from_ react, which is `jsx-runtime`.
 					pathPieces := strings.Split(args.Path, "/")
 					moduleName := pathPieces[0]
+					if len(moduleName) == 0 {
+						return es.OnResolveResult{}, fmt.Errorf("expected module name to be non-empty in: %s", args.Path)
+					}
 					if moduleName[0] == '@' {
 						moduleName = moduleName + "/" + pathPieces[1]
 					}
 					moduleSourceFilePath := strings.Join(pathPieces[1:], "/")
 
-					// To load the source of the module, we need to know the relative version of the module (unpkg supports
-					// semver ranges, and will resolve the "latest" version that matches the range).
+					// To load the source of the module, we need to know the relative version of the module.
 					//
 					// But there is N places that the version of the module might exist. The highest priority is in the package.json
 					// of the immediate importer. If that doesn't exist, the node resolution algorithm would actually look up a single
 					// parent directory at a time (i.e. if foo imports bar which then imports baz, bar might satisfy a peer dep of baz
 					// which is a higher priority than a version of baz in foo).
 					//
-					// However, it is now 4 AM and I'm not going to implement that. Instead, we will limit the search to the immediate
-					// importer, and then finally hope that the robin app itself has the module as a dependency.
-					//
-					var moduleVersion string
-					for _, packageJsonPath := range []string{fmt.Sprintf("/%s/package.json", importerModuleName), "package.json"} {
-						_, rawPackageJson, err := appConfig.ReadFile(packageJsonPath)
-						if err != nil {
-							return es.OnResolveResult{}, err
-						}
-
-						var packageJson config.PackageJson
-						if err := config.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
-							return es.OnResolveResult{}, err
-						}
-
-						var found bool
-						moduleVersion, found = packageJson.Dependencies[moduleName]
-						if found {
-							break
-						}
+					// However, `esm.sh` takes care of most of this anyways, so we really just need to perform lookups for modules that
+					// are immediately imported by the app. So we'll just look in the package.json of the immediate importer.
+					_, rawPackageJson, err := appConfig.ReadFile("package.json")
+					if err != nil {
+						return es.OnResolveResult{}, err
 					}
-					if moduleVersion == "" {
+
+					var packageJson config.PackageJson
+					if err := config.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
+						return es.OnResolveResult{}, err
+					}
+
+					moduleVersion, found := packageJson.Dependencies[moduleName]
+					if !found {
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
-					var reqPath *url.URL
-					var contents []byte
-					// If we're given a request to load the module itself, we can first try to use unpkg's beta module
-					// export feature. Unfortunately it does not work with TS files, so we can't use it to load the entire package.
-					// It also refuses to work for CJS, so tons of popular packages like react also don't work with it :D
-					if moduleSourceFilePath == "" {
-						reqPath, contents, err = appConfig.ReadFile(fmt.Sprintf("/%s@%s?module", moduleName, moduleVersion))
-						if err != nil {
-							reqPath, contents, err = appConfig.ReadFile(fmt.Sprintf("/%s@%s", moduleName, moduleVersion))
-						}
-					} else {
-						reqPath, contents, err = appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
-					}
+					reqPath, contents, err := appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
 					if err != nil {
 						return es.OnResolveResult{}, err
 					}
@@ -293,32 +287,34 @@ func getClientJs(id string) (string, error) {
 				Name: "load-css",
 				Setup: func(build es.PluginBuild) {
 					build.OnLoad(es.OnLoadOptions{
-						Filter: "\\.css$",
+						Filter: "\\.css(\\?bundle)?$",
 					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-						_, css, err := appConfig.ReadFile(args.Path)
+						var css []byte
+						var err error
+
+						if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+							_, css, err = appConfig.ReadFile(args.Path)
+						} else {
+							css, err = os.ReadFile(args.Path)
+						}
 						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to read css file: %w", err)
+							return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
 						}
 
 						cssEscaped, err := json.Marshal(string(css))
 						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to escape css: %w", err)
+							return es.OnLoadResult{}, fmt.Errorf("failed to escape css file %s: %w", args.Path, err)
 						}
 
 						script := fmt.Sprintf(`!function(){
-								let d, style
-
-								try { d = document.documentElement }
-								catch (error) { return }
-
-								style = document.createElement('style')
-								style.setAttribute('data-path', '${args.path}')
-								style.innerText = %s
-								document.body.appendChild(style)
-						}()`, cssEscaped)
-
+							let style = document.createElement('style')
+							style.setAttribute('data-path', '%s')
+							style.innerText = %s
+							document.body.appendChild(style)
+						}()`, args.Path, cssEscaped)
 						return es.OnLoadResult{
 							Contents: &script,
+							Loader:   es.LoaderJS,
 						}, nil
 					})
 				},
@@ -333,6 +329,10 @@ func getClientJs(id string) (string, error) {
 				errors[i] = err.Text
 			} else {
 				errors[i] = fmt.Sprintf("%s: %s", err.PluginName, err.Text)
+			}
+
+			if err.Location != nil {
+				errors[i] = fmt.Sprintf("%s on line %d of %s", errors[i], err.Location.Line, err.Location.File)
 			}
 		}
 

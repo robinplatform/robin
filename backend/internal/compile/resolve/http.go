@@ -1,10 +1,10 @@
 package resolve
 
 import (
+	"fmt"
 	"io/fs"
 	"net/http"
 	"net/url"
-	"os"
 	"path"
 	"time"
 )
@@ -86,11 +86,7 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, &fs.PathError{
-			Op:   "open",
-			Path: filename,
-			Err:  os.ErrNotExist,
-		}
+		return nil, fmt.Errorf("file not found: %s (status %d)", filename, resp.StatusCode)
 	}
 	return HttpFileEntry{resp}, nil
 }
