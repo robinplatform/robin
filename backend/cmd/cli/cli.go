@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/config"
-	"robinplatform.dev/internal/log"
 )
 
 type Command interface {
@@ -26,6 +25,8 @@ type Command interface {
 var (
 	commands = []Command{
 		&StartCommand{},
+		&AddCommand{},
+		&RemoveCommand{},
 		&VersionCommand{},
 	}
 )
@@ -40,7 +41,6 @@ func showUsageFooter() {
 		config.GetRobinVersion(),
 		releaseChannel,
 	)
-	fmt.Fprintf(os.Stderr, "\n")
 }
 
 func showUsage() {
@@ -68,13 +68,24 @@ func showUsage() {
 }
 
 func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
-	fmt.Fprintf(os.Stderr, "Usage: robin %s [options]\n", cmd.Name())
+	shortUsage := fmt.Sprintf("%s [options]", cmd.Name())
+
+	// allow commands to override the short usage text
+	if cmdWithShortUsage, ok := cmd.(interface{ ShortUsage() string }); ok {
+		shortUsage = cmdWithShortUsage.ShortUsage()
+	}
+
+	fmt.Fprintf(os.Stderr, "Usage: robin %s\n", shortUsage)
 	fmt.Fprintf(os.Stderr, "%s\n", cmd.Description())
 	fmt.Fprintf(os.Stderr, "\n")
 
-	fmt.Fprintf(os.Stderr, "Options:\n\n")
-	fmt.Fprintf(os.Stderr, "%s\n", flagSet.FlagUsages())
-	fmt.Fprintf(os.Stderr, "\n")
+	if flagSet.HasFlags() {
+		fmt.Fprintf(os.Stderr, "Options:\n\n")
+		fmt.Fprintf(os.Stderr, "%s\n", flagSet.FlagUsages())
+		fmt.Fprintf(os.Stderr, "\n")
+	} else {
+		fmt.Fprintf(os.Stderr, "This command has no options.\n")
+	}
 
 	showUsageFooter()
 	os.Exit(1)
@@ -83,8 +94,6 @@ func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
 func main() {
 	fmt.Printf("\n")
 	args := os.Args[1:]
-
-	logger := log.New("cli")
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
 		showUsage()
@@ -134,10 +143,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "unrecognized command: %s\n", commandName)
 		showUsage()
 	}
-
-	logger.Debug("Parsed Args, found command", log.Ctx{
-		"command": command.Name(),
-	})
 
 	// Perform parsing
 	flagSet := pflag.NewFlagSet(commandName, pflag.ExitOnError)
