@@ -8,7 +8,7 @@ type Props = {
 	setTitle: (title: string) => void;
 };
 
-export function AppWindow({ id, setTitle }: Props) {
+function AppWindowContent({ id, setTitle }: Props) {
 	const router = useRouter();
 
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
@@ -44,8 +44,9 @@ export function AppWindow({ id, setTitle }: Props) {
 
 	React.useEffect(() => {
 		if (!id) return;
-		if (!iframeRef.current) return;
+		setTitle(id);
 
+		if (!iframeRef.current) return;
 		const iframe = iframeRef.current;
 
 		const listener = () => {
@@ -82,4 +83,8 @@ export function AppWindow({ id, setTitle }: Props) {
 			)}
 		</div>
 	);
+}
+
+export function AppWindow(props: Props) {
+	return <AppWindowContent key={props.id} {...props} />;
 }
