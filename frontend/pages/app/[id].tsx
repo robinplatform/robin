@@ -7,7 +7,7 @@ export default function Page() {
 	const router = useRouter();
 
 	const id = typeof router.query.id === 'string' ? router.query.id : null;
-	const [title, setTitle] = React.useState<string>(id??'Loading');
+	const [title, setTitle] = React.useState<string>(id ?? 'Loading');
 
 	return (
 		<div className={'full col'}>
