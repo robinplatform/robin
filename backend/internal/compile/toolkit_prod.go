@@ -25,6 +25,6 @@ func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
 var embedToolkitFS embed.FS
 var toolkitFS fs.FS = toolkitFsWrapper(embedToolkitFS)
 
-func init() {
+var initToolkit = func() {
 	logger.Debug("Using embedded toolkit", log.Ctx{})
 }

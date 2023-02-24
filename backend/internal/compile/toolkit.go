@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
@@ -12,12 +13,16 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
+var toolkitInit = sync.Once{}
+
 func DisableEmbeddedToolkit() {
 	toolkitFS = nil
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
 func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugin {
+	toolkitInit.Do(initToolkit)
+
 	if toolkitFS == nil {
 		return nil
 	}

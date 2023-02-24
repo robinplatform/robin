@@ -14,7 +14,7 @@ import (
 var toolkitPath string
 var toolkitFS fs.FS
 
-func init() {
+var initToolkit = func() {
 	_, filename, _, _ := runtime.Caller(0)
 	toolkitPath = path.Clean(path.Join(path.Dir(filename), "..", "..", "..", "toolkit"))
 	toolkitFS = os.DirFS(toolkitPath)
