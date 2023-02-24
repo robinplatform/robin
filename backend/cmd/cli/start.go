@@ -15,6 +15,14 @@ type StartCommand struct {
 	forceStableToolkit bool
 }
 
+func (cmd *StartCommand) Name() string {
+	return "start"
+}
+
+func (cmd *StartCommand) Description() string {
+	return "Start the robin server"
+}
+
 func (cmd *StartCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
 	flagSet.IntVar(&cmd.port, "port", 9010, "The port to listen on")
 	flagSet.StringVar(&cmd.bindAddress, "bind", "[::1]", "The address to bind to")
@@ -31,14 +39,6 @@ func (cmd *StartCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
 	}
 
 	return nil
-}
-
-func (cmd *StartCommand) Name() string {
-	return "start"
-}
-
-func (cmd *StartCommand) Description() string {
-	return "Start the robin server"
 }
 
 func (cmd *StartCommand) Run() error {
