@@ -1,23 +1,24 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
 
-	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/rpc"
 )
 
-var GetApps = rpc.Method[struct{}, []config.RobinAppConfig]{
+var GetApps = rpc.Method[struct{}, []compile.RobinAppConfig]{
 	Name:             "GetApps",
 	SkipInputParsing: true,
-	Run: func(_ struct{}) ([]config.RobinAppConfig, *rpc.HttpError) {
-		appConfig, err := config.LoadRobinProjectConfig()
+	Run: func(_ struct{}) ([]compile.RobinAppConfig, *rpc.HttpError) {
+		apps, err := compile.GetAllProjectApps()
 		if err != nil {
 			return nil, &rpc.HttpError{
 				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				Message:    fmt.Sprintf("failed to get apps: %s", err),
 			}
 		}
-		return appConfig.Apps, nil
+		return apps, nil
 	},
 }

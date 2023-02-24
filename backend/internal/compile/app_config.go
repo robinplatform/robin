@@ -1,4 +1,4 @@
-package config
+package compile
 
 import (
 	"encoding/json"
@@ -8,6 +8,8 @@ import (
 	"net/url"
 	"os"
 	"path"
+
+	"robinplatform.dev/internal/config"
 )
 
 type RobinAppConfig struct {
@@ -82,23 +84,11 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (*url.URL, []byte, er
 	return lastReq.URL, buf, nil
 }
 
-type robinProjectConfig struct {
-	// Name of the app
-	Name string `json:"name"`
-	// Apps to load for this project
-	Apps []string `json:"apps"`
-}
-
-type RobinProjectConfig struct {
-	// Name of the app
-	Name string
-	// Apps to load for this project
-	Apps []RobinAppConfig
-}
-
-func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
-	var buf []byte
-	var err error
+func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
+	projectPath, err := config.GetProjectPath()
+	if err != nil {
+		return fmt.Errorf("failed to get project path: %s", err)
+	}
 
 	appConfig.ConfigPath, err = url.Parse(configPath)
 	if err != nil {
@@ -124,6 +114,8 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 	if path.Base(appConfig.ConfigPath.Path) != "robin.app.json" {
 		appConfig.ConfigPath = appConfig.ConfigPath.JoinPath("robin.app.json")
 	}
+
+	var buf []byte
 
 	if appConfig.ConfigPath.Scheme == "file" {
 		buf, err = os.ReadFile(appConfig.ConfigPath.Path)
@@ -173,47 +165,31 @@ func readRobinAppConfig(configPath string, appConfig *RobinAppConfig) error {
 	return nil
 }
 
-func LoadRobinProjectConfig() (RobinProjectConfig, error) {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return RobinProjectConfig{}, err
+func GetAllProjectApps() ([]RobinAppConfig, error) {
+	projectConfig := config.RobinProjectConfig{}
+	if err := projectConfig.LoadRobinProjectConfig(); err != nil {
+		return nil, err
 	}
 
-	storedConfig := robinProjectConfig{}
-	parsedConfig := RobinProjectConfig{}
-	configPath := path.Join(projectPath, "robin.json")
-
-	buf, err := os.ReadFile(configPath)
-	if err != nil {
-		return parsedConfig, fmt.Errorf("failed to read robin.json: %s", err)
-	}
-
-	err = json.Unmarshal(buf, &storedConfig)
-	if err != nil {
-		return parsedConfig, fmt.Errorf("failed to parse robin.json: %s", err)
-	}
-
-	parsedConfig.Name = storedConfig.Name
-	parsedConfig.Apps = make([]RobinAppConfig, len(storedConfig.Apps))
-	for i, appConfigPath := range storedConfig.Apps {
-		err := readRobinAppConfig(appConfigPath, &parsedConfig.Apps[i])
-		if err != nil {
-			return parsedConfig, fmt.Errorf("failed to read robin app config in '%s': %s", appConfigPath, err)
+	apps := make([]RobinAppConfig, len(projectConfig.Apps))
+	for idx, configPath := range projectConfig.Apps {
+		if err := apps[idx].readRobinAppConfig(configPath); err != nil {
+			return nil, err
 		}
 	}
 
-	return parsedConfig, nil
+	return apps, nil
 }
 
 func LoadRobinAppById(appId string) (RobinAppConfig, error) {
-	projectConfig, err := LoadRobinProjectConfig()
+	apps, err := GetAllProjectApps()
 	if err != nil {
 		return RobinAppConfig{}, err
 	}
 
-	for _, appConfig := range projectConfig.Apps {
-		if appConfig.Id == appId {
-			return appConfig, nil
+	for _, app := range apps {
+		if app.Id == appId {
+			return app, nil
 		}
 	}
 

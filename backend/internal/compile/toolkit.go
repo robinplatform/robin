@@ -17,7 +17,7 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig config.RobinAppConfig, plugins []es.Plugin) []es.Plugin {
+func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugin {
 	if toolkitFS == nil {
 		return nil
 	}

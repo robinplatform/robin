@@ -55,7 +55,7 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 		compiler.appCache = make(map[string]*App)
 	}
 
-	appConfig, err := config.LoadRobinAppById(id)
+	appConfig, err := LoadRobinAppById(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load app config: %w", err)
 	}
@@ -89,7 +89,7 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 	return app, nil
 }
 
-func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig, plugins []es.Plugin) []es.Plugin {
+func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugin {
 	if appConfig.ConfigPath.Scheme == "file" {
 		return plugins
 	}
@@ -250,7 +250,7 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig,
 }
 
 func getClientJs(id string) (string, error) {
-	appConfig, err := config.LoadRobinAppById(id)
+	appConfig, err := LoadRobinAppById(id)
 	if err != nil {
 		return "", err
 	}
