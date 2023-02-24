@@ -15,7 +15,8 @@ import (
 )
 
 type Server struct {
-	router *gin.Engine
+	router   *gin.Engine
+	compiler compile.Compiler
 }
 
 func init() {
@@ -29,6 +30,22 @@ func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
 	GetConfig.Register(group)
 	UpdateConfig.Register(group)
 	GetApps.Register(group)
+}
+
+func createErrorJs(errMessage string) string {
+	errJson, err := json.Marshal(errMessage)
+	if err != nil {
+		errMessage = "Unknown error occurred"
+	} else {
+		errMessage = string(errJson)
+	}
+
+	return fmt.Sprintf(`
+		window.parent.postMessage({
+			type: 'appError',
+			error: %s,
+		}, '*')
+	`, errMessage)
 }
 
 func (server *Server) Run(portBinding string) error {
@@ -46,27 +63,34 @@ func (server *Server) Run(portBinding string) error {
 		server.loadRoutes()
 	}
 
-	var compiler compile.Compiler
+	// Start precompiling apps, and ignore the errors for now
+	// The errors will get handled when the app is requested
+	go func() {
+		apps, err := compile.GetAllProjectApps()
+		if err != nil {
+			return
+		}
+
+		for _, app := range apps {
+			go server.compiler.GetApp(app.Id)
+		}
+	}()
 
 	// Apps
 	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		app, err := compiler.GetApp(id)
+		app, err := server.compiler.GetApp(id)
 		if err != nil {
 			serializedErr, err := json.Marshal(err.Error())
 			if err != nil {
 				serializedErr = []byte(`Unknown error occurred`)
 			}
 
-			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(fmt.Sprintf(`
-				<script>
-					window.parent.postMessage({
-						type: 'appError',
-						error: %s,
-					}, '*')
-				</script>
-			`, serializedErr)))
+			ctx.Data(
+				http.StatusInternalServerError,
+				"text/html; charset=utf-8",
+				[]byte("<script>"+createErrorJs(string(serializedErr))+"</script>"))
 			return
 		}
 
@@ -76,19 +100,17 @@ func (server *Server) Run(portBinding string) error {
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
 		id := ctx.Param("id")
 
-		app, err := compiler.GetApp(id)
+		app, err := server.compiler.GetApp(id)
 		if err != nil {
 			serializedErr, err := json.Marshal(err.Error())
 			if err != nil {
 				serializedErr = []byte(`Unknown error occurred`)
 			}
 
-			ctx.Data(http.StatusInternalServerError, "text/html; charset=utf-8", []byte(fmt.Sprintf(`
-				window.parent.postMessage({
-					type: 'appError',
-					error: %s,
-				}, '*')
-			`, serializedErr)))
+			ctx.Data(
+				http.StatusInternalServerError,
+				"text/html; charset=utf-8",
+				[]byte(createErrorJs(string(serializedErr))))
 			return
 		}
 

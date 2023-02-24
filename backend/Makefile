@@ -1,0 +1,2 @@
+watch:
+	go run github.com/mitranim/gow -e 'go,tsx,html' run ./cmd/cli start

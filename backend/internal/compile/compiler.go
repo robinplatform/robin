@@ -29,18 +29,16 @@ var cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 
 type Compiler struct {
 	mux      sync.Mutex
-	appCache map[string]*App
+	appCache map[string]*CompiledApp
 }
 
-type App struct {
+type CompiledApp struct {
 	Id       string
 	Html     string
 	ClientJs string
 }
 
-// TODO: The cache accesses here are not thread safe
-
-func (compiler *Compiler) GetApp(id string) (*App, error) {
+func (compiler *Compiler) GetApp(id string) (*CompiledApp, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
@@ -52,7 +50,7 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 	}
 
 	if compiler.appCache == nil && cacheEnabled {
-		compiler.appCache = make(map[string]*App)
+		compiler.appCache = make(map[string]*CompiledApp)
 	}
 
 	appConfig, err := LoadRobinAppById(id)
@@ -77,7 +75,7 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 	}
 
 	// TODO: Make this API actually make sense
-	app := &App{
+	app := &CompiledApp{
 		Id:       id,
 		Html:     htmlOutput.String(),
 		ClientJs: clientJs,
@@ -359,7 +357,7 @@ func getClientJs(id string) (string, error) {
 	return string(output.Contents), nil
 }
 
-func (app *App) GetServerJs(id string) (string, error) {
+func (app *CompiledApp) GetServerJs(id string) (string, error) {
 	_ = id
 
 	return "", nil
