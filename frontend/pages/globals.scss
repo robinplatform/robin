@@ -42,10 +42,15 @@ html {
 
 pre > code {
 	display: block;
+	overflow: scroll;
 }
 
 code {
 	padding: 1rem;
 	border-radius: 0.5rem;
 	background-color: #e3e3e3;
+}
+
+main {
+	overflow: auto;
 }
