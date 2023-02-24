@@ -69,6 +69,8 @@ func (cmd *AddCommand) Run() error {
 			if err != nil {
 				return fmt.Errorf("failed to get relative path for %s: %w", absPath, err)
 			}
+
+			resolvedAppPath = "." + string(filepath.Separator) + resolvedAppPath
 		} else {
 			resolvedAppPath = fmt.Sprintf("https://esm.sh/%s", appPath)
 		}

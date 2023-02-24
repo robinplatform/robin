@@ -9,9 +9,9 @@ import (
 
 type RobinProjectConfig struct {
 	// Name of the app
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 	// Apps to load for this project
-	Apps []string `json:"apps"`
+	Apps []string `json:"apps,omitempty"`
 }
 
 func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig() error {

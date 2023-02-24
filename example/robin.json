@@ -1,3 +1,7 @@
 {
-	"apps": ["./my-ext", "./failing-ext","./bad-js-ext"]
+	"apps": [
+		"./my-ext",
+		"./bad-js-ext",
+		"./failing-ext"
+	]
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/compile"
@@ -38,6 +39,8 @@ func (cmd *RemoveCommand) Parse(flags *pflag.FlagSet, args []string) error {
 }
 
 func (cmd *RemoveCommand) Run() error {
+	projectPath := config.GetProjectPathOrExit()
+
 	apps, err := compile.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to load project apps: %w", err)
@@ -88,7 +91,12 @@ func (cmd *RemoveCommand) Run() error {
 
 		if _, ok := rmTargetIds[appConfig.Id]; !ok {
 			if appConfig.ConfigPath.Scheme == "file" {
-				newApps = append(newApps, appConfig.ConfigPath.Path)
+				relpath, err := filepath.Rel(projectPath, appConfig.ConfigPath.Path)
+				if err != nil {
+					return fmt.Errorf("failed to get relative path of %s: %w", appConfig.ConfigPath.Path, err)
+				}
+
+				newApps = append(newApps, "."+string(filepath.Separator)+relpath)
 			} else {
 				newApps = append(newApps, appConfig.ConfigPath.String())
 			}
