@@ -65,8 +65,12 @@ func (cmd *RemoveCommand) Run() error {
 				return fmt.Errorf("unrecognized app: %s", appPattern)
 			}
 
-			fmt.Printf("Removing: %s\n", appConfig.Name)
-			rmTargetIds[appConfig.Id] = true
+			if matchingApp, ok := existingApps[appConfig.Id]; ok {
+				fmt.Printf("Removing: %s\n", matchingApp.Name)
+				rmTargetIds[matchingApp.Id] = true
+			} else {
+				fmt.Printf("Not installed: %s\n", appConfig.Name)
+			}
 		}
 	}
 
