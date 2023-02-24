@@ -3,6 +3,7 @@ package compile
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -88,12 +89,12 @@ func (compiler *Compiler) GetApp(id string) (*App, error) {
 	return app, nil
 }
 
-func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig) []es.Plugin {
+func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig, plugins []es.Plugin) []es.Plugin {
 	if appConfig.ConfigPath.Scheme == "file" {
-		return nil
+		return plugins
 	}
 
-	return []es.Plugin{
+	resolverPlugins := []es.Plugin{
 		{
 			Name: "robin-resolver",
 			Setup: func(build es.PluginBuild) {
@@ -251,6 +252,7 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig config.RobinAppConfig)
 			},
 		},
 	}
+	return append(plugins, resolverPlugins...)
 }
 
 func getClientJs(id string) (string, error) {
@@ -278,10 +280,50 @@ func getClientJs(id string) (string, error) {
 		Bundle:   true,
 		Platform: es.PlatformBrowser,
 		Write:    false,
+		Loader: map[string]es.Loader{
+			".png":  es.LoaderBase64,
+			".jpg":  es.LoaderBase64,
+			".jpeg": es.LoaderBase64,
+		},
 
 		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
 		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
-		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig)),
+		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
+			{
+				Name: "load-css",
+				Setup: func(build es.PluginBuild) {
+					build.OnLoad(es.OnLoadOptions{
+						Filter: "\\.css$",
+					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+						_, css, err := appConfig.ReadFile(args.Path)
+						if err != nil {
+							return es.OnLoadResult{}, fmt.Errorf("failed to read css file: %w", err)
+						}
+
+						cssEscaped, err := json.Marshal(string(css))
+						if err != nil {
+							return es.OnLoadResult{}, fmt.Errorf("failed to escape css: %w", err)
+						}
+
+						script := fmt.Sprintf(`!function(){
+								let d, style
+
+								try { d = document.documentElement }
+								catch (error) { return }
+
+								style = document.createElement('style')
+								style.setAttribute('data-path', '${args.path}')
+								style.innerText = %s
+								document.body.appendChild(style)
+						}()`, cssEscaped)
+
+						return es.OnLoadResult{
+							Contents: &script,
+						}, nil
+					})
+				},
+			},
+		})),
 	})
 
 	if len(result.Errors) != 0 {
