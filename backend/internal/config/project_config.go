@@ -34,3 +34,25 @@ func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig() error {
 
 	return nil
 }
+
+func (projectConfig *RobinProjectConfig) SaveRobinProjectConfig() error {
+	projectPath, err := GetProjectPath()
+	if err != nil {
+		return err
+	}
+
+	configPath := path.Join(projectPath, "robin.json")
+
+	// Let's indent the config so it is easily readable
+	buf, err := json.MarshalIndent(projectConfig, "", "\t")
+	if err != nil {
+		return fmt.Errorf("failed to marshal robin.json: %s", err)
+	}
+
+	err = os.WriteFile(configPath, buf, 0777)
+	if err != nil {
+		return fmt.Errorf("failed to write robin.json: %s", err)
+	}
+
+	return nil
+}
