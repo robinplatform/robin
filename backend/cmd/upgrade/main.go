@@ -22,7 +22,12 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("Upgrading %s ...", releaseChannel)
+	action := "Upgrading"
+	if _, err := os.Stat(releaseChannel.GetPath()); os.IsNotExist(err) {
+		action = "Installing"
+	}
+
+	fmt.Printf("%s %s ...", action, releaseChannel)
 	updatedVersion, err := upgrade.UpgradeChannel(releaseChannel)
 	if err != nil {
 		fmt.Printf("\rFailed to upgrade %s: %s\n", releaseChannel, err)

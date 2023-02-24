@@ -31,13 +31,6 @@ func init() {
 			panic(fmt.Errorf("failed to create robin directory: %w", err))
 		}
 	}
-
-	for _, rc := range []ReleaseChannel{ReleaseChannelStable, ReleaseChannelBeta, ReleaseChannelNightly} {
-		rcPath := path.Join(robinPath, string(rc))
-		if err := os.MkdirAll(rcPath, 0777); err != nil {
-			panic(fmt.Errorf("failed to create robin directory: %w", err))
-		}
-	}
 }
 
 func GetRobinPath() string {
