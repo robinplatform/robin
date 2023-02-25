@@ -2,14 +2,12 @@ package compile
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 )
 
@@ -31,15 +29,10 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 		FS: toolkitFS,
 	}
 
-	projectPath := config.GetProjectPathOrExit()
-	moduleResolver := resolve.Resolver{
-		FS:              os.DirFS(projectPath),
-		EnableDebugLogs: resolver.EnableDebugLogs,
-	}
-
 	// The first set of plugins aim to resolve the toolkit source itself, and immediately give up on any
-	// third-party module resolution requests. This gives a chance for robin-resolver to attempt to resolve
-	// the module. This is important so we don't end up loading two different versions of react.
+	// third-party module resolution requests. We try to avoid resolving modules at all, and trust that esbuild
+	// or robin-resolver will do a better job. Instead, when we load parts of toolkit, we ensure that it is loaded
+	// with a resolveDir relative to the app.
 	pluginsStart := []es.Plugin{
 		{
 			Name: "resolve-robin-toolkit",
@@ -77,36 +70,10 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 			},
 		},
 	}
-
-	// The second set of plugins try to resolve everything that was never resolved, and then load the
-	// toolkit sources.
 	pluginsEnd := []es.Plugin{
 		{
 			Name: "load-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
-				build.OnResolve(es.OnResolveOptions{
-					Namespace: "robin-toolkit",
-					Filter:    ".",
-				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					resolvedPath, err := moduleResolver.ResolveFrom(
-						strings.TrimPrefix(appConfig.Page, projectPath+string(filepath.Separator)),
-						args.Path,
-					)
-
-					resultPath := filepath.Join(projectPath, resolvedPath)
-					logger.Debug("Resolved module", log.Ctx{
-						"args":      args,
-						"appConfig": appConfig,
-						"result":    resultPath,
-					})
-
-					// We don't want to namespace this, since it is a regular node module and can
-					// be loaded by esbuild
-					return es.OnResolveResult{
-						Path: resultPath,
-					}, err
-				})
-
 				build.OnLoad(es.OnLoadOptions{
 					Filter:    ".",
 					Namespace: "robin-toolkit",
