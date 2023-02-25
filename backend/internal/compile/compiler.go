@@ -357,7 +357,7 @@ func (app *CompiledApp) buildClientJs() error {
 							return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
 						}
 
-						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/src/rpc-internal';\n\n"
+						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/rpc-internal';\n\n"
 						for _, export := range exports {
 							serverPolyfill += fmt.Sprintf("export const %s = createRpcMethod('%s', '%s');\n", export, args.Path, export)
 						}

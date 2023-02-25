@@ -1,5 +1,5 @@
 import { renderApp } from '@robinplatform/toolkit/react';
-import { useRpcQuery } from '@robinplatform/toolkit/dist/react/rpc';
+import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { getSelfSource } from './page.server';

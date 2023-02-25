@@ -1,0 +1,30 @@
+@import '../frontend/styles/variables';
+
+:root {
+	@each $name, $value in $colors {
+		--robin-color-#{$name}: #{$value};
+	}
+
+	--robin-border-radius: 0.25rem;
+}
+
+@each $name, $value in $colors {
+	.robin-bg-#{$name} {
+		background-color: var(--robin-color-#{$name});
+	}
+	.robin-text-#{$name} {
+		color: var(--robin-color-#{$name});
+	}
+}
+
+.robin-rounded {
+	border-radius: var(--robin-border-radius);
+}
+
+.robin-pad {
+	padding: 1.25rem;
+}
+
+.robin-gap {
+	gap: 1.25rem;
+}
