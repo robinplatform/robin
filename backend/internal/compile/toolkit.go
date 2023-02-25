@@ -24,7 +24,7 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 	toolkitInit.Do(initToolkit)
 
 	if toolkitFS == nil {
-		return nil
+		return plugins
 	}
 
 	resolver := resolve.Resolver{

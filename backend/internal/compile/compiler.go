@@ -33,11 +33,25 @@ type Compiler struct {
 }
 
 type CompiledApp struct {
-	Id       string
-	Html     string
+	Id string
+
+	// Html holds the HTML to be rendered on the client
+	Html string
+
+	// ClientJs holds the compiled JS bundle for the client-side app
 	ClientJs string
+
+	// ClientMetafile holds the parsed metafile for the client-side app (useful for debugging)
 	ClientMetafile map[string]any
-	Cached   bool
+
+	// ServerJs holds the compiled JS bundle for the server-side app
+	ServerJs string
+
+	// Cached is set to true if the app was loaded from the cache
+	Cached bool
+
+	// serverExports maps absolute paths of server files to the functions they export
+	serverExports map[string][]string
 }
 
 func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
@@ -66,19 +80,18 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	}
 
 	// TODO: If we are going to render the JS at the same time, might as well inline it
-	clientJs, clientMetafile, err := getClientJs(id)
-	if err != nil {
+	app := CompiledApp{
+		Id:     id,
+		Html:   htmlOutput.String(),
+		Cached: true,
+	}
+	if err := app.buildClientJs(); err != nil {
+		return CompiledApp{}, err
+	}
+	if err := app.buildServerBundle(); err != nil {
 		return CompiledApp{}, err
 	}
 
-	// TODO: Make this API actually make sense
-	app := CompiledApp{
-		Id:       id,
-		Html:     htmlOutput.String(),
-		ClientJs: clientJs,
-		ClientMetafile: clientMetafile,
-		Cached:   true,
-	}
 	if compiler.appCache != nil {
 		compiler.appCache[id] = app
 	}
@@ -250,6 +263,8 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 func getFileExports(input *es.StdinOptions) ([]string, error) {
 	result := es.Build(es.BuildOptions{
 		Stdin:    input,
+		Platform: es.PlatformNeutral,
+		Target:   es.ESNext,
 		Write:    false,
 		Metafile: true,
 	})
@@ -276,15 +291,15 @@ func getFileExports(input *es.StdinOptions) ([]string, error) {
 	panic(fmt.Errorf("unreachable code"))
 }
 
-func getClientJs(id string) (string, map[string]any, error) {
-	appConfig, err := LoadRobinAppById(id)
+func (app *CompiledApp) buildClientJs() error {
+	appConfig, err := LoadRobinAppById(app.Id)
 	if err != nil {
-		return "", nil, err
+		return err
 	}
 
 	pagePath, content, err := appConfig.ReadFile(appConfig.Page)
 	if err != nil {
-		return "", nil, err
+		return err
 	}
 
 	stdinOptions := es.StdinOptions{
@@ -296,11 +311,12 @@ func getClientJs(id string) (string, map[string]any, error) {
 		stdinOptions.ResolveDir = path.Dir(appConfig.ConfigPath.Path)
 	}
 
-	serverFiles := make(map[string][]string)
+	app.serverExports = make(map[string][]string)
 	result := es.Build(es.BuildOptions{
 		Stdin:    &stdinOptions,
 		Bundle:   true,
 		Platform: es.PlatformBrowser,
+		Target:   es.ESNext,
 		Write:    false,
 		Loader: map[string]es.Loader{
 			".png":  es.LoaderBase64,
@@ -341,12 +357,12 @@ func getClientJs(id string) (string, map[string]any, error) {
 							return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
 						}
 
-						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/dist/rpc-internal';\n\n"
+						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/src/rpc-internal';\n\n"
 						for _, export := range exports {
 							serverPolyfill += fmt.Sprintf("export const %s = createRpcMethod('%s', '%s');\n", export, args.Path, export)
 						}
 
-						serverFiles[args.Path] = exports
+						app.serverExports[args.Path] = exports
 
 						return es.OnLoadResult{
 							Contents: &serverPolyfill,
@@ -395,7 +411,7 @@ func getClientJs(id string) (string, map[string]any, error) {
 	})
 
 	if len(result.Errors) != 0 {
-		return "", nil, BuildError(result)
+		return fmt.Errorf("failed to build client: %w", BuildError(result))
 	}
 
 	var metafile map[string]any
@@ -406,11 +422,103 @@ func getClientJs(id string) (string, map[string]any, error) {
 	}
 
 	output := result.OutputFiles[0]
-	return string(output.Contents), metafile, nil
+
+	app.ClientJs = string(output.Contents)
+	app.ClientMetafile = metafile
+	return nil
 }
 
-func (app *CompiledApp) GetServerJs(id string) (string, error) {
-	_ = id
+func (app *CompiledApp) buildServerBundle() error {
+	appConfig, err := LoadRobinAppById(app.Id)
+	if err != nil {
+		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
+	}
 
-	return "", nil
+	pagePath, _, err := appConfig.ReadFile(appConfig.Page)
+	if err != nil {
+		return err
+	}
+
+	// Generate a bundle entrypoint that pulls all the server files into
+	// a single file, and re-exports the RPC methods as a consumable map.
+
+	serverRpcMethodsSource := ""
+	for serverFile, exports := range app.serverExports {
+		serverRpcMethodsSource += fmt.Sprintf(
+			"import { %s } from '%s';\n",
+			strings.Join(exports, ", "),
+			serverFile,
+		)
+	}
+
+	serverRpcMethodsSource += "\nexport const serverRpcMethods = {\n"
+	for serverFile, exports := range app.serverExports {
+		serverRpcMethodsSource += fmt.Sprintf(
+			"\t'%s': {\n",
+			serverFile,
+		)
+		for _, export := range exports {
+			serverRpcMethodsSource += fmt.Sprintf(
+				"\t\t%s,\n",
+				export,
+			)
+		}
+		serverRpcMethodsSource += "\t},\n"
+	}
+	serverRpcMethodsSource += "};\n"
+
+	// Build the bundle via esbuild
+	result := es.Build(es.BuildOptions{
+		Stdin: &es.StdinOptions{
+			Contents:   serverRpcMethodsSource,
+			Sourcefile: "server-rpc-methods.ts",
+			Loader:     es.LoaderJS,
+		},
+		Platform: es.PlatformNode,
+		Format:   es.FormatCommonJS,
+		Bundle:   true,
+		Write:    false,
+		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
+			{
+				Name: "mark-all-packages-as-external",
+				Setup: func(build es.PluginBuild) {
+					build.OnResolve(es.OnResolveOptions{
+						Filter: ".",
+					}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+						if args.Path[0] != '.' && args.Path[0] != '/' {
+							return es.OnResolveResult{
+								Path:     args.Path,
+								External: true,
+							}, nil
+						}
+
+						fmt.Println(args)
+
+						return es.OnResolveResult{}, nil
+					})
+				},
+			},
+			{
+				Name: "resolve-abs-paths",
+				Setup: func(build es.PluginBuild) {
+					build.OnResolve(es.OnResolveOptions{
+						Filter: "^/",
+					}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+						return es.OnResolveResult{
+							Path: args.Path,
+						}, nil
+					})
+				},
+			},
+		})),
+	})
+	if len(result.Errors) != 0 {
+		return BuildError(result)
+	}
+	if len(result.OutputFiles) != 1 {
+		return fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))
+	}
+
+	app.ServerJs = string(result.OutputFiles[0].Contents)
+	return nil
 }

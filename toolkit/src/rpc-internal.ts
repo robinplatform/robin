@@ -8,13 +8,7 @@ const rpcBaseUrl = `${window.location.protocol}//${window.location.host}`;
  * @param {string} serverFile The absolute path to the server file that contains the method implementation.
  * @param {string} methodName The name of the method to call. This must match the exported function name from the server file.
  */
-export function createRpcMethod({
-	serverFile,
-	methodName,
-}: {
-	serverFile: string;
-	methodName: string;
-}) {
+export function createRpcMethod(serverFile: string, methodName: string) {
 	return Object.assign(
 		async function rpcMethodWrapper(data: unknown) {
 			const url = new URL('/api/apps/v0/rpc', rpcBaseUrl);
