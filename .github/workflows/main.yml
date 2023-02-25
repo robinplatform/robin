@@ -4,6 +4,9 @@ on: [push]
 jobs:
   check-go:
     runs-on: ubuntu-22.04
+    concurrency:
+      group: ${{ github.ref }}-check-go
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
@@ -51,6 +54,9 @@ jobs:
 
   check-ts:
     runs-on: ubuntu-22.04
+    concurrency:
+      group: ${{ github.ref }}-check-ts
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
@@ -94,6 +100,10 @@ jobs:
   release:
     if: "${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/nightly' }}"
     needs: [check-go, check-ts]
+    concurrency:
+      group: ${{ github.ref }}-release
+      cancel-in-progress: true
+
     runs-on: ubuntu-22.04
 
     steps:
