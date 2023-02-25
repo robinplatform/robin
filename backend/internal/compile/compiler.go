@@ -247,6 +247,35 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 	return append(plugins, resolverPlugins...)
 }
 
+func getFileExports(input *es.StdinOptions) ([]string, error) {
+	result := es.Build(es.BuildOptions{
+		Stdin:    input,
+		Write:    false,
+		Metafile: true,
+	})
+	if len(result.Errors) > 0 {
+		return nil, fmt.Errorf("failed to build: %w", BuildError(result))
+	}
+
+	var metafile struct {
+		Outputs map[string]struct {
+			Exports []string
+		}
+	}
+	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {
+		return nil, fmt.Errorf("failed to analyze %s: %w", input.Sourcefile, err)
+	}
+	if len(metafile.Outputs) != 1 {
+		return nil, fmt.Errorf("failed to analyze %s: expected exactly one output, got %d", input.Sourcefile, len(metafile.Outputs))
+	}
+
+	for _, meta := range metafile.Outputs {
+		return meta.Exports, nil
+	}
+
+	panic(fmt.Errorf("unreachable code"))
+}
+
 func getClientJs(id string) (string, map[string]any, error) {
 	appConfig, err := LoadRobinAppById(id)
 	if err != nil {
@@ -267,6 +296,7 @@ func getClientJs(id string) (string, map[string]any, error) {
 		stdinOptions.ResolveDir = path.Dir(appConfig.ConfigPath.Path)
 	}
 
+	serverFiles := make(map[string][]string)
 	result := es.Build(es.BuildOptions{
 		Stdin:    &stdinOptions,
 		Bundle:   true,
@@ -282,6 +312,49 @@ func getClientJs(id string) (string, map[string]any, error) {
 		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
 		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
 		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
+			{
+				Name: "extract-server-ts",
+				Setup: func(build es.PluginBuild) {
+					build.OnLoad(es.OnLoadOptions{
+						Filter: "\\.server\\.ts$",
+					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+						var source []byte
+						var err error
+
+						// TODO: maybe cache the file to avoid double loading
+
+						if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+							_, source, err = appConfig.ReadFile(args.Path)
+						} else {
+							source, err = os.ReadFile(args.Path)
+						}
+						if err != nil {
+							return es.OnLoadResult{}, fmt.Errorf("failed to read server file %s: %w", args.Path, err)
+						}
+
+						exports, err := getFileExports(&es.StdinOptions{
+							Contents:   string(source),
+							Sourcefile: args.Path,
+							Loader:     es.LoaderTS,
+						})
+						if err != nil {
+							return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
+						}
+
+						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/dist/rpc-internal';\n\n"
+						for _, export := range exports {
+							serverPolyfill += fmt.Sprintf("export const %s = createRpcMethod('%s', '%s');\n", export, args.Path, export)
+						}
+
+						serverFiles[args.Path] = exports
+
+						return es.OnLoadResult{
+							Contents: &serverPolyfill,
+							Loader:   es.LoaderJS,
+						}, nil
+					})
+				},
+			},
 			{
 				Name: "load-css",
 				Setup: func(build es.PluginBuild) {
@@ -323,7 +396,7 @@ func getClientJs(id string) (string, map[string]any, error) {
 
 	if len(result.Errors) != 0 {
 		return "", nil, BuildError(result)
-		}
+	}
 
 	var metafile map[string]any
 	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {

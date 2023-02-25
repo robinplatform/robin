@@ -1,9 +1,29 @@
 import { renderApp } from '@robinplatform/toolkit/react';
 import React from 'react';
+import {
+	QueryClientProvider,
+	QueryClient,
+	useQuery,
+} from '@tanstack/react-query';
+import { getSelfSource } from './page.server';
 
 function Page() {
-	// throw new Error('OOOOOF\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nsadf');
-	return <div>DERP DERP DERP</div>;
+	const { data, error } = useQuery({
+		queryKey: ['my-query'],
+		queryFn: getSelfSource,
+	});
+
+	return (
+		<pre>
+			<code>{error ? String(error) : data ? String(data) : 'Loading ...'}</code>
+		</pre>
+	);
 }
 
-renderApp(<Page></Page>);
+const queryClient = new QueryClient();
+
+renderApp(
+	<QueryClientProvider client={queryClient}>
+		<Page />
+	</QueryClientProvider>,
+);

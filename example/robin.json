@@ -1,7 +1,6 @@
 {
+	"name": "",
 	"apps": [
-		"./my-ext",
-		"./bad-js-ext",
-		"./failing-ext"
+		"/Users/karimsa/projects/robin/example/my-ext/robin.app.json"
 	]
 }
