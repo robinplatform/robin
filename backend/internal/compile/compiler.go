@@ -29,7 +29,7 @@ var cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 
 type Compiler struct {
 	mux      sync.Mutex
-	appCache map[string]*CompiledApp
+	appCache map[string]CompiledApp
 }
 
 type CompiledApp struct {
@@ -37,54 +37,53 @@ type CompiledApp struct {
 	Html     string
 	ClientJs string
 	ClientMetafile map[string]any
+	Cached   bool
 }
 
-func (compiler *Compiler) GetApp(id string) (*CompiledApp, error) {
+func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
 	if app, found := compiler.appCache[id]; found {
-		logger.Debug("Found existing app bundle", log.Ctx{
-			"id": id,
-		})
 		return app, nil
 	}
 
 	if compiler.appCache == nil && cacheEnabled {
-		compiler.appCache = make(map[string]*CompiledApp)
+		compiler.appCache = make(map[string]CompiledApp)
 	}
 
 	appConfig, err := LoadRobinAppById(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load app config: %w", err)
+		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
 	}
 
-	// TODO: this is stupid, we should just expose methods that render directly
-	// onto the response
 	htmlOutput := bytes.NewBuffer(nil)
 	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
 		"AppConfig": appConfig,
 		"ScriptURL": fmt.Sprintf("/app-resources/%s/bootstrap.js", id),
 	}); err != nil {
-		return nil, fmt.Errorf("failed to render client html: %w", err)
+		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
 	}
 
 	// TODO: If we are going to render the JS at the same time, might as well inline it
-	clientJs, err := getClientJs(id)
+	clientJs, clientMetafile, err := getClientJs(id)
 	if err != nil {
-		return nil, err
+		return CompiledApp{}, err
 	}
 
 	// TODO: Make this API actually make sense
-	app := &CompiledApp{
+	app := CompiledApp{
 		Id:       id,
 		Html:     htmlOutput.String(),
 		ClientJs: clientJs,
+		ClientMetafile: clientMetafile,
+		Cached:   true,
 	}
 	if compiler.appCache != nil {
 		compiler.appCache[id] = app
 	}
 
+	app.Cached = false
 	return app, nil
 }
 

@@ -82,19 +82,51 @@ func (server *Server) Run(portBinding string) error {
 
 		app, err := server.compiler.GetApp(id)
 		if err != nil {
-			serializedErr, err := json.Marshal(err.Error())
-			if err != nil {
-				serializedErr = []byte(`Unknown error occurred`)
-			}
-
+			ctx.Header("X-Cache", "MISS")
 			ctx.Data(
 				http.StatusInternalServerError,
 				"text/html; charset=utf-8",
-				[]byte("<script>"+createErrorJs(string(serializedErr))+"</script>"))
+				[]byte("<script>"+createErrorJs(err.Error())+"</script>"))
 			return
 		}
 
+		if app.Cached {
+			ctx.Header("X-Cache", "HIT")
+		} else {
+			ctx.Header("X-Cache", "MISS")
+		}
 		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(app.Html))
+	})
+
+	server.router.GET("/app-resources/:id/client.meta.json", func(ctx *gin.Context) {
+		id := ctx.Param("id")
+
+		app, err := server.compiler.GetApp(id)
+		if err != nil {
+			ctx.Header("X-Cache", "MISS")
+			ctx.Data(
+				http.StatusInternalServerError,
+				"text/plain; charset=utf-8",
+				[]byte(err.Error()))
+			return
+		}
+
+		metafileJson, err := json.MarshalIndent(app.ClientMetafile, "", "\t")
+		if err != nil {
+			ctx.Header("X-Cache", "MISS")
+			ctx.Data(
+				http.StatusInternalServerError,
+				"text/plain; charset=utf-8",
+				[]byte(err.Error()))
+			return
+		}
+
+		if app.Cached {
+			ctx.Header("X-Cache", "HIT")
+		} else {
+			ctx.Header("X-Cache", "MISS")
+		}
+		ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(metafileJson))
 	})
 
 	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
@@ -107,14 +139,20 @@ func (server *Server) Run(portBinding string) error {
 				serializedErr = []byte(`Unknown error occurred`)
 			}
 
+			ctx.Header("X-Cache", "MISS")
 			ctx.Data(
 				http.StatusInternalServerError,
-				"text/html; charset=utf-8",
+				"application/javascript; charset=utf-8",
 				[]byte(createErrorJs(string(serializedErr))))
 			return
 		}
 
-		ctx.Data(http.StatusOK, "text/javascript; charset=utf-8", []byte(app.ClientJs))
+		if app.Cached {
+			ctx.Header("X-Cache", "HIT")
+		} else {
+			ctx.Header("X-Cache", "MISS")
+		}
+		ctx.Data(http.StatusOK, "application/javascript; charset=utf-8", []byte(app.ClientJs))
 	})
 
 	group := server.router.Group("/api/rpc")
