@@ -15,17 +15,23 @@ export function createRpcMethod({
 	serverFile: string;
 	methodName: string;
 }) {
-	return async function rpcMethodWrapper(data: unknown) {
-		const url = new URL('/api/apps/v0/rpc', rpcBaseUrl);
-		const res = await fetch(url.toString(), {
-			method: 'POST',
-			body: JSON.stringify({ serverFile, methodName, data }),
-			keepalive: true,
-		});
-		if (!res.ok) {
-			// TODO: Attempt to extract error message from response body
-			throw new Error(`RPC failed with status ${res.status}`);
-		}
-		return res.json();
-	};
+	return Object.assign(
+		async function rpcMethodWrapper(data: unknown) {
+			const url = new URL('/api/apps/v0/rpc', rpcBaseUrl);
+			const res = await fetch(url.toString(), {
+				method: 'POST',
+				body: JSON.stringify({ serverFile, methodName, data }),
+				keepalive: true,
+			});
+			if (!res.ok) {
+				// TODO: Attempt to extract error message from response body
+				throw new Error(`RPC failed with status ${res.status}`);
+			}
+			return res.json();
+		},
+		{
+			serverFile,
+			methodName,
+		},
+	);
 }

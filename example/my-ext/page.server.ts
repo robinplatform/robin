@@ -1,5 +1,5 @@
 import * as fs from 'fs';
 
-export async function getSelfSource() {
-    return fs.promises.readFile(__filename, 'utf8');
+export async function getSelfSource({ filename }: { filename: string }) {
+	return fs.promises.readFile(filename, 'utf8');
 }

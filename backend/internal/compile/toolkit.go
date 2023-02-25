@@ -111,14 +111,7 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 					Filter:    ".",
 					Namespace: "robin-toolkit",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					pluginData, ok := args.PluginData.(map[string]string)
-
-					// this should never happen, since we are scoped to the namespace
-					if !ok {
-						return es.OnLoadResult{}, fmt.Errorf("could not find pluginData for %s", args.Path)
-					}
-
-					contents, ok := resolver.ReadFile(pluginData["fsPath"])
+					contents, ok := resolver.ReadFile(args.Path)
 					if !ok {
 						return es.OnLoadResult{}, fmt.Errorf("could not read file %s", args.Path)
 					}

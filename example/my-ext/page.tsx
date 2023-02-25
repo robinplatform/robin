@@ -1,4 +1,5 @@
 import { renderApp } from '@robinplatform/toolkit/react';
+import { useRpcQuery } from '@robinplatform/toolkit/dist/react/rpc';
 import React from 'react';
 import {
 	QueryClientProvider,
@@ -8,10 +9,7 @@ import {
 import { getSelfSource } from './page.server';
 
 function Page() {
-	const { data, error } = useQuery({
-		queryKey: ['my-query'],
-		queryFn: getSelfSource,
-	});
+	const { data, error } = useRpcQuery(getSelfSource, { filename: __filename });
 
 	return (
 		<pre>
