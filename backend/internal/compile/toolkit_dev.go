@@ -11,12 +11,11 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
-var toolkitPath string
 var toolkitFS fs.FS
 
 var initToolkit = func() {
 	_, filename, _, _ := runtime.Caller(0)
-	toolkitPath = path.Clean(path.Join(path.Dir(filename), "..", "..", "..", "toolkit"))
+	toolkitPath := path.Clean(path.Join(path.Dir(filename), "..", "..", "..", "toolkit"))
 	toolkitFS = os.DirFS(toolkitPath)
 	logger.Warn("Detected dev mode, using local toolkit", log.Ctx{
 		"path": toolkitPath,

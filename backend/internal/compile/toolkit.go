@@ -45,40 +45,33 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 			Name: "resolve-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
 				build.OnResolve(es.OnResolveOptions{
+					Filter:    "^\\.",
 					Namespace: "robin-toolkit",
-					Filter:    ".",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					if args.Path[0] != '.' {
-						return es.OnResolveResult{}, nil
+					resolvedPath, err := resolver.Resolve(args.Path)
+					if err != nil {
+						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}
 
-					resolvedPath, err := resolver.Resolve(args.Path)
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
-						Path:      filepath.Join(toolkitPath, resolvedPath),
-						PluginData: map[string]string{
-							"fsPath": resolvedPath,
-						},
+						Path:      resolvedPath,
 					}, err
 				})
 
 				build.OnResolve(es.OnResolveOptions{
-					Filter: "@robinplatform/toolkit",
+					Filter: "^@robinplatform/toolkit",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					if !strings.HasPrefix(args.Path, "@robinplatform/toolkit") {
-						return es.OnResolveResult{}, nil
-					}
-
 					// Update the path to be relative to the resolver's FS root
 					sourcePath := "." + strings.TrimPrefix(args.Path, "@robinplatform/toolkit")
 					resolvedPath, err := resolver.Resolve(sourcePath)
+					if err != nil {
+						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
+					}
 
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
-						Path:      filepath.Join(toolkitPath, resolvedPath),
-						PluginData: map[string]string{
-							"fsPath": resolvedPath,
-						},
+						Path:      resolvedPath,
 					}, err
 				})
 			},
@@ -95,20 +88,22 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 					Namespace: "robin-toolkit",
 					Filter:    ".",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					logger.Debug("Resolving module", log.Ctx{
-						"args":      args,
-						"appConfig": appConfig,
-					})
-
 					resolvedPath, err := moduleResolver.ResolveFrom(
 						strings.TrimPrefix(appConfig.Page, projectPath+string(filepath.Separator)),
 						args.Path,
 					)
 
+					resultPath := filepath.Join(projectPath, resolvedPath)
+					logger.Debug("Resolved module", log.Ctx{
+						"args":      args,
+						"appConfig": appConfig,
+						"result":    resultPath,
+					})
+
 					// We don't want to namespace this, since it is a regular node module and can
 					// be loaded by esbuild
 					return es.OnResolveResult{
-						Path: filepath.Join(projectPath, resolvedPath),
+						Path: resultPath,
 					}, err
 				})
 
@@ -128,10 +123,20 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 						return es.OnLoadResult{}, fmt.Errorf("could not read file %s", args.Path)
 					}
 
+					resolveDir := ""
+					if appConfig.ConfigPath.Scheme == "file" {
+						resolveDir = filepath.Dir(appConfig.ConfigPath.Path)
+					}
+
+					logger.Debug("Loaded module", log.Ctx{
+						"args":       args,
+						"resolveDir": resolveDir,
+					})
+
 					str := string(contents)
 					return es.OnLoadResult{
 						Contents:   &str,
-						ResolveDir: filepath.Dir(args.Path),
+						ResolveDir: resolveDir,
 						Loader:     es.LoaderTSX,
 					}, nil
 				})

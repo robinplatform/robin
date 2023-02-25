@@ -10,8 +10,6 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
-var toolkitPath = ""
-
 type toolkitFsWrapper embed.FS
 
 func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
