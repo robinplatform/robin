@@ -9,9 +9,9 @@
 	},
 	"scripts": {
 		"build": "sass styles.scss:styles.css",
-		"format": "prettier --no-color --write 'src/**/*.{ts,tsx}'",
+		"format": "prettier --no-color --write .",
 		"lint": "npm-run-all -p lint:*",
-		"lint:prettier": "prettier --no-color --check 'src/**/*.{ts,tsx}'",
+		"lint:prettier": "prettier --no-color --check .",
 		"lint:tsc": "tsc --noEmit"
 	},
 	"devDependencies": {
