@@ -4,9 +4,9 @@
 	"license": "MIT",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-    "publishConfig": {
-        "access": "public"
-    },
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"build": "rm -rf ./dist && tsc -p tsconfig.json && yarn build:css",
 		"build:css": "sass src/styles.scss:styles.css",
@@ -25,9 +25,7 @@
 		"zod": "3.20.6"
 	},
 	"peerDependencies": {
-		"@types/react": "*",
-		"@types/react-dom": "*",
-		"react": "*",
-		"react-dom": "*"
+		"react": "^18",
+		"react-dom": "^18"
 	}
 }

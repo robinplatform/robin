@@ -141,7 +141,7 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 						resolver := resolve.NewHttpResolver(importerUrl)
 						resolved, err := resolver.ResolveFrom(importerUrl.Path, args.Path)
 						if err != nil {
-							return es.OnResolveResult{}, fmt.Errorf("could not resolve '%s': %w", args.Path, err)
+							return es.OnResolveResult{}, fmt.Errorf("could not resolve '%s' (imported by %s): %w", args.Path, args.Importer, err)
 						}
 
 						reqPath, contents, err := appConfig.ReadFile("/" + resolved)
