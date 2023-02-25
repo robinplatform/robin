@@ -1,15 +1,13 @@
 import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/dist/react/rpc';
 import React from 'react';
-import {
-	QueryClientProvider,
-	QueryClient,
-	useQuery,
-} from '@tanstack/react-query';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { getSelfSource } from './page.server';
 
 function Page() {
-	const { data, error } = useRpcQuery(getSelfSource, { filename: __filename });
+	const { data, error } = useRpcQuery(getSelfSource, {
+		filename: './package.json',
+	});
 
 	return (
 		<pre>
