@@ -36,6 +36,7 @@ type CompiledApp struct {
 	Id       string
 	Html     string
 	ClientJs string
+	ClientMetafile map[string]any
 }
 
 func (compiler *Compiler) GetApp(id string) (*CompiledApp, error) {
@@ -247,15 +248,15 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 	return append(plugins, resolverPlugins...)
 }
 
-func getClientJs(id string) (string, error) {
+func getClientJs(id string) (string, map[string]any, error) {
 	appConfig, err := LoadRobinAppById(id)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	pagePath, content, err := appConfig.ReadFile(appConfig.Page)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	stdinOptions := es.StdinOptions{
@@ -277,6 +278,7 @@ func getClientJs(id string) (string, error) {
 			".jpg":  es.LoaderBase64,
 			".jpeg": es.LoaderBase64,
 		},
+		Metafile: true,
 
 		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
 		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
@@ -321,40 +323,18 @@ func getClientJs(id string) (string, error) {
 	})
 
 	if len(result.Errors) != 0 {
-		errors := make([]string, len(result.Errors))
-		for i, err := range result.Errors {
-			if err.PluginName == "" {
-				errors[i] = err.Text
-			} else {
-				errors[i] = fmt.Sprintf("%s: %s", err.PluginName, err.Text)
-			}
-
-			if err.Location != nil {
-				errors[i] = fmt.Sprintf("%s on line %d of %s", errors[i], err.Location.Line, err.Location.File)
-			}
+		return "", nil, BuildError(result)
 		}
 
-		logger.Warn("Failed to compile extension", log.Ctx{
-			"id":         id,
-			"scriptPath": appConfig.Page,
-			"errors":     errors,
-		})
-
-		err := result.Errors[0]
-
-		errMessage := err.Text
-		if len(result.Errors) > 1 {
-			errMessage = fmt.Sprintf("%s (and %d more errors)", errMessage, len(result.Errors)-1)
+	var metafile map[string]any
+	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {
+		metafile = map[string]any{
+			"error": err.Error(),
 		}
-
-		if err.PluginName != "" {
-			return "", fmt.Errorf("%s: %s", err.PluginName, errMessage)
-		}
-		return "", fmt.Errorf("%s", errMessage)
 	}
 
 	output := result.OutputFiles[0]
-	return string(output.Contents), nil
+	return string(output.Contents), metafile, nil
 }
 
 func (app *CompiledApp) GetServerJs(id string) (string, error) {
