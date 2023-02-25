@@ -22,7 +22,7 @@ export function useRpcQuery<R>(
 			const rpcMethodData = queryKey[1] as unknown;
 
 			const { data } = await axios.post(
-				`/api/rpc/${rpcMethodName}`,
+				`/api/internal/rpc/${rpcMethodName}`,
 				rpcMethodData,
 			);
 			return options.result.parse(data);

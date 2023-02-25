@@ -24,7 +24,7 @@ type Config = {
 };
 
 export const getConfig = async (): Promise<Config> => {
-	const resp = await fetch('/api/rpc/GetConfig', {
+	const resp = await fetch('/api/internal/rpc/GetConfig', {
 		...getDefaultFetchSettings(),
 	});
 	if (!resp.ok) {
@@ -35,7 +35,7 @@ export const getConfig = async (): Promise<Config> => {
 };
 
 export const updateConfig = async (newValue: string) => {
-	const resp = await fetch('/api/rpc/UpdateConfig', {
+	const resp = await fetch('/api/internal/rpc/UpdateConfig', {
 		...getDefaultFetchSettings(),
 		body: newValue,
 	});

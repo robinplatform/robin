@@ -76,6 +76,7 @@ func (server *Server) Run(portBinding string) error {
 		}
 	}()
 
+	// TODO: Move the compiler routes to a separate file/into compiler
 	// Apps
 	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
 		id := ctx.Param("id")
@@ -155,7 +156,7 @@ func (server *Server) Run(portBinding string) error {
 		ctx.Data(http.StatusOK, "application/javascript; charset=utf-8", []byte(app.ClientJs))
 	})
 
-	group := server.router.Group("/api/rpc")
+	group := server.router.Group("/api/internal/rpc")
 	server.loadRpcMethods(group)
 
 	// TODO: Switch to using net/http for the server, and let
