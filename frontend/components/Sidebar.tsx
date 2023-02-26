@@ -31,11 +31,7 @@ const AppIcon: React.FC<{ icon: string }> = ({ icon }) => {
 
 const RestartAppButton: React.FC = () => {
 	const router = useRouter();
-	const {
-		mutate: restartApp,
-		error,
-		isLoading,
-	} = useRpcMutation({
+	const { mutate: restartApp, isLoading } = useRpcMutation({
 		method: 'RestartApp',
 		result: z.unknown(),
 

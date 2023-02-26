@@ -2,6 +2,7 @@ import { useRouter } from 'next/router';
 import React from 'react';
 import { Alert } from './Alert';
 import { Button } from './Button';
+import { useIsMutating } from '@tanstack/react-query';
 
 type Props = {
 	id: string | undefined;
@@ -86,5 +87,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 }
 
 export function AppWindow(props: Props) {
-	return <AppWindowContent key={props.id} {...props} />;
+	const numRestarts = useIsMutating({ mutationKey: ['RestartApp'] });
+
+	return <AppWindowContent key={String(props.id) + numRestarts} {...props} />;
 }
