@@ -30,13 +30,13 @@ func createTempDir() (string, error) {
 	return tmp, nil
 }
 
-func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
+func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error) {
 	// Figure out where to download the new version from
 	var assetEndpoint string
 	if releaseChannel == config.ReleaseChannelStable {
 		latestVersion, err := getLatestVersion(releaseChannel)
 		if err != nil {
-			return "", fmt.Errorf("failed to get latest version: %w", err)
+			return "", "", fmt.Errorf("failed to get latest version: %w", err)
 		}
 
 		latestVersion = strings.TrimSpace(latestVersion)
@@ -51,17 +51,17 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 	// temporary directory, and then move it into place once the download is complete.
 	tmp, err := createTempDir()
 	if err != nil {
-		return "", fmt.Errorf("failed to create temporary directory: %w", err)
+		return "", "", fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 
 	res, err := http.Get(getCdnEndpoint(assetEndpoint))
 	if err != nil {
-		return "", fmt.Errorf("failed to download tarball for %s: %w", releaseChannel, err)
+		return "", "", fmt.Errorf("failed to download tarball for %s: %w", releaseChannel, err)
 	}
 
 	gzipReader, err := gzip.NewReader(res.Body)
 	if err != nil {
-		return "", fmt.Errorf("failed to decompress tarball for %s: %w", releaseChannel, err)
+		return "", "", fmt.Errorf("failed to decompress tarball for %s: %w", releaseChannel, err)
 	}
 
 	tarReader := tar.NewReader(gzipReader)
@@ -72,7 +72,7 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 			break
 		}
 		if err != nil {
-			return "", fmt.Errorf("failed to read tarball for %s: %w", releaseChannel, err)
+			return "", "", fmt.Errorf("failed to read tarball for %s: %w", releaseChannel, err)
 		}
 
 		// Create directories as needed, copying permissions from the tar header
@@ -88,12 +88,12 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 
 		file, err := os.Create(path.Join(tmp, header.Name))
 		if err != nil {
-			return "", fmt.Errorf("failed to upgrade %s: error while downloading %s: %w", releaseChannel, header.Name, err)
+			return "", "", fmt.Errorf("failed to upgrade %s: error while downloading %s: %w", releaseChannel, header.Name, err)
 		}
 
 		_, err = io.Copy(file, tarReader)
 		if err != nil {
-			return "", fmt.Errorf("failed to upgrade %s: error while downloading %s: %w", releaseChannel, header.Name, err)
+			return "", "", fmt.Errorf("failed to upgrade %s: error while downloading %s: %w", releaseChannel, header.Name, err)
 		}
 
 		file.Chmod(header.FileInfo().Mode())
@@ -103,7 +103,7 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 		if header.Name == "./VERSION" {
 			buf, err := os.ReadFile(path.Join(tmp, header.Name))
 			if err != nil {
-				return "", fmt.Errorf("failed to upgrade %s: error while reading VERSION file: %w", releaseChannel, err)
+				return "", "", fmt.Errorf("failed to upgrade %s: error while reading VERSION file: %w", releaseChannel, err)
 			}
 			robinVersion = strings.TrimSpace(string(buf))
 		}
@@ -142,14 +142,14 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, error) {
 	}
 
 	if err := os.Symlink(path.Join(channelDir, "bin", "robin"), path.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsExist(err) {
-		return robinVersion, fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
+		return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 	}
 
 	if releaseChannel == config.ReleaseChannelStable {
 		if err := os.Symlink(path.Join(channelDir, "bin", upgradeExecName), path.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsExist(err) {
-			return robinVersion, fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
+			return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 		}
 	}
 
-	return robinVersion, nil
+	return robinVersion, linkExecName, nil
 }
