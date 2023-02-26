@@ -112,7 +112,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	htmlOutput := bytes.NewBuffer(nil)
 	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
 		"AppConfig": appConfig,
-		"ScriptURL": fmt.Sprintf("/app-resources/%s/bootstrap.js", id),
+		"ScriptURL": fmt.Sprintf("/api/app-resources/%s/bootstrap.js", id),
 	}); err != nil {
 		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
 	}

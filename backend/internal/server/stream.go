@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/log"
 )
 
@@ -54,20 +54,21 @@ type RpcWebsocket struct {
 
 var invalidInputMessage []byte = []byte(`{"kind":"error","error": "invalid input"}`)
 
-func (ws *RpcWebsocket) WebsocketHandler() func(*gin.Context) {
-	return func(c *gin.Context) {
+func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
+	return func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		upgrader := websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true
 			},
 		}
 
-		conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+		conn, err := upgrader.Upgrade(res, req, nil)
 		if err != nil {
 			logger.Err(err, "Failed to upgrade websocket", log.Ctx{
 				"error": err.Error(),
 			})
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(fmt.Sprintf(`{"error": %q}`, err.Error())))
 			return
 		}
 

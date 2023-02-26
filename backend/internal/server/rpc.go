@@ -3,10 +3,11 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
+	"github.com/julienschmidt/httprouter"
 )
 
 type HttpError struct {
@@ -43,26 +44,38 @@ type RpcMethod[Input any, Output any] struct {
 	Run func(req RpcRequest[Input]) (Output, *HttpError)
 }
 
-func sendJson(c *gin.Context, statusCode int, data interface{}) {
-	if strings.HasPrefix(c.GetHeader("User-Agent"), "curl/") {
-		buf, err := json.MarshalIndent(data, "", "\t")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.Data(statusCode, "application/json", buf)
+func sendJson(req *http.Request, res http.ResponseWriter, statusCode int, data interface{}) {
+	res.Header().Set("Content-Type", "application/json")
+
+	var buf []byte
+	var err error
+
+	if userAgent, ok := req.Header["User-Agent"]; ok && len(userAgent) > 0 && strings.HasPrefix(userAgent[0], "curl/") {
+		buf, err = json.MarshalIndent(data, "", "\t")
 	} else {
-		c.JSON(statusCode, data)
+		buf, err = json.Marshal(data)
 	}
+
+	if err != nil {
+		res.Write([]byte(fmt.Sprintf(`{"type": "error", "error": %q}`, err.Error())))
+		return
+	}
+	res.Write(buf)
 }
 
-func (method *RpcMethod[Input, Output]) Register(server *Server, router *gin.RouterGroup) {
-	router.POST("/"+method.Name, func(c *gin.Context) {
+func (method *RpcMethod[Input, Output]) Register(server *Server, router RouterGroup) {
+	router.Handle("POST", "/"+method.Name, func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		var input Input
 
 		if !method.SkipInputParsing {
-			if err := c.ShouldBindJSON(&input); err != nil {
-				sendJson(c, http.StatusBadRequest, gin.H{"type": "error", "error": err.Error()})
+			buf, err := io.ReadAll(req.Body)
+			if err != nil {
+				sendJson(req, res, http.StatusInternalServerError, map[string]any{"type": "error", "error": err.Error()})
+				return
+			}
+
+			if err := json.Unmarshal(buf, &input); err != nil {
+				sendJson(req, res, http.StatusBadRequest, map[string]any{"type": "error", "error": err.Error()})
 				return
 			}
 		}
@@ -72,9 +85,9 @@ func (method *RpcMethod[Input, Output]) Register(server *Server, router *gin.Rou
 			Server: server,
 		})
 		if httpError != nil {
-			sendJson(c, httpError.StatusCode, gin.H{"type": "error", "error": httpError.Message})
+			sendJson(req, res, httpError.StatusCode, map[string]any{"type": "error", "error": httpError.Message})
 		} else {
-			sendJson(c, 200, result)
+			sendJson(req, res, 200, result)
 		}
 	})
 }

@@ -4,12 +4,9 @@ package server
 
 import (
 	"embed"
-	"io/fs"
-	"path"
-	"regexp"
-	"strings"
+	"net/http"
 
-	"github.com/gin-gonic/gin"
+	"github.com/julienschmidt/httprouter"
 )
 
 //go:generate cp -R ../../../frontend/out ./web
@@ -22,38 +19,7 @@ var mimetypes = map[string]string{
 }
 
 func (server *Server) loadRoutes() {
-	err := fs.WalkDir(nextBuild, ".", func(assetPath string, entry fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !entry.IsDir() {
-			route := strings.TrimPrefix(assetPath, "web")
-			if strings.HasSuffix(assetPath, ".html") {
-				route = regexp.MustCompile(`\[([^\]]+)\]`).ReplaceAllString(route, ":$1")
-				route = strings.TrimSuffix(route, ".html")
-
-				if strings.HasSuffix(route, "/index") {
-					route = strings.TrimSuffix(route, "index")
-				}
-			}
-
-			mimetype, ok := mimetypes[path.Ext(assetPath)]
-			if !ok {
-				mimetype = "text/html"
-			}
-
-			server.router.GET(route, func(c *gin.Context) {
-				file, err := nextBuild.Open(assetPath)
-				if err != nil {
-					c.AbortWithStatus(500)
-				} else {
-					c.DataFromReader(200, -1, mimetype, file, nil)
-				}
-			})
-		}
-		return nil
-	})
-	if err != nil {
-		panic(err)
-	}
+	router := httprouter.New()
+	router.ServeFiles("/*filepath", http.FS(nextBuild))
+	server.webRouter = router
 }

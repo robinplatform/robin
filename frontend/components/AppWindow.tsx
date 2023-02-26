@@ -78,7 +78,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 			{!!id && !error && (
 				<iframe
 					ref={iframeRef}
-					src={`http://localhost:9010/app-resources/${id}/base.html`}
+					src={`http://localhost:9010/api/app-resources/${id}/base.html`}
 					style={{ border: '0', flexGrow: 1 }}
 				/>
 			)}

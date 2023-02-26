@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
+	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/health"
@@ -15,17 +16,23 @@ import (
 )
 
 type Server struct {
-	router   *gin.Engine
-	compiler compile.Compiler
-}
-
-func init() {
-	gin.SetMode(gin.ReleaseMode)
+	router    *httprouter.Router
+	webRouter http.Handler
+	compiler  compile.Compiler
 }
 
 var logger log.Logger = log.New("server")
 
-func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
+type RouterGroup struct {
+	router *httprouter.Router
+	prefix string
+}
+
+func (routerGroup *RouterGroup) Handle(method, path string, handler httprouter.Handle) {
+	routerGroup.router.Handle(method, routerGroup.prefix+path, handler)
+}
+
+func (server *Server) loadRpcMethods(group RouterGroup) {
 	GetVersion.Register(server, group)
 	GetConfig.Register(server, group)
 	UpdateConfig.Register(server, group)
@@ -52,6 +59,14 @@ func createErrorJs(errMessage string) string {
 	`, errMessage)
 }
 
+func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
+	if strings.HasPrefix(req.URL.Path, "/api") {
+		server.router.ServeHTTP(res, req)
+	} else {
+		server.webRouter.ServeHTTP(res, req)
+	}
+}
+
 func (server *Server) Run(portBinding string) error {
 	logger.Print("Starting robin", log.Ctx{
 		"projectPath": config.GetProjectPathOrExit(),
@@ -59,11 +74,7 @@ func (server *Server) Run(portBinding string) error {
 	})
 
 	if server.router == nil {
-		// TODO: More reasonable defaults?
-		server.router = gin.New()
-		server.router.Use(gin.Recovery())
-		server.router.SetTrustedProxies(nil)
-
+		server.router = httprouter.New()
 		server.loadRoutes()
 	}
 
@@ -82,60 +93,60 @@ func (server *Server) Run(portBinding string) error {
 
 	// TODO: Move the compiler routes to a separate file/into compiler
 	// Apps
-	server.router.GET("/app-resources/:id/base.html", func(ctx *gin.Context) {
-		id := ctx.Param("id")
+	server.router.GET("/api/app-resources/:id/base.html", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		id := params.ByName("id")
+		res.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 		app, err := server.compiler.GetApp(id)
 		if err != nil {
-			ctx.Header("X-Cache", "MISS")
-			ctx.Data(
-				http.StatusInternalServerError,
-				"text/html; charset=utf-8",
-				[]byte("<script>"+createErrorJs(err.Error())+"</script>"))
+			res.Header().Set("X-Cache", "MISS")
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte("<script>" + createErrorJs(err.Error()) + "</script>"))
 			return
 		}
 
 		if app.Cached {
-			ctx.Header("X-Cache", "HIT")
+			res.Header().Set("X-Cache", "HIT")
 		} else {
-			ctx.Header("X-Cache", "MISS")
+			res.Header().Set("X-Cache", "MISS")
 		}
-		ctx.Data(http.StatusOK, "text/html; charset=utf-8", []byte(app.Html))
+		res.WriteHeader(http.StatusOK)
+		res.Write([]byte(app.Html))
 	})
 
-	server.router.GET("/app-resources/:id/client.meta.json", func(ctx *gin.Context) {
-		id := ctx.Param("id")
+	server.router.GET("/api/app-resources/:id/client.meta.json", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		id := params.ByName("id")
 
 		app, err := server.compiler.GetApp(id)
 		if err != nil {
-			ctx.Header("X-Cache", "MISS")
-			ctx.Data(
-				http.StatusInternalServerError,
-				"text/plain; charset=utf-8",
-				[]byte(err.Error()))
+			res.Header().Set("X-Cache", "MISS")
+			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(err.Error()))
 			return
 		}
 
 		metafileJson, err := json.MarshalIndent(app.ClientMetafile, "", "\t")
 		if err != nil {
-			ctx.Header("X-Cache", "MISS")
-			ctx.Data(
-				http.StatusInternalServerError,
-				"text/plain; charset=utf-8",
-				[]byte(err.Error()))
+			res.Header().Set("X-Cache", "MISS")
+			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(err.Error()))
 			return
 		}
 
 		if app.Cached {
-			ctx.Header("X-Cache", "HIT")
+			res.Header().Set("X-Cache", "HIT")
 		} else {
-			ctx.Header("X-Cache", "MISS")
+			res.Header().Set("X-Cache", "MISS")
 		}
-		ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(metafileJson))
+		res.WriteHeader(http.StatusOK)
+		res.Header().Set("Content-Type", "application/json; charset=utf-8")
+		res.Write(metafileJson)
 	})
 
-	server.router.GET("/app-resources/:id/bootstrap.js", func(ctx *gin.Context) {
-		id := ctx.Param("id")
+	server.router.GET("/api/app-resources/:id/bootstrap.js", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		id := params.ByName("id")
 
 		app, err := server.compiler.GetApp(id)
 		if err != nil {
@@ -144,27 +155,28 @@ func (server *Server) Run(portBinding string) error {
 				serializedErr = []byte(`Unknown error occurred`)
 			}
 
-			ctx.Header("X-Cache", "MISS")
-			ctx.Data(
-				http.StatusInternalServerError,
-				"application/javascript; charset=utf-8",
-				[]byte(createErrorJs(string(serializedErr))))
+			res.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			res.WriteHeader(http.StatusInternalServerError)
+			res.Write([]byte(createErrorJs(string(serializedErr))))
 			return
 		}
 
 		if app.Cached {
-			ctx.Header("X-Cache", "HIT")
+			res.Header().Set("X-Cache", "HIT")
 		} else {
-			ctx.Header("X-Cache", "MISS")
+			res.Header().Set("X-Cache", "MISS")
 		}
-		ctx.Data(http.StatusOK, "application/javascript; charset=utf-8", []byte(app.ClientJs))
+		res.WriteHeader(http.StatusOK)
+		res.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+		res.Write([]byte(app.ClientJs))
 	})
 
-	group := server.router.Group("/api/internal/rpc")
-	server.loadRpcMethods(group)
+	server.loadRpcMethods(RouterGroup{
+		router: server.router,
+		prefix: "/api/internal/rpc",
+	})
 
-	// TODO: Switch to using net/http for the server, and let
-	// gin be the router
+	// TODO: Simplify this
 
 	fmt.Printf("Starting server ...\r")
 	go func() {
@@ -178,7 +190,7 @@ func (server *Server) Run(portBinding string) error {
 		logger.Print(fmt.Sprintf("Started robin server on http://%s", portBinding), log.Ctx{})
 	}()
 
-	if err := server.router.Run(portBinding); err != nil {
+	if err := http.ListenAndServe(portBinding, server); err != nil {
 		return fmt.Errorf("failed to start server: %s", err)
 	}
 	return nil
