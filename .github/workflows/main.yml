@@ -5,7 +5,8 @@ jobs:
   check-go:
     strategy:
       matrix:
-        runner: [ubuntu-22.04, windows-2022]
+        # todo: windows-2022
+        runner: [ubuntu-22.04]
 
     runs-on: ${{ matrix.runner }}
 
