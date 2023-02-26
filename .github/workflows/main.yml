@@ -8,6 +8,11 @@ jobs:
       group: ${{ github.ref }}-check-go
       cancel-in-progress: true
 
+    strategy:
+      matrix:
+        os: [darwin, linux, windows]
+        arch: [amd64, arm64]
+
     steps:
       - uses: actions/checkout@v3
 
@@ -30,6 +35,9 @@ jobs:
           fi
 
       - name: Generate
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
         run: |
           # Generating a pseudo frontend build so that vet
           # does not complain about the lack of an embed target
@@ -42,12 +50,18 @@ jobs:
           go generate -x -tags prod ./...
 
       - name: Vet
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
         run: |
           cd backend/
           go vet ./...
           go vet -tags prod ./...
 
       - name: Test
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
         run: |
           cd backend/
           go test -v -race ./...
