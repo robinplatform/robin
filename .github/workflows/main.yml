@@ -3,15 +3,14 @@ on: [push]
 
 jobs:
   check-go:
-    runs-on: ubuntu-22.04
-
     strategy:
       matrix:
-        os: [darwin, linux, windows]
-        arch: [amd64, arm64]
+        runner: [ubuntu-22.04, windows-2022]
+
+    runs-on: ${{ matrix.runner }}
 
     concurrency:
-      group: ${{ github.ref }}-check-go-${{ matrix.os }}-${{ matrix.arch }}
+      group: ${{ github.ref }}-check-go-${{ matrix.runner }}
       cancel-in-progress: true
 
     steps:
@@ -36,9 +35,6 @@ jobs:
           fi
 
       - name: Generate
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
         run: |
           # Generating a pseudo frontend build so that vet
           # does not complain about the lack of an embed target
@@ -51,18 +47,12 @@ jobs:
           go generate -x -tags prod ./...
 
       - name: Vet
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
         run: |
           cd backend/
           go vet ./...
           go vet -tags prod ./...
 
       - name: Test
-        env:
-          GOOS: ${{ matrix.os }}
-          GOARCH: ${{ matrix.arch }}
         run: |
           cd backend/
           go test -v -race ./...
