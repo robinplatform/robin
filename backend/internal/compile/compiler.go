@@ -345,8 +345,8 @@ func (app *CompiledApp) buildClientJs() error {
 		Sourcefile: pagePath.String(),
 		Loader:     es.LoaderTSX,
 	}
-	if appConfig.ConfigPath.Scheme == "file" {
-		stdinOptions.ResolveDir = path.Dir(appConfig.ConfigPath.Path)
+	if pagePath.Scheme == "file" {
+		stdinOptions.ResolveDir = path.Dir(pagePath.Path)
 	}
 
 	app.serverExports = make(map[string][]string)
