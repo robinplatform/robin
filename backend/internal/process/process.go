@@ -186,30 +186,6 @@ func (m *ProcessManager[Meta]) IsAlive(id ProcessId) bool {
 	return procEntry.IsAlive()
 }
 
-// Kill will kill the process with the given id (not PID), and remove it from
-// the internal database.
-// TODO: Make this work on windows
-func (m *ProcessManager[Meta]) Kill(id ProcessId) error {
-	w := m.db.WriteHandle()
-	defer w.Close()
-
-	procEntry, found := w.Find(findById[Meta](id))
-	if !found {
-		return processNotFound(id)
-	}
-
-	// We will not treat ESRCH as an error, since it means the process is already dead.
-	if err := syscall.Kill(procEntry.Pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
-		return fmt.Errorf("failed to kill process: %w", err)
-	}
-
-	if err := w.Delete(findById[Meta](id)); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
 // from a path
 
@@ -270,9 +246,7 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	attr.Env = make([]string, 0, len(procConfig.Env))
 	attr.Dir = procConfig.WorkDir
 	attr.Files = []*os.File{empty, output, output}
-	attr.Sys = &syscall.SysProcAttr{
-		Setpgid: true,
-	}
+	attr.Sys = getProcessSysAttrs()
 
 	for key, value := range procConfig.Env {
 		attr.Env = append(attr.Env, key+"="+value)
