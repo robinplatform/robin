@@ -611,6 +611,7 @@ func (app *CompiledApp) StartServer() error {
 		Args:    []string{"/Users/karimsa/projects/robin/toolkit/internal/app-daemon.js"},
 		WorkDir: projectPath,
 		Env: map[string]string{
+			"ROBIN_PROCESS_TYPE":  "daemon",
 			"ROBIN_DAEMON_TARGET": tmpFileName,
 			"PORT":                strPortAvailable,
 		},

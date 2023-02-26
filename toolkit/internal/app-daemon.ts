@@ -5,6 +5,12 @@ import express from 'express';
 import morgan from 'morgan';
 import { z } from 'zod';
 
+import { Robin } from './types';
+
+if (!Robin.isDaemonProcess) {
+	throw new Error('This file should only be run in a daemon process');
+}
+
 interface RpcMethod<Input, Output> {
 	(input: Input): Promise<Output>;
 }
@@ -54,14 +60,38 @@ app.post('/api/RunAppMethod', async (req, res) => {
 	}
 });
 
-app.listen(process.env.PORT, () => {
-	console.log(`Started listening on :${process.env.PORT}`);
-
-	// Start a timer to automatically exit after 5 minutes of inactivity
-	setInterval(() => {
-		if (Date.now() - lastRequest > 1 * 60 * 1000) {
-			console.log('No requests in 5 minutes, exiting');
-			process.exit(0);
+async function main() {
+	try {
+		// Run startup handlers
+		try {
+			for (const handler of Robin.startupHandlers) {
+				await handler();
+			}
+		} catch (err) {
+			throw Object.assign(
+				new Error('Robin app daemon crashed during startup handlers'),
+				{ cause: err },
+			);
 		}
-	}, 1 * 60 * 1000);
-});
+
+		// Start the server
+		await new Promise<void>((resolve, reject) => {
+			app.on('error', reject);
+			app.listen(process.env.PORT, () => resolve());
+		});
+		console.log(`Started listening on :${process.env.PORT}`);
+
+		// Start a timer to automatically exit after 5 minutes of inactivity
+		setInterval(() => {
+			if (Date.now() - lastRequest > 1 * 60 * 1000) {
+				console.log('No requests in 5 minutes, exiting');
+				process.exit(0);
+			}
+		}, 1 * 60 * 1000);
+	} catch (err) {
+		console.error(err);
+		process.exit(1);
+	}
+}
+
+main();
