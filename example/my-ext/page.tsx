@@ -10,7 +10,14 @@ function Page() {
 	});
 
 	return (
-		<pre>
+		<pre
+			style={{
+				margin: '1rem',
+				padding: '1rem',
+				background: '#e3e3e3',
+				borderRadius: 'var(--robin-border-radius)',
+			}}
+		>
 			<code>{error ? String(error) : data ? String(data) : 'Loading ...'}</code>
 		</pre>
 	);
