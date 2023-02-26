@@ -12,7 +12,7 @@ type Store[Model any] struct {
 	FilePath string
 
 	data  []Model
-	rwMux sync.RWMutex
+	rwMux *sync.RWMutex
 }
 
 type WHandle[Model any] struct {
@@ -23,8 +23,7 @@ type RHandle[Model any] struct {
 	store *Store[Model]
 }
 
-func (store *Store[Model]) Open() error {
-	store.rwMux = sync.RWMutex{}
+func (store *Store[Model]) open() error {
 	store.rwMux.Lock()
 	defer store.rwMux.Unlock()
 
@@ -41,6 +40,15 @@ func (store *Store[Model]) Open() error {
 	}
 
 	return nil
+}
+
+func NewStore[Model any](dbPath string) (Store[Model], error) {
+	store := Store[Model]{
+		FilePath: dbPath,
+		rwMux:    &sync.RWMutex{},
+	}
+	err := store.open()
+	return store, err
 }
 
 func (store *Store[Model]) WriteHandle() WHandle[Model] {
@@ -73,28 +81,13 @@ func (w *WHandle[Model]) Find(matcher func(row Model) bool) (Model, bool) {
 }
 
 func (w *WHandle[Model]) Delete(matcher func(row Model) bool) error {
-	// I am not used to this language enough to feel OK with this
-	// code by default, but it's recommended by Go Wiki and also
-	// in principle it makes sense:
-	// https://github.com/golang/go/wiki/SliceTricks#filtering-without-allocating
-
-	data := w.store.data
-	out := data[:0]
-	for _, row := range data {
+	data := make([]Model, 0, len(w.store.data))
+	for _, row := range w.store.data {
 		if !matcher(row) {
-			// Out uses the same backing storage because it was created
-			// from the original sice, so there's no additional allocation here
-			out = append(out, row)
+			data = append(data, row)
 		}
 	}
-
-	// Clear out previous items to ensure garbage collection
-	var zero Model
-	for i := len(out); i < len(data); i++ {
-		data[i] = zero // or the zero value of T
-	}
-
-	w.store.data = out
+	w.store.data = data
 
 	return w.store.flush()
 }

@@ -12,8 +12,8 @@ func TestStoreWrite(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	db := Store[Data]{FilePath: path.Join(dir, "test")}
-	if err := db.Open(); err != nil {
+	db, err := NewStore[Data](path.Join(dir, "test"))
+	if err != nil {
 		t.Fatal(err)
 	}
 

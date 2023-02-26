@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -14,15 +15,20 @@ import (
 	"robinplatform.dev/internal/model"
 )
 
+var (
+	logger = log.New("process")
+)
+
 type ProcessNamespace string
 
 const (
-	NamespaceExtensionSpawn  ProcessNamespace = "extension-spawn"
 	NamespaceExtensionDaemon ProcessNamespace = "extension-daemon"
 	NamespaceExtensionLambda ProcessNamespace = "extension-lambda"
 	NamespaceInternal        ProcessNamespace = "internal"
 )
 
+// TODO: Rename these three, they don't make sense. Also maybe some
+// doc comments to help explain what they do.
 type ProcessId struct {
 	Namespace    ProcessNamespace
 	NamespaceKey string
@@ -34,7 +40,7 @@ type ProcessConfig struct {
 	WorkDir string
 	Env     map[string]string
 	Command string
-	Argv    []string
+	Args    []string
 }
 
 type Process struct {
@@ -44,7 +50,30 @@ type Process struct {
 	WorkDir   string
 	Env       map[string]string
 	Command   string
-	Argv      []string
+	Args      []string
+}
+
+func (process *Process) waitForExit(pid int) {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		logger.Debug("Failed to find process to wait on", log.Ctx{
+			"process": process,
+			"err":     err,
+		})
+		return
+	}
+
+	if exitCode, err := proc.Wait(); err != nil {
+		logger.Debug("Process exited with error", log.Ctx{
+			"process":  process,
+			"exitCode": exitCode,
+			"err":      err,
+		})
+	} else {
+		logger.Debug("Process exited", log.Ctx{
+			"process": process,
+		})
+	}
 }
 
 func findById(id ProcessId) func(row Process) bool {
@@ -78,7 +107,7 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 	if cfg.WorkDir == "" {
 		dir, err := os.Getwd()
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get working directory: %w", err)
 		}
 
 		cfg.WorkDir = dir
@@ -88,19 +117,19 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 }
 
 type ProcessManager struct {
-	db     model.Store[Process]
-	logger log.Logger
+	db model.Store[Process]
 }
 
-func (m *ProcessManager) LoadDb(path string) error {
-	if m.db.FilePath != "" {
-		return fmt.Errorf("already loaded DB at %s", m.db.FilePath)
+func NewProcessManager(dbPath string) (*ProcessManager, error) {
+	manager := &ProcessManager{}
+
+	var err error
+	manager.db, err = model.NewStore[Process](dbPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
 
-	m.db.FilePath = path
-	m.logger = log.New("process-manager")
-
-	return m.db.Open()
+	return manager, nil
 }
 
 func (m *ProcessManager) IsAlive(id ProcessId) bool {
@@ -112,24 +141,30 @@ func (m *ProcessManager) IsAlive(id ProcessId) bool {
 		return false
 	}
 
+	// TODO: check the actual error, it might've been a permission error
+	// or something else.
 	process, err := os.FindProcess(procEntry.Pid)
 	if err != nil {
-		// On Windows, if the process doesn't exist, this will
-		// error. On Unix, it won't do anything.
 		return false
 	}
 
-	// TODO: this next part still isn't supported on windows,
-	// didn't do it there yet
-	err = process.Signal(syscall.Signal(0))
-	m.logger.Debug("got error on signal", log.Ctx{
-		"err": err,
-	})
+	// On windows, if we located a process, it's alive.
+	// On other platforms, we only have a handle, and need to send a signal
+	// to see if it's alive.
+	if runtime.GOOS != "windows" {
+		err = process.Signal(syscall.Signal(0))
+		logger.Debug("got error on signal", log.Ctx{
+			"err": err,
+		})
+	}
 
 	return err == nil
 
 }
 
+// Kill will kill the process with the given id (not PID), and remove it from
+// the internal database.
+// TODO: Make this work on windows
 func (m *ProcessManager) Kill(id ProcessId) error {
 	w := m.db.WriteHandle()
 	defer w.Close()
@@ -140,7 +175,7 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 	}
 
 	if err := syscall.Kill(-procEntry.Pid, syscall.SIGKILL); err != nil {
-		return err
+		return fmt.Errorf("failed to kill process: %w", err)
 	}
 
 	if err := w.Delete(findById(id)); err != nil {
@@ -150,31 +185,17 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 	return nil
 }
 
+// TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
+// from a path
+
 func (m *ProcessManager) SpawnPath(config ProcessConfig) error {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
 	}
 
 	return m.Spawn(config)
-}
-
-func waitForExit(pid int, logger log.Logger) {
-	proc, err := os.FindProcess(pid)
-	if err != nil {
-		logger.Debug("Failed to find process to wait on", log.Ctx{
-			"err": err,
-		})
-		return
-	}
-
-	exitCode, err := proc.Wait()
-
-	logger.Debug("Waited for process to exit", log.Ctx{
-		"exitCode": exitCode,
-		"err":      err,
-	})
 }
 
 func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
@@ -193,21 +214,24 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 		)
 	}
 
-	m.logger.Info("Spawning Process", log.Ctx{
-		"id": procConfig.Id,
+	logger.Info("Spawning Process", log.Ctx{
+		"config": procConfig,
 	})
 
 	empty, err := os.Open(os.DevNull)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open null device: %w", err)
 	}
 	defer empty.Close()
 
 	robinPath := config.GetRobinPath()
 	procFolderPath := path.Join(robinPath, "processes")
-	os.MkdirAll(procFolderPath, 0755)
 
-	procPath := path.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key)
+	if err := os.MkdirAll(procFolderPath, 0755); err != nil {
+		return fmt.Errorf("failed to create process folder: %w", err)
+	}
+
+	procPath := path.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
 
 	output, err := os.OpenFile(procPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
@@ -227,7 +251,7 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 		attr.Env = append(attr.Env, key+"="+value)
 	}
 
-	argStrings := append([]string{procConfig.Command}, procConfig.Argv...)
+	argStrings := append([]string{procConfig.Command}, procConfig.Args...)
 	proc, err := os.StartProcess(procConfig.Command, argStrings, &attr)
 	if err != nil {
 		return err
@@ -238,7 +262,7 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 		WorkDir:   procConfig.WorkDir,
 		StartedAt: time.Now(),
 		Command:   procConfig.Command,
-		Argv:      procConfig.Argv,
+		Args:      procConfig.Args,
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
 	}
@@ -249,10 +273,10 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 	}
 
 	// Reap zombies
-	go waitForExit(entry.Pid, m.logger)
+	go entry.waitForExit(entry.Pid)
 
-	m.logger.Debug("proc created", log.Ctx{
-		"proc": entry.Pid,
+	logger.Debug("Process created", log.Ctx{
+		"process": entry,
 	})
 
 	if err := w.Insert(entry); err != nil {
