@@ -35,15 +35,25 @@ type ProcessId struct {
 	Key          string
 }
 
-type ProcessConfig struct {
+func (id ProcessId) String() string {
+	return fmt.Sprintf(
+		"%s-%s-%s",
+		id.Namespace,
+		id.NamespaceKey,
+		id.Key,
+	)
+}
+
+type ProcessConfig[Meta any] struct {
 	Id      ProcessId
 	WorkDir string
 	Env     map[string]string
 	Command string
 	Args    []string
+	Meta    Meta
 }
 
-type Process struct {
+type Process[Meta any] struct {
 	Id        ProcessId
 	Pid       int
 	StartedAt time.Time
@@ -51,9 +61,12 @@ type Process struct {
 	Env       map[string]string
 	Command   string
 	Args      []string
+	Meta      Meta
 }
 
-func (process *Process) waitForExit(pid int) {
+// TODO: Avoid logging entire Env
+
+func (process *Process[_]) waitForExit(pid int) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
@@ -76,13 +89,31 @@ func (process *Process) waitForExit(pid int) {
 	}
 }
 
-func findById(id ProcessId) func(row Process) bool {
-	return func(row Process) bool {
+func (process *Process[_]) IsAlive() bool {
+	// TODO: check the actual error, it might've been a permission error
+	// or something else.
+	osProcess, err := os.FindProcess(process.Pid)
+	if err != nil {
+		return false
+	}
+
+	// On windows, if we located a process, it's alive.
+	// On other platforms, we only have a handle, and need to send a signal
+	// to see if it's alive.
+	if runtime.GOOS == "windows" {
+		return true
+	}
+
+	return osProcess.Signal(syscall.Signal(0)) == nil
+}
+
+func findById[Meta any](id ProcessId) func(row Process[Meta]) bool {
+	return func(row Process[Meta]) bool {
 		return row.Id == id
 	}
 }
 
-func (cfg *ProcessConfig) fillEmptyValues() error {
+func (cfg *ProcessConfig[Meta]) fillEmptyValues() error {
 	if cfg.Id.Key == "" {
 		return fmt.Errorf("cannot create process without a Key")
 	}
@@ -116,15 +147,15 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 	return nil
 }
 
-type ProcessManager struct {
-	db model.Store[Process]
+type ProcessManager[Meta any] struct {
+	db model.Store[Process[Meta]]
 }
 
-func NewProcessManager(dbPath string) (*ProcessManager, error) {
-	manager := &ProcessManager{}
+func NewProcessManager[Meta any](dbPath string) (*ProcessManager[Meta], error) {
+	manager := &ProcessManager[Meta]{}
 
 	var err error
-	manager.db, err = model.NewStore[Process](dbPath)
+	manager.db, err = model.NewStore[Process[Meta]](dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
@@ -132,53 +163,47 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 	return manager, nil
 }
 
-func (m *ProcessManager) IsAlive(id ProcessId) bool {
+func (manager *ProcessManager[Meta]) FindById(id ProcessId) (*Process[Meta], error) {
+	r := manager.db.ReadHandle()
+	defer r.Close()
+
+	procEntry, found := r.Find(findById[Meta](id))
+	if !found {
+		return nil, processNotFound(id)
+	}
+	return &procEntry, nil
+}
+
+func (m *ProcessManager[Meta]) IsAlive(id ProcessId) bool {
 	r := m.db.ReadHandle()
 	defer r.Close()
 
-	procEntry, found := r.Find(findById(id))
+	procEntry, found := r.Find(findById[Meta](id))
 	if !found {
 		return false
 	}
 
-	// TODO: check the actual error, it might've been a permission error
-	// or something else.
-	process, err := os.FindProcess(procEntry.Pid)
-	if err != nil {
-		return false
-	}
-
-	// On windows, if we located a process, it's alive.
-	// On other platforms, we only have a handle, and need to send a signal
-	// to see if it's alive.
-	if runtime.GOOS != "windows" {
-		err = process.Signal(syscall.Signal(0))
-		logger.Debug("got error on signal", log.Ctx{
-			"err": err,
-		})
-	}
-
-	return err == nil
-
+	return procEntry.IsAlive()
 }
 
 // Kill will kill the process with the given id (not PID), and remove it from
 // the internal database.
 // TODO: Make this work on windows
-func (m *ProcessManager) Kill(id ProcessId) error {
+func (m *ProcessManager[Meta]) Kill(id ProcessId) error {
 	w := m.db.WriteHandle()
 	defer w.Close()
 
-	procEntry, found := w.Find(findById(id))
+	procEntry, found := w.Find(findById[Meta](id))
 	if !found {
-		return fmt.Errorf("id %+v wasn't found in process database", id)
+		return processNotFound(id)
 	}
 
-	if err := syscall.Kill(-procEntry.Pid, syscall.SIGKILL); err != nil {
+	// We will not treat ESRCH as an error, since it means the process is already dead.
+	if err := syscall.Kill(procEntry.Pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
 		return fmt.Errorf("failed to kill process: %w", err)
 	}
 
-	if err := w.Delete(findById(id)); err != nil {
+	if err := w.Delete(findById[Meta](id)); err != nil {
 		return err
 	}
 
@@ -188,30 +213,32 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
 // from a path
 
-func (m *ProcessManager) SpawnPath(config ProcessConfig) error {
+func (m *ProcessManager[Meta]) SpawnPath(config ProcessConfig[Meta]) (*Process[Meta], error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
-		return fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
+		return nil, fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
 	}
 
 	return m.Spawn(config)
 }
 
-func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
+func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[Meta], error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
-		return err
+		return nil, err
 	}
 
 	w := m.db.WriteHandle()
 	defer w.Close()
 
-	prev, found := w.Find(findById(procConfig.Id))
+	prev, found := w.Find(findById[Meta](procConfig.Id))
 	if found {
-		return fmt.Errorf(
-			"found previous process with id=%+v",
-			prev.Id,
-		)
+		if prev.IsAlive() {
+			return &prev, processExists(procConfig.Id)
+		}
+		if err := w.Delete(findById[Meta](procConfig.Id)); err != nil {
+			return nil, fmt.Errorf("failed to delete previous process: %w", err)
+		}
 	}
 
 	logger.Info("Spawning Process", log.Ctx{
@@ -220,7 +247,7 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 
 	empty, err := os.Open(os.DevNull)
 	if err != nil {
-		return fmt.Errorf("failed to open null device: %w", err)
+		return nil, fmt.Errorf("failed to open null device: %w", err)
 	}
 	defer empty.Close()
 
@@ -228,14 +255,14 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 	procFolderPath := path.Join(robinPath, "processes")
 
 	if err := os.MkdirAll(procFolderPath, 0755); err != nil {
-		return fmt.Errorf("failed to create process folder: %w", err)
+		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
 	procPath := path.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
 
 	output, err := os.OpenFile(procPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer output.Close()
 
@@ -254,10 +281,10 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 	argStrings := append([]string{procConfig.Command}, procConfig.Args...)
 	proc, err := os.StartProcess(procConfig.Command, argStrings, &attr)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	entry := Process{
+	entry := Process[Meta]{
 		Id:        procConfig.Id,
 		WorkDir:   procConfig.WorkDir,
 		StartedAt: time.Now(),
@@ -265,11 +292,12 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 		Args:      procConfig.Args,
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
+		Meta:      procConfig.Meta,
 	}
 
 	// Release the process so that it doesn't die on exit
 	if err = proc.Release(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Reap zombies
@@ -280,8 +308,8 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) error {
 	})
 
 	if err := w.Insert(entry); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &entry, nil
 }
