@@ -17,7 +17,7 @@ type GetVersionResponse struct {
 var GetVersion = rpc.Method[struct{}, GetVersionResponse]{
 	Name:             "GetVersion",
 	SkipInputParsing: true,
-	Run: func(_ struct{}) (GetVersionResponse, *rpc.HttpError) {
+	Run: func(_ rpc.RpcRequest[struct{}]) (GetVersionResponse, *rpc.HttpError) {
 		return GetVersionResponse{
 			Version: config.GetRobinVersion(),
 			OS:      runtime.GOOS,
@@ -29,7 +29,7 @@ var GetVersion = rpc.Method[struct{}, GetVersionResponse]{
 var GetConfig = rpc.Method[struct{}, config.RobinConfig]{
 	Name:             "GetConfig",
 	SkipInputParsing: true,
-	Run: func(_ struct{}) (config.RobinConfig, *rpc.HttpError) {
+	Run: func(_ rpc.RpcRequest[struct{}]) (config.RobinConfig, *rpc.HttpError) {
 		robinConfig, err := config.LoadProjectConfig()
 		if err != nil {
 			return robinConfig, &rpc.HttpError{
@@ -43,9 +43,9 @@ var GetConfig = rpc.Method[struct{}, config.RobinConfig]{
 
 var UpdateConfig = rpc.Method[config.RobinConfig, struct{}]{
 	Name: "UpdateConfig",
-	Run: func(c config.RobinConfig) (struct{}, *rpc.HttpError) {
+	Run: func(c rpc.RpcRequest[config.RobinConfig]) (struct{}, *rpc.HttpError) {
 		var empty struct{}
-		if err := config.UpdateProjectConfig(c); err != nil {
+		if err := config.UpdateProjectConfig(c.Data); err != nil {
 			return empty, &rpc.HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

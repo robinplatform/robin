@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -14,7 +15,18 @@ type HttpError struct {
 	Message    string
 }
 
-// TODO: Add context modeled after rpc.Stream
+func Errorf(statusCode int, format string, args ...interface{}) *HttpError {
+	return &HttpError{
+		StatusCode: statusCode,
+		Message:    fmt.Sprintf(format, args...),
+	}
+}
+
+type RpcRequest[Input any] struct {
+	// Data is the input sent by the client
+	Data Input
+}
+
 type Method[Input any, Output any] struct {
 	// Name of the method, used by the client to call it
 	Name string
@@ -26,7 +38,7 @@ type Method[Input any, Output any] struct {
 	// Run implements the actual method. It must always return the same shape,
 	// and it must be a struct. The error must be of type *HttpError, and therefore
 	// contain a reasonable HTTP status code.
-	Run func(input Input) (Output, *HttpError)
+	Run func(req RpcRequest[Input]) (Output, *HttpError)
 }
 
 var logger log.Logger = log.New("rpc")
@@ -50,14 +62,16 @@ func (method *Method[Input, Output]) Register(router *gin.RouterGroup) {
 
 		if !method.SkipInputParsing {
 			if err := c.ShouldBindJSON(&input); err != nil {
-				sendJson(c, http.StatusBadRequest, gin.H{"error": err.Error()})
+				sendJson(c, http.StatusBadRequest, gin.H{"type": "error", "error": err.Error()})
 				return
 			}
 		}
 
-		result, httpError := method.Run(input)
+		result, httpError := method.Run(RpcRequest[Input]{
+			Data: input,
+		})
 		if httpError != nil {
-			sendJson(c, httpError.StatusCode, gin.H{"error": httpError.Message})
+			sendJson(c, httpError.StatusCode, gin.H{"type": "error", "error": httpError.Message})
 		} else {
 			sendJson(c, 200, result)
 		}
