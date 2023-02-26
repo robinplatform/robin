@@ -117,7 +117,6 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
 	}
 
-	// TODO: If we are going to render the JS at the same time, might as well inline it
 	app := CompiledApp{
 		Id:     id,
 		Html:   htmlOutput.String(),
@@ -375,8 +374,6 @@ func (app *CompiledApp) buildClientJs() error {
 						var source []byte
 						var err error
 
-						// TODO: maybe cache the file to avoid double loading
-
 						if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
 							_, source, err = appConfig.ReadFile(args.Path)
 						} else {
@@ -598,6 +595,28 @@ func (app *CompiledApp) StartServer() error {
 	strPortAvailable := strconv.FormatInt(int64(portAvailable), 10)
 	listener.Close()
 
+	// Extract the daemon runner onto disk
+	daemonRunnerSourceFile, err := toolkitFS.Open("internal/app-daemon.js")
+	if err != nil {
+		return fmt.Errorf("failed to start app server: could not find daemon runner: %w", err)
+	}
+	daemonRunnerSource, err := io.ReadAll(daemonRunnerSourceFile)
+	if err != nil {
+		return fmt.Errorf("failed to start app server: could not find daemon runner: %w", err)
+	}
+
+	daemonRunnerFilePath := filepath.Join(os.TempDir(), "robin-daemon-runner.js")
+	daemonRunnerFile, err := os.Create(daemonRunnerFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
+	}
+	if _, err := daemonRunnerFile.Write(daemonRunnerSource); err != nil {
+		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
+	}
+	if err := daemonRunnerFile.Close(); err != nil {
+		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
+	}
+
 	// Start the app server process
 	projectPath := config.GetProjectPathOrExit()
 	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
@@ -607,8 +626,7 @@ func (app *CompiledApp) StartServer() error {
 			Key:          app.Id,
 		},
 		Command: "node",
-		// TODO: fix this
-		Args:    []string{"/Users/karimsa/projects/robin/toolkit/internal/app-daemon.js"},
+		Args:    []string{daemonRunnerFilePath},
 		WorkDir: projectPath,
 		Env: map[string]string{
 			"ROBIN_PROCESS_TYPE":  "daemon",

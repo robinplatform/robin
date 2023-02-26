@@ -11,13 +11,7 @@ if (!Robin.isDaemonProcess) {
 	throw new Error('This file should only be run in a daemon process');
 }
 
-interface RpcMethod<Input, Output> {
-	(input: Input): Promise<Output>;
-}
-
-const { serverRpcMethods } = require(process.env.ROBIN_DAEMON_TARGET!) as {
-	serverRpcMethods: Record<string, Record<string, RpcMethod<unknown, unknown>>>;
-};
+const serverRpcMethods = Robin.getAppRpcMethods();
 
 const app = express();
 
