@@ -1,3 +1,5 @@
+// TODO: Cleanup this file
+
 import { Stream } from './stream';
 
 // Setting this up as a function so that there's no
