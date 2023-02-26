@@ -2,18 +2,25 @@ package compile
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
+	"time"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
@@ -21,6 +28,10 @@ import (
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 )
+
+type processMeta struct {
+	Port int `json:"port"`
+}
 
 var (
 	//go:embed client.html
@@ -32,14 +43,18 @@ var (
 
 	cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 
-	processManager *process.ProcessManager
+	processManager *process.ProcessManager[processMeta]
+
+	// TODO: add something like a write handle to processManager so we don't
+	// need to use our own mutex
+	daemonProcessMux = &sync.Mutex{}
 )
 
 func init() {
 	robinPath := config.GetRobinPath()
 
 	var err error
-	processManager, err = process.NewProcessManager(filepath.Join(
+	processManager, err = process.NewProcessManager[processMeta](filepath.Join(
 		robinPath,
 		"app-processes.db",
 	))
@@ -54,6 +69,8 @@ type Compiler struct {
 }
 
 type CompiledApp struct {
+	httpClient *http.Client
+
 	Id string
 
 	// Html holds the HTML to be rendered on the client
@@ -378,7 +395,7 @@ func (app *CompiledApp) buildClientJs() error {
 							return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
 						}
 
-						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/rpc-internal';\n\n"
+						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/internal/rpc';\n\n"
 						for _, export := range exports {
 							serverPolyfill += fmt.Sprintf(
 								"export const %s = createRpcMethod(%q, %q, %q);\n",
@@ -495,6 +512,8 @@ func (app *CompiledApp) buildServerBundle() error {
 	serverRpcMethodsSource += "};\n"
 
 	// Build the bundle via esbuild
+	// TODO: Maybe support 'external' packages somehow, or all external packages. It'll speed up builds, but
+	// more importantly, it is necessary to support native deps.
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
 			Contents:   serverRpcMethodsSource,
@@ -506,25 +525,6 @@ func (app *CompiledApp) buildServerBundle() error {
 		Bundle:   true,
 		Write:    false,
 		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
-			{
-				Name: "mark-all-packages-as-external",
-				Setup: func(build es.PluginBuild) {
-					build.OnResolve(es.OnResolveOptions{
-						Filter: ".",
-					}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-						if args.Path[0] != '.' && args.Path[0] != '/' {
-							return es.OnResolveResult{
-								Path:     args.Path,
-								External: true,
-							}, nil
-						}
-
-						fmt.Println(args)
-
-						return es.OnResolveResult{}, nil
-					})
-				},
-			},
 			{
 				Name: "resolve-abs-paths",
 				Setup: func(build es.PluginBuild) {
@@ -559,6 +559,9 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 }
 
 func (app *CompiledApp) StartServer() error {
+	daemonProcessMux.Lock()
+	defer daemonProcessMux.Unlock()
+
 	// Figure out a temporary file name to write the entrypoint to
 	tmpFileName := ""
 	for {
@@ -586,28 +589,139 @@ func (app *CompiledApp) StartServer() error {
 		return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
 	}
 
-	projectPath := config.GetProjectPathOrExit()
+	// Find a free port to listen on
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return fmt.Errorf("failed to start app server: could not find free port: %w", err)
+	}
+	portAvailable := listener.Addr().(*net.TCPAddr).Port
+	strPortAvailable := strconv.FormatInt(int64(portAvailable), 10)
+	listener.Close()
 
-	err := processManager.SpawnPath(process.ProcessConfig{
+	// Start the app server process
+	projectPath := config.GetProjectPathOrExit()
+	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
 		Id: process.ProcessId{
 			Namespace:    process.NamespaceExtensionDaemon,
 			NamespaceKey: "app-daemon",
 			Key:          app.Id,
 		},
 		Command: "node",
-		Args:    []string{tmpFileName},
+		// TODO: fix this
+		Args:    []string{"/Users/karimsa/projects/robin/toolkit/internal/app-daemon.js"},
 		WorkDir: projectPath,
+		Env: map[string]string{
+			"ROBIN_DAEMON_TARGET": tmpFileName,
+			"PORT":                strPortAvailable,
+		},
+		Meta: processMeta{
+			Port: portAvailable,
+		},
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
 		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
-	return nil
+	// Wait for process to become ready
+	for i := 0; i < 10; i++ {
+		// Make sure the process is still running
+		if !serverProcess.IsAlive() {
+			return fmt.Errorf("failed to start app server: process died")
+		}
+
+		// Send a ping to the process
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			return nil
+		}
+		if resp == nil {
+			logger.Debug("Failed to ping app server", log.Ctx{
+				"appId": app.Id,
+				"pid":   serverProcess.Pid,
+				"err":   err,
+			})
+		} else {
+			logger.Debug("Failed to ping app server", log.Ctx{
+				"appId":  app.Id,
+				"pid":    serverProcess.Pid,
+				"err":    err,
+				"status": resp.StatusCode,
+			})
+		}
+
+		// Wait a bit
+		time.Sleep(1 * time.Second)
+	}
+
+	if err := app.StopServer(); err != nil {
+		logger.Warn("Failed to stop unhealthy app server", log.Ctx{
+			"appId": app.Id,
+			"pid":   serverProcess.Pid,
+			"err":   err,
+		})
+	}
+
+	return fmt.Errorf("failed to start app server: process did not become ready")
 }
 
 func (app *CompiledApp) StopServer() error {
-	if err := processManager.Kill(app.getProcessId()); err != nil {
+	daemonProcessMux.Lock()
+	defer daemonProcessMux.Unlock()
+
+	if err := processManager.Kill(app.getProcessId()); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
 		return fmt.Errorf("failed to stop app server: %w", err)
 	}
 	return nil
+}
+
+func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body map[string]any) (any, error) {
+	if app.httpClient == nil {
+		app.httpClient = &http.Client{}
+	}
+
+	serverProcess, err := processManager.FindById(app.getProcessId())
+	if err != nil {
+		return nil, fmt.Errorf("failed to make app request: %w", err)
+	}
+
+	serializedBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize app request body: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(
+		ctx,
+		method,
+		fmt.Sprintf("http://localhost:%d%s", serverProcess.Meta.Port, reqPath),
+		bytes.NewReader(serializedBody),
+	)
+	req.Header.Set("Content-Type", "application/json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create app request: %w", err)
+	}
+
+	resp, err := app.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make app request: %w", err)
+	}
+
+	buf, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read app response: %w (http status %d)", err, resp.StatusCode)
+	}
+
+	var respBody struct {
+		Type   string
+		Error  string
+		Result any
+	}
+	if err := json.Unmarshal(buf, &respBody); err != nil {
+		return nil, fmt.Errorf("failed to deserialize app response: %w (http status %d)", err, resp.StatusCode)
+	}
+
+	if respBody.Type == "error" {
+		return nil, fmt.Errorf("failed to make app request: %s", respBody.Error)
+	}
+
+	return respBody.Result, nil
 }

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -29,26 +30,12 @@ type RunAppMethodInput struct {
 	Data       map[string]any `json:"data"`
 }
 
-// RunAppMethodOutput represents the result of RunAppMethod, and under the error
-// condition MUST conform to the same shape of the generic error from the RPC router.
-// This allows the client to have a single way to parse errors.
-type RunAppMethodOutput struct {
-	// Type should be either success or error
-	Type string `json:"type"`
-	// Error will contain an error message when type is error
-	Error string `json:"error,omitempty"`
-	// Result is the output received from the method
-	Result map[string]any `json:"result"`
-}
-
-var RunAppMethod = RpcMethod[RunAppMethodInput, RunAppMethodOutput]{
+var RunAppMethod = RpcMethod[RunAppMethodInput, any]{
 	Name: "RunAppMethod",
-	Run: func(req RpcRequest[RunAppMethodInput]) (RunAppMethodOutput, *HttpError) {
-		fmt.Printf("input: %#v\n", req)
-
+	Run: func(req RpcRequest[RunAppMethodInput]) (any, *HttpError) {
 		_, err := compile.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
-			return RunAppMethodOutput{}, &HttpError{
+			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
 			}
@@ -56,7 +43,7 @@ var RunAppMethod = RpcMethod[RunAppMethodInput, RunAppMethodOutput]{
 
 		app, err := req.Server.compiler.GetApp(req.Data.AppId)
 		if err != nil {
-			return RunAppMethodOutput{}, &HttpError{
+			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				// the error messages from GetApp() are already user-friendly
 				Message: err.Error(),
@@ -64,21 +51,24 @@ var RunAppMethod = RpcMethod[RunAppMethodInput, RunAppMethodOutput]{
 		}
 
 		if err := app.StartServer(); err != nil {
-			return RunAppMethodOutput{}, &HttpError{
+			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("Failed to start app server: %s", err),
 			}
 		}
-		if err := app.StopServer(); err != nil {
-			return RunAppMethodOutput{}, &HttpError{
+
+		result, err := app.Request(context.TODO(), "POST", "/api/RunAppMethod", map[string]any{
+			"serverFile": req.Data.ServerFile,
+			"methodName": req.Data.MethodName,
+			"data":       req.Data.Data,
+		})
+		if err != nil {
+			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to stop app server: %s", err),
+				Message:    err.Error(),
 			}
 		}
 
-		return RunAppMethodOutput{}, &HttpError{
-			StatusCode: http.StatusInternalServerError,
-			Message:    "not implemented yet",
-		}
+		return result, nil
 	},
 }
