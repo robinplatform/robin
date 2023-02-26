@@ -1,4 +1,25 @@
-import { useQuery } from '@tanstack/react-query';
+import {
+	QueryClientProvider,
+	QueryClient,
+	useQuery,
+} from '@tanstack/react-query';
+import React from 'react';
+
+const globalQueryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			refetchOnWindowFocus: true,
+		},
+	},
+});
+
+export function RpcProvider({ children }: { children: React.ReactNode }) {
+	return (
+		<QueryClientProvider client={globalQueryClient}>
+			{children}
+		</QueryClientProvider>
+	);
+}
 
 interface RpcMethod<Input, Output> {
 	serverFile: string;
