@@ -29,7 +29,10 @@ func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
 	GetVersion.Register(server, group)
 	GetConfig.Register(server, group)
 	UpdateConfig.Register(server, group)
+
+	// Apps
 	GetApps.Register(server, group)
+	RunAppMethod.Register(server, group)
 }
 
 func createErrorJs(errMessage string) string {

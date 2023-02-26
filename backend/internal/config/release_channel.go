@@ -37,10 +37,10 @@ func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
 	return channel.Parse(value)
 }
 
-func (channel *ReleaseChannel) GetPath() string {
-	return path.Join(robinPath, string(*channel))
+func (channel ReleaseChannel) GetPath() string {
+	return path.Join(robinPath, string(channel))
 }
 
-func (channel *ReleaseChannel) String() string {
-	return string(*channel)
+func (channel ReleaseChannel) String() string {
+	return string(channel)
 }

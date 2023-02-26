@@ -2,12 +2,15 @@ package compile
 
 import (
 	"bytes"
+	"crypto/rand"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"text/template"
@@ -16,16 +19,34 @@ import (
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/process"
 )
 
-//go:embed client.html
-var clientHtmlTemplateRaw string
+var (
+	//go:embed client.html
+	clientHtmlTemplateRaw string
 
-var clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
+	clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
 
-var logger log.Logger = log.New("compiler")
+	logger log.Logger = log.New("compiler")
 
-var cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
+	cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
+
+	processManager *process.ProcessManager
+)
+
+func init() {
+	robinPath := config.GetRobinPath()
+
+	var err error
+	processManager, err = process.NewProcessManager(filepath.Join(
+		robinPath,
+		"app-processes.db",
+	))
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize compiler: %w", err))
+	}
+}
 
 type Compiler struct {
 	mux      sync.Mutex
@@ -359,7 +380,13 @@ func (app *CompiledApp) buildClientJs() error {
 
 						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/rpc-internal';\n\n"
 						for _, export := range exports {
-							serverPolyfill += fmt.Sprintf("export const %s = createRpcMethod('%s', '%s');\n", export, args.Path, export)
+							serverPolyfill += fmt.Sprintf(
+								"export const %s = createRpcMethod(%q, %q, %q);\n",
+								export,
+								appConfig.Id,
+								args.Path,
+								export,
+							)
 						}
 
 						app.serverExports[args.Path] = exports
@@ -520,5 +547,67 @@ func (app *CompiledApp) buildServerBundle() error {
 	}
 
 	app.ServerJs = string(result.OutputFiles[0].Contents)
+	return nil
+}
+
+func (app *CompiledApp) getProcessId() process.ProcessId {
+	return process.ProcessId{
+		Namespace:    process.NamespaceExtensionDaemon,
+		NamespaceKey: "app-daemon",
+		Key:          app.Id,
+	}
+}
+
+func (app *CompiledApp) StartServer() error {
+	// Figure out a temporary file name to write the entrypoint to
+	tmpFileName := ""
+	for {
+		tmpDir := os.TempDir()
+		ext := ""
+		if runtime.GOOS == "windows" {
+			ext = ".exe"
+		}
+
+		buf := make([]byte, 4)
+		if _, err := rand.Read(buf); err != nil {
+			return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
+		}
+		tmpFileName = filepath.Join(tmpDir, fmt.Sprintf("robin-app-server-%s-%x%s", app.Id, buf, ext))
+
+		if _, err := os.Stat(tmpFileName); os.IsNotExist(err) {
+			break
+		} else if !os.IsExist(err) {
+			return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
+		}
+	}
+
+	// Write the entrypoint to the temporary file
+	if err := os.WriteFile(tmpFileName, []byte(app.ServerJs), 0755); err != nil {
+		return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
+	}
+
+	projectPath := config.GetProjectPathOrExit()
+
+	err := processManager.SpawnPath(process.ProcessConfig{
+		Id: process.ProcessId{
+			Namespace:    process.NamespaceExtensionDaemon,
+			NamespaceKey: "app-daemon",
+			Key:          app.Id,
+		},
+		Command: "node",
+		Args:    []string{tmpFileName},
+		WorkDir: projectPath,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+
+	return nil
+}
+
+func (app *CompiledApp) StopServer() error {
+	if err := processManager.Kill(app.getProcessId()); err != nil {
+		return fmt.Errorf("failed to stop app server: %w", err)
+	}
 	return nil
 }

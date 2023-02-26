@@ -54,6 +54,28 @@ var RunAppMethod = RpcMethod[RunAppMethodInput, RunAppMethodOutput]{
 			}
 		}
 
+		app, err := req.Server.compiler.GetApp(req.Data.AppId)
+		if err != nil {
+			return RunAppMethodOutput{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				// the error messages from GetApp() are already user-friendly
+				Message: err.Error(),
+			}
+		}
+
+		if err := app.StartServer(); err != nil {
+			return RunAppMethodOutput{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to start app server: %s", err),
+			}
+		}
+		if err := app.StopServer(); err != nil {
+			return RunAppMethodOutput{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to stop app server: %s", err),
+			}
+		}
+
 		return RunAppMethodOutput{}, &HttpError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "not implemented yet",
