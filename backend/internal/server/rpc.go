@@ -1,4 +1,4 @@
-package rpc
+package server
 
 import (
 	"encoding/json"
@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"robinplatform.dev/internal/log"
 )
 
 type HttpError struct {
@@ -25,9 +24,12 @@ func Errorf(statusCode int, format string, args ...interface{}) *HttpError {
 type RpcRequest[Input any] struct {
 	// Data is the input sent by the client
 	Data Input
+
+	// Server is the instance serving the request
+	Server *Server
 }
 
-type Method[Input any, Output any] struct {
+type RpcMethod[Input any, Output any] struct {
 	// Name of the method, used by the client to call it
 	Name string
 
@@ -40,8 +42,6 @@ type Method[Input any, Output any] struct {
 	// contain a reasonable HTTP status code.
 	Run func(req RpcRequest[Input]) (Output, *HttpError)
 }
-
-var logger log.Logger = log.New("rpc")
 
 func sendJson(c *gin.Context, statusCode int, data interface{}) {
 	if strings.HasPrefix(c.GetHeader("User-Agent"), "curl/") {
@@ -56,7 +56,7 @@ func sendJson(c *gin.Context, statusCode int, data interface{}) {
 	}
 }
 
-func (method *Method[Input, Output]) Register(router *gin.RouterGroup) {
+func (method *RpcMethod[Input, Output]) Register(server *Server, router *gin.RouterGroup) {
 	router.POST("/"+method.Name, func(c *gin.Context) {
 		var input Input
 
@@ -68,7 +68,8 @@ func (method *Method[Input, Output]) Register(router *gin.RouterGroup) {
 		}
 
 		result, httpError := method.Run(RpcRequest[Input]{
-			Data: input,
+			Data:   input,
+			Server: server,
 		})
 		if httpError != nil {
 			sendJson(c, httpError.StatusCode, gin.H{"type": "error", "error": httpError.Message})

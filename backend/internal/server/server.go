@@ -26,10 +26,10 @@ func init() {
 var logger log.Logger = log.New("server")
 
 func (server *Server) loadRpcMethods(group *gin.RouterGroup) {
-	GetVersion.Register(group)
-	GetConfig.Register(group)
-	UpdateConfig.Register(group)
-	GetApps.Register(group)
+	GetVersion.Register(server, group)
+	GetConfig.Register(server, group)
+	UpdateConfig.Register(server, group)
+	GetApps.Register(server, group)
 }
 
 func createErrorJs(errMessage string) string {

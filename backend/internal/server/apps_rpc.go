@@ -5,16 +5,15 @@ import (
 	"net/http"
 
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/rpc"
 )
 
-var GetApps = rpc.Method[struct{}, []compile.RobinAppConfig]{
+var GetApps = RpcMethod[struct{}, []compile.RobinAppConfig]{
 	Name:             "GetApps",
 	SkipInputParsing: true,
-	Run: func(_ rpc.RpcRequest[struct{}]) ([]compile.RobinAppConfig, *rpc.HttpError) {
+	Run: func(_ RpcRequest[struct{}]) ([]compile.RobinAppConfig, *HttpError) {
 		apps, err := compile.GetAllProjectApps()
 		if err != nil {
-			return nil, &rpc.HttpError{
+			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("failed to get apps: %s", err),
 			}
@@ -42,20 +41,20 @@ type RunAppMethodOutput struct {
 	Result map[string]any `json:"result"`
 }
 
-var RunAppMethod = rpc.Method[RunAppMethodInput, RunAppMethodOutput]{
+var RunAppMethod = RpcMethod[RunAppMethodInput, RunAppMethodOutput]{
 	Name: "RunAppMethod",
-	Run: func(req rpc.RpcRequest[RunAppMethodInput]) (RunAppMethodOutput, *rpc.HttpError) {
+	Run: func(req RpcRequest[RunAppMethodInput]) (RunAppMethodOutput, *HttpError) {
 		fmt.Printf("input: %#v\n", req)
 
 		_, err := compile.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
-			return RunAppMethodOutput{}, &rpc.HttpError{
+			return RunAppMethodOutput{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
 			}
 		}
 
-		return RunAppMethodOutput{}, &rpc.HttpError{
+		return RunAppMethodOutput{}, &HttpError{
 			StatusCode: http.StatusInternalServerError,
 			Message:    "not implemented yet",
 		}
