@@ -4,14 +4,15 @@ on: [push]
 jobs:
   check-go:
     runs-on: ubuntu-22.04
-    concurrency:
-      group: ${{ github.ref }}-check-go
-      cancel-in-progress: true
 
     strategy:
       matrix:
         os: [darwin, linux, windows]
         arch: [amd64, arm64]
+
+    concurrency:
+      group: ${{ github.ref }}-check-go-${{ matrix.os }}-${{ matrix.arch }}
+      cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
