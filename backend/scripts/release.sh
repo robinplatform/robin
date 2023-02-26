@@ -119,6 +119,9 @@ for platform in darwin linux windows; do
         if test "$TARGET_CHANNEL" == "stable"; then
             mkdir -p "${buildDir}/installers"
             cp "bin/robin-upgrade${ext}" "${buildDir}/installers/robin-upgrade-${platform}-${arch}${ext}"
+            if test "$platform" != "windows"; then
+              gzip "${buildDir}/installers/robin-upgrade-${platform}-${arch}"
+            fi
         fi
 
         cd $OLDPWD
