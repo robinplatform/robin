@@ -3,9 +3,9 @@ import React from 'react';
 import Link from 'next/link';
 import cx from 'classnames';
 import { useRouter } from 'next/router';
-import { ToolsIcon, HomeIcon } from '@primer/octicons-react';
+import { ToolsIcon, HomeIcon, SyncIcon } from '@primer/octicons-react';
 import { toast } from 'react-hot-toast';
-import { useRpcQuery } from '../hooks/useRpcQuery';
+import { useRpcMutation, useRpcQuery } from '../hooks/useRpcQuery';
 import { z } from 'zod';
 // @ts-ignore
 import octicons from '@primer/octicons';
@@ -27,6 +27,54 @@ const AppIcon: React.FC<{ icon: string }> = ({ icon }) => {
 		);
 	}
 	return <>{icon}</>;
+};
+
+const RestartAppButton: React.FC = () => {
+	const router = useRouter();
+	const {
+		mutate: restartApp,
+		error,
+		isLoading,
+	} = useRpcMutation({
+		method: 'RestartApp',
+		result: z.unknown(),
+
+		onSuccess: () => {
+			toast.success('Restarted app', { id: 'restart-app' });
+		},
+		onError: (err) => {
+			toast.error(`Failed to restart app: ${(err as Error).message}`, {
+				id: 'restart-app',
+			});
+		},
+	});
+	React.useEffect(() => {
+		if (isLoading) {
+			toast.loading('Restarting app', { id: 'restart-app' });
+		}
+	}, [isLoading]);
+
+	if (router.pathname !== '/app/[id]') {
+		return null;
+	}
+
+	return (
+		<div className={cx(styles.homeWrapper, styles.sidebarIconContainer)}>
+			<button
+				type="button"
+				disabled={isLoading}
+				className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
+				onClick={() =>
+					restartApp({
+						appId: router.query.id as string,
+					})
+				}
+			>
+				<SyncIcon />
+			</button>
+			<span className={styles.sidebarLabel}>Restart app</span>
+		</div>
+	);
 };
 
 export function Sidebar() {
@@ -94,14 +142,18 @@ export function Sidebar() {
 				))}
 			</div>
 
-			<div className={cx(styles.homeWrapper, styles.sidebarIconContainer)}>
-				<Link
-					href="/"
-					className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
-				>
-					<HomeIcon />
-				</Link>
-				<span className={styles.sidebarLabel}>Home</span>
+			<div>
+				<RestartAppButton />
+
+				<div className={cx(styles.homeWrapper, styles.sidebarIconContainer)}>
+					<Link
+						href="/"
+						className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
+					>
+						<HomeIcon />
+					</Link>
+					<span className={styles.sidebarLabel}>Home</span>
+				</div>
 			</div>
 		</div>
 	);

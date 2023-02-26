@@ -72,3 +72,45 @@ var RunAppMethod = RpcMethod[RunAppMethodInput, any]{
 		return result, nil
 	},
 }
+
+type RestartAppInput struct {
+	AppId string `json:"appId"`
+}
+
+var RestartApp = RpcMethod[RestartAppInput, struct{}]{
+	Name: "RestartApp",
+	Run: func(req RpcRequest[RestartAppInput]) (struct{}, *HttpError) {
+		_, err := compile.LoadRobinAppById(req.Data.AppId)
+		if err != nil {
+			return struct{}{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
+			}
+		}
+
+		app, err := req.Server.compiler.GetApp(req.Data.AppId)
+		if err != nil {
+			return struct{}{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				// the error messages from GetApp() are already user-friendly
+				Message: err.Error(),
+			}
+		}
+
+		if err := app.StopServer(); err != nil {
+			return struct{}{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to stop app server: %s", err),
+			}
+		}
+
+		if err := app.StartServer(); err != nil {
+			return struct{}{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to restart app server: %s", err),
+			}
+		}
+
+		return struct{}{}, nil
+	},
+}
