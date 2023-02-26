@@ -162,6 +162,10 @@ jobs:
         run: |
           echo $S3CFG | base64 --decode > ~/.s3cfg
 
+      - name: Install upx
+        run: |
+          apt-get install -yq upx
+
       - name: Release nightly
         if: "github.ref == 'refs/heads/nightly'"
         run: |

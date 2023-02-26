@@ -32,6 +32,11 @@ if test "$TARGET_CHANNEL" == "stable" && ! which jq &>/dev/null; then
     echo ""
     exit 1
 fi
+if ! which upx &>/dev/null; then
+    echo "upx is not installed"
+    echo ""
+    exit 1
+fi
 
 # Verify that s3cmd is configured correctly
 if ! s3cmd ls "s3://robinplatform/releases/${TARGET_CHANNEL}" &>/dev/null; then
@@ -79,6 +84,11 @@ echo ""
 
 for platform in darwin linux windows; do
     for arch in amd64 arm64; do
+        # Skip windows/arm64, since there isn't even that wide of a support for it
+        if test "$platform" = "windows" && test "$arch" = "arm64"; then
+            continue
+        fi
+
         ext=""
         if test "$platform" = "windows"; then
             ext=".exe"
@@ -113,7 +123,10 @@ for platform in darwin linux windows; do
         binSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
         size=`du -h "${buildDir}/tarballs/robin-${platform}-${arch}.tar.gz" | awk '{print $1}'`
 
-        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize})"
+        upx -q "${platformDir}/bin/robin${ext}" "${platformDir}/bin/robin-upgrade${ext}"
+        compressedSize=`du -h "${platformDir}/bin/robin${ext}" | awk '{print $1}'`
+
+        echo -e "\rBuilt: robin-${platform}-${arch}.tar.gz (size: ${size}, binary size: ${binSize}, compressed binary size: ${compressedSize})"
 
         # For stable releases, upload the upgrade binary separately
         if test "$TARGET_CHANNEL" == "stable"; then
