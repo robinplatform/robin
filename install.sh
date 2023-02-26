@@ -23,7 +23,7 @@ if test -z "$CHANNEL"; then
 fi
 
 installer=`mktemp`
-curl -fsSL "http://robinplatform.nyc3.digitaloceanspaces.com/releases/installers/robin-upgrade-$(get_goos)-$(get_goarch).gz" | gunzip > "robin-upgrade-$(get_goos)-$(get_goarch)"
+curl -fsSL -o "$installer" "http://robinplatform.nyc3.digitaloceanspaces.com/releases/installers/robin-upgrade-$(get_goos)-$(get_goarch)"
 chmod +x "$installer"
 "$installer" --channel=$CHANNEL
 
