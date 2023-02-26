@@ -164,7 +164,7 @@ jobs:
 
       - name: Install upx
         run: |
-          apt-get install -yq upx
+          sudo apt-get install -yq upx
 
       - name: Release nightly
         if: "github.ref == 'refs/heads/nightly'"
