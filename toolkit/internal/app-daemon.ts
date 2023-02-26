@@ -1,9 +1,4 @@
-// TODO: Slim down this file (we don't need express for two routes).
-
-import bodyParser from 'body-parser';
-import express from 'express';
-import morgan from 'morgan';
-import { z } from 'zod';
+import * as http from 'http';
 
 import { Robin } from './types';
 
@@ -13,28 +8,56 @@ if (!Robin.isDaemonProcess) {
 
 const serverRpcMethods = Robin.getAppRpcMethods();
 
-const app = express();
-
 let lastRequest = Date.now();
-app.use((_, __, next) => {
-	lastRequest = Date.now();
-	next();
-});
 
-app.get('/api/health', (_, res) => {
-	res.json({ ok: true });
-});
-app.use(morgan('dev'));
-app.use(bodyParser.json());
-app.post('/api/RunAppMethod', async (req, res) => {
+async function handleRequest(
+	req: http.IncomingMessage,
+	res: http.ServerResponse,
+) {
+	if (req.url !== '/api/RunAppMethod' && req.url !== '/api/health') {
+		res.writeHead(404);
+		res.end();
+		return;
+	}
+
+	lastRequest = Date.now();
+
+	if (req.url === '/api/health') {
+		console.log(`GET /api/health`);
+		res.writeHead(200, { 'Content-Type': 'application/json' });
+		res.end(`{"ok":true}`);
+		return;
+	}
+
 	try {
-		const { serverFile, methodName, data } = z
-			.object({
-				serverFile: z.string(),
-				methodName: z.string(),
-				data: z.unknown(),
-			})
-			.parse(req.body);
+		const { serverFile, methodName, data } = await new Promise<{
+			serverFile: string;
+			methodName: string;
+			data: unknown;
+		}>((resolve, reject) => {
+			let body = '';
+			req.on('data', (chunk) => (body += chunk));
+			req.on('end', () => {
+				try {
+					const data = JSON.parse(body);
+
+					if (
+						!data ||
+						typeof data !== 'object' ||
+						typeof data.serverFile !== 'string' ||
+						typeof data.methodName !== 'string' ||
+						!data.data
+					) {
+						throw new Error('Invalid request body');
+					}
+
+					resolve(data);
+				} catch (err) {
+					reject(err);
+				}
+			});
+			req.on('error', reject);
+		});
 
 		const fileMethods = serverRpcMethods[serverFile];
 		if (!fileMethods) {
@@ -47,12 +70,17 @@ app.post('/api/RunAppMethod', async (req, res) => {
 		}
 
 		const result = await method(data);
-		res.json({ type: 'success', result });
+		res.end(JSON.stringify({ type: 'success', result }));
 	} catch (err) {
 		res.statusCode = 500;
-		res.json({ type: 'error', error: String((err as Error)?.stack ?? err) });
+		res.end(
+			JSON.stringify({
+				type: 'error',
+				error: String((err as Error)?.stack ?? err),
+			}),
+		);
 	}
-});
+}
 
 async function main() {
 	try {
@@ -69,9 +97,10 @@ async function main() {
 		}
 
 		// Start the server
+		const server = http.createServer(handleRequest);
 		await new Promise<void>((resolve, reject) => {
-			app.on('error', reject);
-			app.listen(process.env.PORT, () => resolve());
+			server.on('error', reject);
+			server.listen(process.env.PORT, () => resolve());
 		});
 		console.log(`Started listening on :${process.env.PORT}`);
 
