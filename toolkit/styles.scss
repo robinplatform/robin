@@ -6,6 +6,7 @@
 	}
 
 	--robin-border-radius: 0.25rem;
+	--robin-spacing: 1.25rem;
 }
 
 @each $name, $value in $colors {
@@ -22,9 +23,9 @@
 }
 
 .robin-pad {
-	padding: 1.25rem;
+	padding: var(--robin-spacing);
 }
 
 .robin-gap {
-	gap: 1.25rem;
+	gap: var(--robin-spacing);
 }
