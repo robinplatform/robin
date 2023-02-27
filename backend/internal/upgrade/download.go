@@ -11,9 +11,7 @@ import (
 )
 
 func getCdnEndpoint(filepath string) string {
-	// We are not using the actual DO CDN, because the downloads are fast enough without the CDN, but this
-	// way there are no caching issues.
-	return fmt.Sprintf("https://robinplatform.nyc3.digitaloceanspaces.com/%s", url.PathEscape(filepath))
+	return fmt.Sprintf("https://robinplatform.nyc3.cdn.digitaloceanspaces.com/%s", url.PathEscape(filepath))
 }
 
 func getTarEndpoint(channel config.ReleaseChannel, version string) string {
