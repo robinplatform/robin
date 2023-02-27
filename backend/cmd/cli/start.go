@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 
-	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/server"
@@ -23,7 +23,7 @@ func (cmd *StartCommand) Description() string {
 	return "Start the robin server"
 }
 
-func (cmd *StartCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
+func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 	flagSet.IntVar(&cmd.port, "port", 9010, "The port to listen on")
 	flagSet.StringVar(&cmd.bindAddress, "bind", "[::1]", "The address to bind to")
 

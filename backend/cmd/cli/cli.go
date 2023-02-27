@@ -1,12 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/config"
 )
 
@@ -16,7 +16,7 @@ type Command interface {
 
 	// Parse is given an allocated flagSet, and the set of args that are specific to this command.
 	// It should parse the args, and return an error if unexpected values were received in the flags.
-	Parse(flagSet *pflag.FlagSet, args []string) error
+	Parse(flagSet *flag.FlagSet, args []string) error
 
 	// Run should run the command, and return an error if something went wrong.
 	Run() error
@@ -44,6 +44,7 @@ func showUsageFooter() {
 }
 
 func showUsage() {
+	fmt.Fprintf(os.Stderr, "\n")
 	fmt.Fprintf(os.Stderr, "Usage: robin [-p $ROBIN_PROJECT_PATH] [command] [options]\n")
 	fmt.Fprintf(os.Stderr, "\n")
 	fmt.Fprintf(os.Stderr, "All commands must be run from a valid robin project directory, or a sub-directory of a valid robin project directory.\n")
@@ -60,14 +61,14 @@ func showUsage() {
 	}
 
 	for _, cmd := range commands {
-		fmt.Fprintf(os.Stderr, "\t%s%s\t%s\n", cmd.Name(), strings.Repeat(" ", 1+longestCmdNameLength-len(cmd.Name())), cmd.Description())
+		fmt.Fprintf(os.Stderr, "\t%s%s\t%s\n", cmd.Name(), strings.Repeat(" ", longestCmdNameLength-len(cmd.Name())), cmd.Description())
 	}
 
 	showUsageFooter()
 	os.Exit(1)
 }
 
-func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
+func showCommandUsage(cmd Command, flagSet *flag.FlagSet) {
 	shortUsage := fmt.Sprintf("%s [options]", cmd.Name())
 
 	// allow commands to override the short usage text
@@ -75,13 +76,18 @@ func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
 		shortUsage = cmdWithShortUsage.ShortUsage()
 	}
 
+	fmt.Fprintf(os.Stderr, "\n")
 	fmt.Fprintf(os.Stderr, "Usage: robin %s\n", shortUsage)
 	fmt.Fprintf(os.Stderr, "%s\n", cmd.Description())
 	fmt.Fprintf(os.Stderr, "\n")
 
-	if flagSet.HasFlags() {
-		fmt.Fprintf(os.Stderr, "Options:\n\n")
-		fmt.Fprintf(os.Stderr, "%s", flagSet.FlagUsages())
+	var hasFlags bool
+	flagSet.VisitAll(func(f *flag.Flag) {
+		hasFlags = true
+	})
+
+	if hasFlags {
+		flagSet.PrintDefaults()
 	} else {
 		fmt.Fprintf(os.Stderr, "This command has no options.\n")
 	}
@@ -91,7 +97,6 @@ func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
 }
 
 func main() {
-	fmt.Printf("\n")
 	args := os.Args[1:]
 
 	if len(args) == 0 || args[0] == "-h" || args[0] == "--help" || args[0] == "help" {
@@ -144,7 +149,7 @@ func main() {
 	}
 
 	// Perform parsing
-	flagSet := pflag.NewFlagSet(commandName, pflag.ExitOnError)
+	flagSet := flag.NewFlagSet(commandName, flag.ExitOnError)
 	flagSet.Usage = func() {
 		fmt.Fprintf(os.Stderr, "\n")
 		showCommandUsage(command, flagSet)
@@ -155,6 +160,7 @@ func main() {
 	}
 
 	// Run the command
+	fmt.Printf("\n")
 	startTime := time.Now()
 	if err := command.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n\n", err)

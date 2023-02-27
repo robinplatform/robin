@@ -1,11 +1,11 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 )
@@ -26,7 +26,7 @@ func (*AddCommand) ShortUsage() string {
 	return "add [apps ...]"
 }
 
-func (cmd *AddCommand) Parse(flags *pflag.FlagSet, args []string) error {
+func (cmd *AddCommand) Parse(flags *flag.FlagSet, args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}

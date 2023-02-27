@@ -1,12 +1,12 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"os/exec"
 	"time"
 
-	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/upgrade"
 )
@@ -15,8 +15,8 @@ var startTime = time.Now()
 
 func main() {
 	var channel string
-	pflag.StringVar(&channel, "channel", "", "The release channel to use")
-	pflag.Parse()
+	flag.StringVar(&channel, "channel", "", "The release channel to use")
+	flag.Parse()
 
 	var releaseChannel config.ReleaseChannel
 	if err := releaseChannel.Parse(channel); err != nil {

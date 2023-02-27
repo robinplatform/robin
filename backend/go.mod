@@ -8,7 +8,6 @@ require (
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/mitranim/gow v0.0.0-20230208153212-36c8536a96b8
 	github.com/rs/zerolog v1.29.0
-	github.com/spf13/pflag v1.0.5
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 

@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"runtime"
 
-	"github.com/spf13/pflag"
 	"robinplatform.dev/internal/config"
 )
 
@@ -19,7 +19,7 @@ func (c *VersionCommand) Description() string {
 	return "Print the version info of robin"
 }
 
-func (c *VersionCommand) Parse(flagSet *pflag.FlagSet, args []string) error {
+func (c *VersionCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 	return nil
 }
 
