@@ -13,7 +13,11 @@ const globalQueryClient = new QueryClient({
 	},
 });
 
-export function RpcProvider({ children }: { children: React.ReactNode }) {
+export function ReactQueryProvider({
+	children,
+}: {
+	children: React.ReactNode;
+}) {
 	return (
 		<QueryClientProvider client={globalQueryClient}>
 			{children}

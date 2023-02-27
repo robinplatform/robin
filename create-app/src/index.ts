@@ -114,7 +114,7 @@ async function main() {
 		[
 			`import React from "react";`,
 			`import { renderApp } from "@robinplatform/toolkit/react";`,
-			`import { RpcProvider, useRpcQuery } from "@robinplatform/toolkit/react/rpc";`,
+			`import { useRpcQuery } from "@robinplatform/toolkit/react/rpc";`,
 			`import { getOsInfo } from "./app.server";`,
 			``,
 			`const App = () => {`,
@@ -123,11 +123,7 @@ async function main() {
 			`\treturn <p>You're on {osInfo?.platform}!</p>;`,
 			`};`,
 			``,
-			`renderApp(`,
-			`\t<RpcProvider>`,
-			`\t\t<App />`,
-			`\t</RpcProvider>,`,
-			`);`,
+			`renderApp(<App />);`,
 			``,
 		].join(os.EOL),
 	);
