@@ -269,19 +269,27 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		Meta:      procConfig.Meta,
 	}
 
-	// Release the process so that it doesn't die on exit
-	if err = proc.Release(); err != nil {
+	logger.Debug("Process created", log.Ctx{
+		"process": entry,
+	})
+
+	if err := w.Insert(entry); err != nil {
+		// If we failed to insert the process into the database, kill it
+		// so we don't end up with an unmanaged process
+		if err := proc.Kill(); err != nil {
+			logger.Err(err, "Failed to kill unmanaged process", log.Ctx{
+				"process": entry,
+			})
+		}
+
 		return nil, err
 	}
 
 	// Reap zombies
 	go entry.waitForExit(entry.Pid)
 
-	logger.Debug("Process created", log.Ctx{
-		"process": entry,
-	})
-
-	if err := w.Insert(entry); err != nil {
+	// Release the process so that it doesn't die on exit
+	if err = proc.Release(); err != nil {
 		return nil, err
 	}
 
