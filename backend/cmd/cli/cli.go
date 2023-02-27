@@ -139,7 +139,7 @@ func main() {
 	}
 
 	if command == nil {
-		fmt.Fprintf(os.Stderr, "unrecognized command: %s\n", commandName)
+		fmt.Fprintf(os.Stderr, "unrecognized command: %s\n\n", commandName)
 		showUsage()
 	}
 
