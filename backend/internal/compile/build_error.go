@@ -16,11 +16,13 @@ func getEsbuildErrorString(err es.Message) string {
 		errMessage = fmt.Sprintf("%s: %s", err.PluginName, errMessage)
 	}
 
-	pluginNameEnd := strings.Index(err.Location.File, ":")
-	if pluginNameEnd == -1 {
-		errMessage = fmt.Sprintf("%s in %s:%d:%d", errMessage, err.Location.File, err.Location.Line, err.Location.Column)
-	} else {
-		errMessage = fmt.Sprintf("%s in %s:%d:%d", errMessage, err.Location.File[pluginNameEnd+1:], err.Location.Line, err.Location.Column)
+	if err.Location != nil {
+		pluginNameEnd := strings.Index(err.Location.File, ":")
+		if pluginNameEnd == -1 {
+			errMessage = fmt.Sprintf("%s in %s:%d:%d", errMessage, err.Location.File, err.Location.Line, err.Location.Column)
+		} else {
+			errMessage = fmt.Sprintf("%s in %s:%d:%d", errMessage, err.Location.File[pluginNameEnd+1:], err.Location.Line, err.Location.Column)
+		}
 	}
 
 	return errMessage

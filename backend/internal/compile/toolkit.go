@@ -41,7 +41,7 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 					Filter:    "^\\.",
 					Namespace: "robin-toolkit",
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					resolvedPath, err := resolver.Resolve(args.Path)
+					resolvedPath, err := resolver.ResolveFrom(args.Importer, args.Path)
 					if err != nil {
 						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}

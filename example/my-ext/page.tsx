@@ -3,6 +3,7 @@ import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
+import './ext.scss';
 
 function Page() {
 	const { data, error } = useRpcQuery(getSelfSource, {

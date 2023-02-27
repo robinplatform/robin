@@ -331,7 +331,7 @@ func (app *CompiledApp) buildClientJs() error {
 
 		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
 		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
-		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
+		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, appConfig.getCssLoaderPlugins([]es.Plugin{
 			{
 				Name: "extract-server-ts",
 				Setup: func(build es.PluginBuild) {
@@ -379,42 +379,7 @@ func (app *CompiledApp) buildClientJs() error {
 					})
 				},
 			},
-			{
-				Name: "load-css",
-				Setup: func(build es.PluginBuild) {
-					build.OnLoad(es.OnLoadOptions{
-						Filter: "\\.css(\\?bundle)?$",
-					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-						if args.Namespace == "robin-toolkit" {
-							return es.OnLoadResult{}, nil
-						}
-
-						var css []byte
-						var err error
-
-						if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-							_, css, err = appConfig.ReadFile(args.Path)
-						} else {
-							css, err = os.ReadFile(args.Path)
-						}
-						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
-						}
-
-						script := fmt.Sprintf(`!function(){
-							let style = document.createElement('style')
-							style.setAttribute('data-path', '%s')
-							style.innerText = %q
-							document.body.appendChild(style)
-						}()`, args.Path, string(css))
-						return es.OnLoadResult{
-							Contents: &script,
-							Loader:   es.LoaderJS,
-						}, nil
-					})
-				},
-			},
-		})),
+		}))),
 	})
 
 	if len(result.Errors) != 0 {

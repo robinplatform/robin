@@ -5,7 +5,9 @@ import { ReactQueryProvider } from './rpc';
 
 export function renderApp(
 	children: React.ReactNode,
-	{ reactQueryEnabled }: { reactQueryEnabled?: boolean } = {},
+	{ reactQueryEnabled }: { reactQueryEnabled?: boolean } = {
+		reactQueryEnabled: true,
+	},
 ) {
 	const withReactQuery = reactQueryEnabled
 		? (children: React.ReactNode) => (
