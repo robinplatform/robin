@@ -94,6 +94,20 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 					})
 
 					str := string(contents)
+
+					if strings.HasSuffix(args.Path, ".css") {
+						script := fmt.Sprintf(`!function(){
+							let style = document.createElement('style')
+							style.setAttribute('data-path', '%s')
+							style.innerText = %q
+							document.body.appendChild(style)
+						}()`, args.Path, str)
+						return es.OnLoadResult{
+							Contents: &script,
+							Loader:   es.LoaderJS,
+						}, nil
+					}
+
 					return es.OnLoadResult{
 						Contents:   &str,
 						ResolveDir: resolveDir,

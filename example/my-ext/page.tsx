@@ -3,6 +3,7 @@ import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import { getSelfSource } from './page.server';
+import '@robinplatform/toolkit/styles.css';
 
 function Page() {
 	const { data, error } = useRpcQuery(getSelfSource, {

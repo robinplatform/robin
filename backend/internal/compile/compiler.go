@@ -385,6 +385,10 @@ func (app *CompiledApp) buildClientJs() error {
 					build.OnLoad(es.OnLoadOptions{
 						Filter: "\\.css(\\?bundle)?$",
 					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+						if args.Namespace == "robin-toolkit" {
+							return es.OnLoadResult{}, nil
+						}
+
 						var css []byte
 						var err error
 
@@ -397,17 +401,12 @@ func (app *CompiledApp) buildClientJs() error {
 							return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
 						}
 
-						cssEscaped, err := json.Marshal(string(css))
-						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to escape css file %s: %w", args.Path, err)
-						}
-
 						script := fmt.Sprintf(`!function(){
 							let style = document.createElement('style')
 							style.setAttribute('data-path', '%s')
-							style.innerText = %s
+							style.innerText = %q
 							document.body.appendChild(style)
-						}()`, args.Path, cssEscaped)
+						}()`, args.Path, string(css))
 						return es.OnLoadResult{
 							Contents: &script,
 							Loader:   es.LoaderJS,
