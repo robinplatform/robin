@@ -74,23 +74,14 @@ type RobinConfig struct {
 	// Environments is a map of environment names to a map of environment variables
 	Environments map[string]map[string]string `json:"environments"`
 
-	// Extensions is a map of extension names to a map of extension settings
-	Extensions map[string]map[string]interface{} `json:"extensions"`
-
-	// MinifyExtensionClients is a flag to minify extension clients
-	MinifyExtensionClients bool `json:"minifyExtensionClients"`
+	// AppSettings is a map of app IDs to the respective app settings
+	AppSettings map[string]map[string]interface{} `json:"appSettings"`
 
 	// KeyMappings is a map of key mappings
 	KeyMappings map[string]string `json:"keyMappings"`
-
-	// EnableKeyMappings is a flag to enable key mappings
-	EnableKeyMappings bool `json:"enableKeyMappings"`
 }
 
-var defaultRobinConfig = RobinConfig{
-	MinifyExtensionClients: true,
-	EnableKeyMappings:      true,
-}
+var defaultRobinConfig = RobinConfig{}
 
 func LoadProjectConfig() (RobinConfig, error) {
 	alias, err := GetProjectAlias()
