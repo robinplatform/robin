@@ -11,9 +11,17 @@ import (
 	"path"
 	"runtime"
 	"strings"
+	"time"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/log"
 )
+
+var logger = log.New("upgrade")
+
+func init() {
+	go WatchForUpdates()
+}
 
 func createTempDir() (string, error) {
 	buf := make([]byte, 4)
@@ -28,6 +36,39 @@ func createTempDir() (string, error) {
 		return "", err
 	}
 	return tmp, nil
+}
+
+func WatchForUpdates() {
+	releaseChannel := config.GetReleaseChannel()
+	installedVersion := config.GetRobinVersion()
+
+	for {
+		latestVersion, err := getLatestVersion(releaseChannel)
+		if err != nil {
+			logger.Debug("Failed to get latest version", log.Ctx{
+				"channel": releaseChannel,
+				"error":   err,
+			})
+		} else if latestVersion != installedVersion {
+			newVersion, _, err := UpgradeChannel(releaseChannel)
+			if err != nil {
+				logger.Debug("Failed to auto-upgrade to latest version", log.Ctx{
+					"channel":       releaseChannel,
+					"latestVersion": latestVersion,
+					"error":         err,
+				})
+			} else {
+				logger.Info("Upgraded to latest version", log.Ctx{
+					"previousVersion": installedVersion,
+					"channel":         releaseChannel,
+					"version":         newVersion,
+				})
+				installedVersion = newVersion
+			}
+		}
+
+		time.Sleep(1 * time.Hour)
+	}
 }
 
 func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error) {

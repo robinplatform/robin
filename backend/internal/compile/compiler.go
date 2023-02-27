@@ -25,7 +25,7 @@ var (
 
 	clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
 
-	logger log.Logger = log.New("compiler")
+	logger log.Logger = log.New("compile")
 
 	cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )

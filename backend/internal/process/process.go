@@ -277,7 +277,8 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		// If we failed to insert the process into the database, kill it
 		// so we don't end up with an unmanaged process
 		if err := proc.Kill(); err != nil {
-			logger.Err(err, "Failed to kill unmanaged process", log.Ctx{
+			logger.Err("Failed to kill unmanaged process", log.Ctx{
+				"error":   err,
 				"process": entry,
 			})
 		}

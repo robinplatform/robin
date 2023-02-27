@@ -64,8 +64,8 @@ func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
 
 		conn, err := upgrader.Upgrade(res, req, nil)
 		if err != nil {
-			logger.Err(err, "Failed to upgrade websocket", log.Ctx{
-				"error": err.Error(),
+			logger.Err("Failed to upgrade websocket", log.Ctx{
+				"error": err,
 			})
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte(fmt.Sprintf(`{"error": %q}`, err.Error())))
@@ -82,7 +82,8 @@ func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
 
 			var input socketMessage
 			if err := json.Unmarshal(message, &input); err != nil {
-				logger.Err(err, "RPC websocket failed to parse", log.Ctx{
+				logger.Err("RPC websocket failed to parse", log.Ctx{
+					"error":   err,
 					"message": message,
 				})
 				conn.WriteMessage(websocket.TextMessage, invalidInputMessage)
