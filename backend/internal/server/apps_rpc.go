@@ -8,6 +8,24 @@ import (
 	"robinplatform.dev/internal/compile"
 )
 
+type GetAppByIdInput struct {
+	AppId string `json:"appId"`
+}
+
+var GetAppById = RpcMethod[GetAppByIdInput, compile.RobinAppConfig]{
+	Name: "GetAppById",
+	Run: func(req RpcRequest[GetAppByIdInput]) (compile.RobinAppConfig, *HttpError) {
+		app, err := compile.LoadRobinAppById(req.Data.AppId)
+		if err != nil {
+			return compile.RobinAppConfig{}, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
+			}
+		}
+		return app, nil
+	},
+}
+
 var GetApps = RpcMethod[struct{}, []compile.RobinAppConfig]{
 	Name:             "GetApps",
 	SkipInputParsing: true,

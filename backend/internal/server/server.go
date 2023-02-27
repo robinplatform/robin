@@ -38,6 +38,7 @@ func (server *Server) loadRpcMethods(group RouterGroup) {
 	UpdateConfig.Register(server, group)
 
 	// Apps
+	GetAppById.Register(server, group)
 	GetApps.Register(server, group)
 	RunAppMethod.Register(server, group)
 	RestartApp.Register(server, group)

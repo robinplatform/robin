@@ -2,5 +2,5 @@
 	"id": "bad-js-ext",
 	"name": "Invalid JS",
 	"page": "page.tsx",
-	"pageIcon": "badjs"
+	"pageIcon": "💥"
 }

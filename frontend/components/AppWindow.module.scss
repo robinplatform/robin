@@ -1,0 +1,33 @@
+@import '../styles/variables';
+
+.toolbar {
+	margin: 0.5rem;
+	padding: 0.5rem;
+
+	border-radius: 0.25rem;
+	background: $dark-blue;
+
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.toolbarIcons {
+	display: flex;
+	align-items: center;
+	justify-content: end;
+}
+
+.toolbarButton {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+
+	text-decoration: none;
+
+	width: 100%;
+	padding: 0.25rem;
+	border-radius: 0.25rem;
+
+	color: #fff;
+}
