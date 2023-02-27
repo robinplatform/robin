@@ -81,8 +81,7 @@ func showCommandUsage(cmd Command, flagSet *pflag.FlagSet) {
 
 	if flagSet.HasFlags() {
 		fmt.Fprintf(os.Stderr, "Options:\n\n")
-		fmt.Fprintf(os.Stderr, "%s\n", flagSet.FlagUsages())
-		fmt.Fprintf(os.Stderr, "\n")
+		fmt.Fprintf(os.Stderr, "%s", flagSet.FlagUsages())
 	} else {
 		fmt.Fprintf(os.Stderr, "This command has no options.\n")
 	}
@@ -146,6 +145,10 @@ func main() {
 
 	// Perform parsing
 	flagSet := pflag.NewFlagSet(commandName, pflag.ExitOnError)
+	flagSet.Usage = func() {
+		fmt.Fprintf(os.Stderr, "\n")
+		showCommandUsage(command, flagSet)
+	}
 	if err := command.Parse(flagSet, args); err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
 		showCommandUsage(command, flagSet)
