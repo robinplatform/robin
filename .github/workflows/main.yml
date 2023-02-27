@@ -162,6 +162,11 @@ jobs:
         run: |
           echo $S3CFG | base64 --decode > ~/.s3cfg
 
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
       - name: Install upx
         run: |
           sudo apt-get install -yq upx
@@ -175,3 +180,7 @@ jobs:
         if: "github.ref == 'refs/heads/main'"
         run: |
           yarn workspace @robinplatform/backend run release beta
+
+      - name: Flush CDN Cache
+        run: |
+          doctl compute cdn flush 98986f5e-330d-49a9-8d01-5344c7cf2cd0
