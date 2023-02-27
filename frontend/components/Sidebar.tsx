@@ -75,16 +75,6 @@ const RestartAppButton: React.FC = () => {
 
 export function Sidebar() {
 	const router = useRouter();
-	const icons = React.useMemo<SidebarIcon[]>(
-		() => [
-			{
-				icon: <ToolsIcon />,
-				href: '/settings',
-				label: 'Settings',
-			},
-		],
-		[],
-	);
 
 	const { data: apps } = useRpcQuery({
 		method: 'GetApps',
@@ -106,19 +96,6 @@ export function Sidebar() {
 			className={cx(styles.wrapper, 'col robin-bg-dark-blue robin-text-white')}
 		>
 			<div className="col">
-				{icons.map(({ icon, href, label }) => (
-					<div key={href} className={styles.sidebarIconContainer}>
-						<Link
-							href={href}
-							className={cx(styles.sidebarLink, 'robin-pad', {
-								'robin-bg-dark-purple': href === router.asPath,
-							})}
-						>
-							{icon}
-						</Link>
-						<span className={styles.sidebarLabel}>{label}</span>
-					</div>
-				))}
 				{apps?.map((app) => (
 					<div key={app.name} className={styles.sidebarIconContainer}>
 						<Link
@@ -149,6 +126,16 @@ export function Sidebar() {
 						<HomeIcon />
 					</Link>
 					<span className={styles.sidebarLabel}>Home</span>
+				</div>
+
+				<div className={cx(styles.homeWrapper, styles.sidebarIconContainer)}>
+					<Link
+						href="/settings"
+						className={cx(styles.home, 'robin-rounded robin-bg-dark-purple')}
+					>
+						<ToolsIcon />
+					</Link>
+					<span className={styles.sidebarLabel}>Settings</span>
 				</div>
 			</div>
 		</div>
