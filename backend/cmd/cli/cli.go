@@ -60,7 +60,7 @@ func showUsage() {
 	}
 
 	for _, cmd := range commands {
-		fmt.Fprintf(os.Stderr, "\t%s\t%s%s\n", cmd.Name(), strings.Repeat(" ", 1+longestCmdNameLength-len(cmd.Name())), cmd.Description())
+		fmt.Fprintf(os.Stderr, "\t%s%s\t%s\n", cmd.Name(), strings.Repeat(" ", 1+longestCmdNameLength-len(cmd.Name())), cmd.Description())
 	}
 
 	showUsageFooter()
