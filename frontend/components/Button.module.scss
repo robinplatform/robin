@@ -6,7 +6,6 @@
 
 @mixin button {
 	border-radius: 0.25rem;
-	padding: 0.5rem 0.75rem;
 	appearance: none;
 	border: none;
 	cursor: pointer;
@@ -32,4 +31,16 @@
 	&:hover {
 		background-color: $light-blue;
 	}
+}
+
+.btnSm {
+	padding: 0.25rem 0.5rem;
+}
+
+.btnMd {
+	padding: 0.5rem 0.75rem;
+}
+
+.btnLg {
+	padding: 0.75rem 1rem;
 }

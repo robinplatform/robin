@@ -5,12 +5,14 @@ import styles from './Button.module.scss';
 
 export type ButtonProps = React.PropsWithChildren<{
 	variant: 'primary' | 'secondary';
+	size?: 'sm' | 'md' | 'lg';
 	isLoading?: boolean;
 	icon?: React.ReactNode;
 	onClick(): void;
 }>;
 
 export const Button: React.FC<ButtonProps> = ({
+	size,
 	variant,
 	isLoading,
 	icon,
@@ -25,6 +27,10 @@ export const Button: React.FC<ButtonProps> = ({
 			className={cx({
 				[styles.btnPrimary]: variant === 'primary',
 				[styles.btnSecondary]: variant === 'secondary',
+
+				[styles.btnSm]: size === 'sm',
+				[styles.btnMd]: size === 'md' || !size,
+				[styles.btnLg]: size === 'lg',
 			})}
 		>
 			{icon && <span className={styles.icon}>{icon}</span>}
