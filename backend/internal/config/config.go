@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 )
 
@@ -23,7 +23,7 @@ func init() {
 		panic(fmt.Errorf("failed to get user home directory: %w", err))
 	}
 
-	robinPath = path.Join(home, ".robin")
+	robinPath = filepath.Join(home, ".robin")
 
 	// If it doesn't exist, create it
 	if _, err := os.Stat(robinPath); os.IsNotExist(err) {
@@ -47,7 +47,7 @@ func GetProjectName() (string, error) {
 		return "", err
 	}
 
-	packageJsonPath := path.Join(projectPath, "package.json")
+	packageJsonPath := filepath.Join(projectPath, "package.json")
 	var packageJson PackageJson
 	if err := LoadPackageJson(packageJsonPath, &packageJson); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load %s: %v", packageJsonPath, err)
@@ -89,7 +89,7 @@ func LoadProjectConfig() (RobinConfig, error) {
 		return defaultRobinConfig, err
 	}
 
-	robinConfigPath := path.Join(robinPath, "projects", alias, "config.json")
+	robinConfigPath := filepath.Join(robinPath, "projects", alias, "config.json")
 
 	// Load the config file from robinConfigPath
 	configFileBuf, err := os.ReadFile(robinConfigPath)
@@ -115,7 +115,7 @@ func UpdateProjectConfig(projectConfig RobinConfig) error {
 		return fmt.Errorf("failed to get project name: %w", err)
 	}
 
-	robinConfigPath := path.Join(robinPath, "projects", alias, "config.json")
+	robinConfigPath := filepath.Join(robinPath, "projects", alias, "config.json")
 
 	// Marshal the config file
 	buf, err := json.Marshal(&projectConfig)
@@ -123,7 +123,7 @@ func UpdateProjectConfig(projectConfig RobinConfig) error {
 		return fmt.Errorf("failed to marshal config file: %w", err)
 	}
 
-	if err := os.MkdirAll(path.Join(robinPath, "projects", alias), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Join(robinPath, "projects", alias), 0777); err != nil {
 		return fmt.Errorf("failed to create folder for config file: %w", err)
 	}
 

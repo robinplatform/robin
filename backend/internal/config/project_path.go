@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -42,8 +41,8 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 		return "", ProjectPathNotFoundError{visited: visited}
 	}
 
-	if !fileExists(path.Join(currentDir, "robin.json")) {
-		return findProjectPath(path.Dir(currentDir), append(visited, currentDir))
+	if !fileExists(filepath.Join(currentDir, "robin.json")) {
+		return findProjectPath(filepath.Dir(currentDir), append(visited, currentDir))
 	}
 	return currentDir, nil
 }
@@ -55,11 +54,11 @@ func SetProjectPath(givenProjectPath string) (string, error) {
 			return "", fmt.Errorf("error: failed to get cwd: %s", err)
 		}
 
-		givenProjectPath = path.Join(cwd, givenProjectPath)
+		givenProjectPath = filepath.Join(cwd, givenProjectPath)
 	}
 
-	givenProjectPath = path.Clean(givenProjectPath)
-	if fileExists(path.Join(givenProjectPath, "robin.json")) {
+	givenProjectPath = filepath.Clean(givenProjectPath)
+	if fileExists(filepath.Join(givenProjectPath, "robin.json")) {
 		projectPath = givenProjectPath
 		return projectPath, nil
 	}
