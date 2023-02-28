@@ -21,11 +21,20 @@ export function createRpcMethod(
 				body: JSON.stringify({ appId, serverFile, methodName, data }),
 				keepalive: true,
 			});
-			if (!res.ok) {
-				// TODO: Attempt to extract error message from response body
-				throw new Error(`RPC failed with status ${res.status}`);
+
+			const resBody = await res.json();
+			if (typeof resBody === 'object' && resBody && resBody.type === 'error') {
+				throw Object.assign(new Error(resBody.error), {
+					...resBody,
+					status: res.status,
+				});
 			}
-			return res.json();
+
+			if (!res.ok) {
+				throw new Error(`${methodName} failed with status ${res.status}`);
+			}
+
+			return resBody;
 		},
 		{
 			serverFile,

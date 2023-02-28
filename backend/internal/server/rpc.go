@@ -57,9 +57,13 @@ func sendJson(req *http.Request, res http.ResponseWriter, statusCode int, data i
 	}
 
 	if err != nil {
-		res.Write([]byte(fmt.Sprintf(`{"type": "error", "error": %q}`, err.Error())))
-		return
+		if statusCode == 200 {
+			statusCode = http.StatusInternalServerError
+		}
+		buf = []byte(fmt.Sprintf(`{"type": "error", "error": %q}`, err.Error()))
 	}
+
+	res.WriteHeader(statusCode)
 	res.Write(buf)
 }
 

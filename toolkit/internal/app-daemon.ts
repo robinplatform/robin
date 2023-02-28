@@ -72,7 +72,9 @@ async function handleRequest(
 		const result = await method(data);
 		res.end(JSON.stringify({ type: 'success', result }));
 	} catch (err) {
-		res.statusCode = 500;
+		if (!res.headersSent) {
+			res.writeHead(500, { 'Content-Type': 'application/json' });
+		}
 		res.end(
 			JSON.stringify({
 				type: 'error',
