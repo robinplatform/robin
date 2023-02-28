@@ -27,6 +27,8 @@ func createTester(t *testing.T, inputVfs map[string]*fstest.MapFile) resolverTes
 }
 
 func (test *resolverTester) assertNotExists(target string) {
+	target = filepath.FromSlash(target)
+
 	if resolvedTarget, err := test.resolver.Resolve(target); err == nil {
 		test.t.Fatalf("expected error when resolving '%s', got '%s'", target, resolvedTarget)
 	}
