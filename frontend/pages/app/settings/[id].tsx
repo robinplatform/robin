@@ -1,7 +1,6 @@
 import { useRouter } from 'next/router';
 import { AppToolbar } from '../../../components/AppToolbar';
-import { Monaco } from '../../../components/Monaco';
-import { Settings } from '../../../components/settings';
+import { Settings } from '../../../components/Settings';
 import { z } from 'zod';
 import { useRpcMutation, useRpcQuery } from '../../../hooks/useRpcQuery';
 import { Button } from '../../../components/Button';
@@ -10,6 +9,7 @@ import { toast } from 'react-hot-toast';
 import { Alert } from '../../../components/Alert';
 import { Spinner } from '../../../components/Spinner';
 import { useQueryClient } from '@tanstack/react-query';
+import Head from 'next/head';
 
 export default function AppSettings() {
 	const router = useRouter();
@@ -46,66 +46,72 @@ export default function AppSettings() {
 		return null;
 	}
 	return (
-		<div className="full">
-			<AppToolbar
-				appId={id}
-				actions={
-					<>
-						<Button
-							size="sm"
-							variant="primary"
-							onClick={() => router.push(`/app/${id}`)}
-						>
-							<span style={{ marginRight: '.5rem' }}>
-								<ArrowLeftIcon />
-							</span>
-							Back
-						</Button>
-					</>
-				}
-			/>
+		<>
+			<Head>
+				<title>{id} Settings</title>
+			</Head>
 
-			<div
-				className={'full'}
-				style={{ padding: '0 .5rem', paddingBottom: '.5rem' }}
-			>
-				<>
-					{isLoading && (
-						<div
-							className="full"
-							style={{
-								display: 'flex',
-								alignItems: 'center',
-								justifyContent: 'center',
-							}}
-						>
-							<p style={{ display: 'flex', alignItems: 'center' }}>
-								<Spinner />
-								<span style={{ marginLeft: '.5rem' }}>Loading...</span>
-							</p>
-						</div>
-					)}
-					{errLoadingAppSettings && (
-						<Alert variant="error" title={'Failed to load app settings'}>
-							{String(errLoadingAppSettings)}
-						</Alert>
-					)}
-					{appSettings && (
-						<Settings
-							schema={z.unknown()}
-							isLoading={false}
-							error={undefined}
-							value={appSettings}
-							onChange={(value) =>
-								updateAppSettings({
-									appId: id,
-									settings: value,
-								})
-							}
-						/>
-					)}
-				</>
+			<div className="full">
+				<AppToolbar
+					appId={id}
+					actions={
+						<>
+							<Button
+								size="sm"
+								variant="primary"
+								onClick={() => router.push(`/app/${id}`)}
+							>
+								<span style={{ marginRight: '.5rem' }}>
+									<ArrowLeftIcon />
+								</span>
+								Back
+							</Button>
+						</>
+					}
+				/>
+
+				<div
+					className={'full'}
+					style={{ padding: '0 .5rem', paddingBottom: '.5rem' }}
+				>
+					<>
+						{isLoading && (
+							<div
+								className="full"
+								style={{
+									display: 'flex',
+									alignItems: 'center',
+									justifyContent: 'center',
+								}}
+							>
+								<p style={{ display: 'flex', alignItems: 'center' }}>
+									<Spinner />
+									<span style={{ marginLeft: '.5rem' }}>Loading...</span>
+								</p>
+							</div>
+						)}
+						{errLoadingAppSettings && (
+							<Alert variant="error" title={'Failed to load app settings'}>
+								{String(errLoadingAppSettings)}
+							</Alert>
+						)}
+						{appSettings && (
+							<Settings
+								schema={z.unknown()}
+								isLoading={false}
+								error={undefined}
+								value={appSettings}
+								onChange={(value) =>
+									updateAppSettings({
+										appId: id,
+										settings: value,
+									})
+								}
+							/>
+						)}
+					</>
+				</div>
 			</div>
-		</div>
+		</>
 	);
 }
