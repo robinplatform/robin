@@ -7,6 +7,7 @@ import (
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/server"
+	"robinplatform.dev/internal/upgrade"
 )
 
 type StartCommand struct {
@@ -42,6 +43,8 @@ func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 }
 
 func (cmd *StartCommand) Run() error {
+	go upgrade.WatchForUpdates()
+
 	if cmd.forceStableToolkit {
 		compile.DisableEmbeddedToolkit()
 	}

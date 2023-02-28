@@ -19,10 +19,6 @@ import (
 
 var logger = log.New("upgrade")
 
-func init() {
-	go WatchForUpdates()
-}
-
 func createTempDir() (string, error) {
 	buf := make([]byte, 4)
 	if _, err := rand.Read(buf); err != nil {
