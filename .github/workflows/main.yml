@@ -36,7 +36,6 @@ jobs:
           fi
 
       - name: Generate
-        if: "${{ matrix.runner != 'windows-2022' }}"
         run: |
           # Generating a pseudo frontend build so that vet
           # does not complain about the lack of an embed target
@@ -49,14 +48,12 @@ jobs:
           go generate -x -tags prod ./...
 
       - name: Vet
-        if: "${{ matrix.runner != 'windows-2022' }}"
         run: |
           cd backend/
           go vet ./...
           go vet -tags prod ./...
 
       - name: Test
-        if: "${{ matrix.runner != 'windows-2022' }}"
         run: |
           cd backend/
           go test -v -race -timeout 10s ./...
