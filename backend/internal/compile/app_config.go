@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 
 	"robinplatform.dev/internal/config"
@@ -90,6 +91,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 		return fmt.Errorf("failed to get project path: %s", err)
 	}
 
+	configPath = filepath.ToSlash(configPath)
 	appConfig.ConfigPath, err = url.Parse(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config path '%s': %s", configPath, err)
@@ -99,8 +101,8 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 	if appConfig.ConfigPath.Scheme == "" {
 		appConfig.ConfigPath.Scheme = "file"
 	}
-	if appConfig.ConfigPath.Scheme == "file" && !filepath.IsAbs(appConfig.ConfigPath.Path) {
-		appConfig.ConfigPath.Path = filepath.Clean(filepath.Join(projectPath, appConfig.ConfigPath.Path))
+	if appConfig.ConfigPath.Scheme == "file" && !path.IsAbs(appConfig.ConfigPath.Path) {
+		appConfig.ConfigPath.Path = path.Clean(path.Join(projectPath, appConfig.ConfigPath.Path))
 	}
 
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
@@ -111,7 +113,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 	}
 
 	// All paths must end with `robin.app.json`
-	if filepath.Base(appConfig.ConfigPath.Path) != "robin.app.json" {
+	if path.Base(appConfig.ConfigPath.Path) != "robin.app.json" {
 		appConfig.ConfigPath = appConfig.ConfigPath.JoinPath("robin.app.json")
 	}
 
