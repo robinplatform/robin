@@ -16,6 +16,9 @@ import (
 )
 
 type Server struct {
+	BindAddress string
+	Port        int
+
 	router    *httprouter.Router
 	webRouter http.Handler
 	compiler  compile.Compiler
@@ -44,6 +47,12 @@ func (server *Server) loadRpcMethods(group RouterGroup) {
 	RestartApp.Register(server, group)
 }
 
+func (server *Server) loadAppsRpcMethods(group RouterGroup) {
+	// App settings
+	GetAppSettingsById.Register(server, group)
+	UpdateAppSettings.Register(server, group)
+}
+
 func createErrorJs(errMessage string) string {
 	errJson, err := json.Marshal(errMessage)
 	if err != nil {
@@ -68,7 +77,7 @@ func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (server *Server) Run(portBinding string) error {
+func (server *Server) Run() error {
 	logger.Print("Starting robin", log.Ctx{
 		"projectPath": config.GetProjectPathOrExit(),
 		"pid":         os.Getpid(),
@@ -78,6 +87,7 @@ func (server *Server) Run(portBinding string) error {
 		server.router = httprouter.New()
 		server.loadRoutes()
 	}
+	server.compiler.ServerPort = server.Port
 
 	// Start precompiling apps, and ignore the errors for now
 	// The errors will get handled when the app is requested
@@ -176,6 +186,12 @@ func (server *Server) Run(portBinding string) error {
 		router: server.router,
 		prefix: "/api/internal/rpc",
 	})
+	server.loadAppsRpcMethods(RouterGroup{
+		router: server.router,
+		prefix: "/api/apps/rpc",
+	})
+
+	portBinding := fmt.Sprintf("%s:%d", server.BindAddress, server.Port)
 
 	// TODO: Simplify this
 

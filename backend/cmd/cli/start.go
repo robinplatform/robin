@@ -46,6 +46,9 @@ func (cmd *StartCommand) Run() error {
 		compile.DisableEmbeddedToolkit()
 	}
 
-	app := server.Server{}
-	return app.Run("[::1]:9010")
+	app := server.Server{
+		BindAddress: cmd.bindAddress,
+		Port:        cmd.port,
+	}
+	return app.Run()
 }

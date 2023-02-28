@@ -1,75 +1,70 @@
-// TODO: Cleanup this file
+import fetch from 'isomorphic-fetch';
+import { z } from 'zod';
 
-import { Stream } from './stream';
+const isBrowser = (function () {
+	try {
+		return global === window;
+	} catch {
+		return false;
+	}
+})();
 
-// Setting this up as a function so that there's no
-// weirdness with object mutation.
-export const getDefaultFetchSettings = () =>
-	({
-		cache: 'no-cache',
-		credentials: 'same-origin',
+const ROBIN_SERVER_PORT = Number(process.env.ROBIN_SERVER_PORT ?? 9010);
+const ROBIN_APP_ID = process.env.ROBIN_APP_ID;
+
+if (!ROBIN_APP_ID) {
+	throw new Error('ROBIN_APP_ID must be set - was this app compiled by Robin?');
+}
+
+const baseUrl = isBrowser
+	? `${window.location.protocol}//${window.location.host}`
+	: `http://localhost:${ROBIN_SERVER_PORT ?? 9010}`;
+
+export async function request<T>({
+	pathname,
+	resultType,
+	body,
+	...overrides
+}: Omit<RequestInit, 'body'> & {
+	pathname: string;
+	resultType: z.ZodSchema<T>;
+	body?: object;
+}): Promise<T> {
+	const targetUrl = new URL(pathname, baseUrl).toString();
+	const res = await fetch(targetUrl, {
+		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
+			...(overrides?.headers ?? {}),
 		},
 		redirect: 'follow',
-		referrerPolicy: 'no-referrer',
-		method: 'POST',
-	} as const);
-
-type Config = {
-	releaseChannel: 'dev' | 'beta' | 'stable' | 'nightly';
-	environments: Record<string, Record<string, string>>;
-	extensions: Record<string, Record<string, any>>;
-	minifyExtensionClients: boolean;
-	keyMappings: Record<string, string>;
-	enableKeyMappings: boolean;
-};
-
-export const getConfig = async (): Promise<Config> => {
-	const resp = await fetch('/api/internal/rpc/GetConfig', {
-		...getDefaultFetchSettings(),
+		body: JSON.stringify(body ?? {}),
+		...overrides,
 	});
-	if (!resp.ok) {
-		throw new Error('Could not get config');
-	}
-	const value = await resp.json();
-	return value;
-};
 
-export const updateConfig = async (newValue: string) => {
-	const resp = await fetch('/api/internal/rpc/UpdateConfig', {
-		...getDefaultFetchSettings(),
-		body: newValue,
+	const resBody = await res.json();
+	if (typeof resBody === 'object' && resBody && resBody.type === 'error') {
+		throw Object.assign(new Error(resBody.error), {
+			...resBody,
+			status: res.status,
+		});
+	}
+
+	if (!res.ok) {
+		throw new Error(`Request failed with status ${res.status}`);
+	}
+
+	return resultType.parse(resBody);
+}
+
+export async function getAppSettings<T extends Record<string, unknown>>(
+	settingsShape: z.Schema<T>,
+) {
+	return request({
+		pathname: `/api/apps/rpc/GetAppSettingsById`,
+		resultType: settingsShape,
+		body: {
+			appId: ROBIN_APP_ID,
+		},
 	});
-	if (!resp.ok) {
-		throw new Error('Could not update config');
-	}
-	const value = await resp.json();
-	return value;
-};
-
-export const getExtensions = async () => [] as any[];
-
-export const getVersion = async () => ({
-	robin: {
-		version: '',
-		releaseChannel: 'dev' as 'dev' | 'stable' | 'beta' | 'nightly',
-	},
-});
-
-export const checkForUpdates = async () => ({
-	needsUpgrade: false,
-	currentVersion: '',
-	latestVersion: '',
-	channel: 'dev' as 'dev' | 'stable' | 'beta' | 'nightly',
-});
-
-export const upgradeRobin = async () => {};
-
-export const setRobinChannel = async () => {};
-
-export const getHeartbeat = async (): Promise<Stream> => {
-	return Stream.callStreamRpc('GetHeartbeat', Math.random() + 'adsf');
-};
-
-export { Stream };
+}

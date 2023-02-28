@@ -169,6 +169,24 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 	return nil
 }
 
+func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
+	projectConfig, err := config.LoadProjectConfig()
+	if err != nil {
+		return nil, err
+	}
+	return projectConfig.AppSettings[appConfig.Id], nil
+}
+
+func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
+	projectConfig, err := config.LoadProjectConfig()
+	if err != nil {
+		return err
+	}
+
+	projectConfig.AppSettings[appConfig.Id] = settings
+	return config.UpdateProjectConfig(projectConfig)
+}
+
 func GetAllProjectApps() ([]RobinAppConfig, error) {
 	projectConfig := config.RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(); err != nil {

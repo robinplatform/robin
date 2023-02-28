@@ -15,7 +15,7 @@ export default function Page() {
 				<title>{title || 'Error'} | Robin</title>
 			</Head>
 
-			<AppWindow id={id ? `${id}` : undefined} setTitle={setTitle} />
+			{id && <AppWindow id={String(id)} setTitle={setTitle} />}
 		</div>
 	);
 }

@@ -12,7 +12,7 @@ import cx from 'classnames';
 import Link from 'next/link';
 
 type Props = {
-	id: string | undefined;
+	id: string;
 	setTitle: React.Dispatch<React.SetStateAction<string>>;
 };
 
@@ -57,7 +57,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 	const router = useRouter();
 
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
-	const [error, setError] = React.useState<string | null>(null);
+	const [errFromApp, setError] = React.useState<string | null>(null);
 
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
@@ -88,7 +88,6 @@ function AppWindowContent({ id, setTitle }: Props) {
 	}, [router, setTitle]);
 
 	React.useEffect(() => {
-		if (!id) return;
 		setTitle(id);
 
 		if (!iframeRef.current) return;
@@ -104,7 +103,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 		return () => iframe.removeEventListener('load', listener);
 	}, [id, setTitle]);
 
-	const { data: appConfig } = useRpcQuery({
+	const { data: appConfig, error: errLoadingAppConfig } = useRpcQuery({
 		method: 'GetAppById',
 		data: { appId: id },
 		result: z.object({
@@ -112,10 +111,9 @@ function AppWindowContent({ id, setTitle }: Props) {
 			name: z.string(),
 			pageIcon: z.string(),
 		}),
-		onError: (err) => {
-			toast.error(`Failed to load robin app config: ${(err as Error).message}`);
-		},
 	});
+
+	const error = errLoadingAppConfig || errFromApp;
 
 	return (
 		<div className={'full col'}>
@@ -123,7 +121,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 				<div style={{ width: '100%', padding: '1rem' }}>
 					<Alert variant="error" title={`The '${id}' app has crashed.`}>
 						<pre style={{ marginBottom: '1rem' }}>
-							<code>{error}</code>
+							<code>{String(error)}</code>
 						</pre>
 
 						<Button variant="primary" onClick={() => setError(null)}>

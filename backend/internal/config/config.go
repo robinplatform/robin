@@ -75,7 +75,7 @@ type RobinConfig struct {
 	Environments map[string]map[string]string `json:"environments"`
 
 	// AppSettings is a map of app IDs to the respective app settings
-	AppSettings map[string]map[string]interface{} `json:"appSettings"`
+	AppSettings map[string]map[string]any `json:"appSettings"`
 
 	// KeyMappings is a map of key mappings
 	KeyMappings map[string]string `json:"keyMappings"`

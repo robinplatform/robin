@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"sync"
 	"text/template"
@@ -31,12 +32,15 @@ var (
 )
 
 type Compiler struct {
+	ServerPort int
+
 	mux      sync.Mutex
 	appCache map[string]CompiledApp
 }
 
 type CompiledApp struct {
 	httpClient *http.Client
+	compiler   *Compiler
 
 	Id string
 
@@ -85,6 +89,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	}
 
 	app := CompiledApp{
+		compiler: compiler,
+
 		Id:     id,
 		Html:   htmlOutput.String(),
 		Cached: true,
@@ -295,6 +301,13 @@ func getFileExports(input *es.StdinOptions) ([]string, error) {
 	panic(fmt.Errorf("unreachable code"))
 }
 
+func (app *CompiledApp) getEnvConstants() map[string]string {
+	return map[string]string{
+		"process.env.ROBIN_SERVER_PORT": strconv.FormatInt(int64(app.compiler.ServerPort), 10),
+		"process.env.ROBIN_APP_ID":      `"` + app.Id + `"`,
+	}
+}
+
 func (app *CompiledApp) buildClientJs() error {
 	appConfig, err := LoadRobinAppById(app.Id)
 	if err != nil {
@@ -328,6 +341,8 @@ func (app *CompiledApp) buildClientJs() error {
 			".jpeg": es.LoaderBase64,
 		},
 		Metafile: true,
+
+		Define: app.getEnvConstants(),
 
 		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
 		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
@@ -452,6 +467,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		Format:   es.FormatCommonJS,
 		Bundle:   true,
 		Write:    false,
+		Define:   app.getEnvConstants(),
 		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
 			{
 				Name: "resolve-abs-paths",

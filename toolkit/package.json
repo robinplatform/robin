@@ -18,6 +18,7 @@
 	},
 	"devDependencies": {
 		"@tanstack/react-query": "4.24.9",
+		"@types/isomorphic-fetch": "0.0.36",
 		"@types/react": "18.0.2",
 		"@types/react-dom": "18.0.2",
 		"esbuild": "0.17.10",

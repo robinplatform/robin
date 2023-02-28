@@ -1,14 +1,27 @@
+import { getAppSettings } from '@robinplatform/toolkit';
 import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
+import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 
 function Page() {
-	const { data, error } = useRpcQuery(getSelfSource, {
-		filename: './package.json',
+	const { data: settings } = useQuery({
+		queryKey: ['app-settings'],
+		queryFn: () => getAppSettings(z.object({ filename: z.string() })),
 	});
+	const { data, error } = useRpcQuery(
+		getSelfSource,
+		{
+			filename: settings?.filename ?? './package.json',
+		},
+		{
+			enabled: !!settings,
+		},
+	);
 
 	return (
 		<pre
