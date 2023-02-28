@@ -3,15 +3,16 @@ import React from 'react';
 import { Alert } from './Alert';
 import { Button } from './Button';
 import { useIsMutating } from '@tanstack/react-query';
-import styles from './AppWindow.module.scss';
-import { GearIcon, SyncIcon, ToolsIcon } from '@primer/octicons-react';
+import { GearIcon, SyncIcon } from '@primer/octicons-react';
 import toast from 'react-hot-toast';
 import { useRpcMutation, useRpcQuery } from '../hooks/useRpcQuery';
 import { z } from 'zod';
 import cx from 'classnames';
 import Link from 'next/link';
+import { AppToolbar } from './AppToolbar';
+import styles from './AppToolbar.module.scss';
 
-type Props = {
+type AppWindowProps = {
 	id: string;
 	setTitle: React.Dispatch<React.SetStateAction<string>>;
 };
@@ -53,11 +54,11 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
-function AppWindowContent({ id, setTitle }: Props) {
+function AppWindowContent({ id, setTitle }: AppWindowProps) {
 	const router = useRouter();
 
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
-	const [errFromApp, setError] = React.useState<string | null>(null);
+	const [error, setError] = React.useState<string | null>(null);
 
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
@@ -103,18 +104,6 @@ function AppWindowContent({ id, setTitle }: Props) {
 		return () => iframe.removeEventListener('load', listener);
 	}, [id, setTitle]);
 
-	const { data: appConfig, error: errLoadingAppConfig } = useRpcQuery({
-		method: 'GetAppById',
-		data: { appId: id },
-		result: z.object({
-			id: z.string(),
-			name: z.string(),
-			pageIcon: z.string(),
-		}),
-	});
-
-	const error = errLoadingAppConfig || errFromApp;
-
 	return (
 		<div className={'full col'}>
 			{error && (
@@ -132,25 +121,25 @@ function AppWindowContent({ id, setTitle }: Props) {
 			)}
 			{!!id && !error && (
 				<>
-					<div className={styles.toolbar}>
-						<p>{appConfig?.name ?? 'Loading ...'}</p>
+					<AppToolbar
+						appId={id}
+						actions={
+							<>
+								<RestartAppButton />
 
-						<div className={styles.toolbarIcons}>
-							<RestartAppButton />
-
-							{/* TODO: This should be the app's settings, not the global settings */}
-							<Link
-								href="/settings"
-								className={cx(
-									styles.toolbarButton,
-									'robin-rounded robin-bg-dark-purple',
-								)}
-								style={{ marginLeft: '.5rem' }}
-							>
-								<GearIcon />
-							</Link>
-						</div>
-					</div>
+								<Link
+									href={`/app/settings/${id}`}
+									className={cx(
+										styles.toolbarButton,
+										'robin-rounded robin-bg-dark-purple',
+									)}
+									style={{ marginLeft: '.5rem' }}
+								>
+									<GearIcon />
+								</Link>
+							</>
+						}
+					/>
 
 					<iframe
 						ref={iframeRef}
@@ -163,7 +152,7 @@ function AppWindowContent({ id, setTitle }: Props) {
 	);
 }
 
-export function AppWindow(props: Props) {
+export function AppWindow(props: AppWindowProps) {
 	const numRestarts = useIsMutating({ mutationKey: ['RestartApp'] });
 
 	return <AppWindowContent key={String(props.id) + numRestarts} {...props} />;
