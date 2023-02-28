@@ -12,7 +12,7 @@ type GetAppByIdInput struct {
 	AppId string `json:"appId"`
 }
 
-var GetAppById = RpcMethod[GetAppByIdInput, compile.RobinAppConfig]{
+var GetAppById = InternalRpcMethod[GetAppByIdInput, compile.RobinAppConfig]{
 	Name: "GetAppById",
 	Run: func(req RpcRequest[GetAppByIdInput]) (compile.RobinAppConfig, *HttpError) {
 		app, err := compile.LoadRobinAppById(req.Data.AppId)
@@ -26,7 +26,7 @@ var GetAppById = RpcMethod[GetAppByIdInput, compile.RobinAppConfig]{
 	},
 }
 
-var GetApps = RpcMethod[struct{}, []compile.RobinAppConfig]{
+var GetApps = InternalRpcMethod[struct{}, []compile.RobinAppConfig]{
 	Name:             "GetApps",
 	SkipInputParsing: true,
 	Run: func(_ RpcRequest[struct{}]) ([]compile.RobinAppConfig, *HttpError) {
@@ -48,7 +48,7 @@ type RunAppMethodInput struct {
 	Data       map[string]any `json:"data"`
 }
 
-var RunAppMethod = RpcMethod[RunAppMethodInput, any]{
+var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 	Name: "RunAppMethod",
 	Run: func(req RpcRequest[RunAppMethodInput]) (any, *HttpError) {
 		_, err := compile.LoadRobinAppById(req.Data.AppId)
@@ -95,7 +95,7 @@ type RestartAppInput struct {
 	AppId string `json:"appId"`
 }
 
-var RestartApp = RpcMethod[RestartAppInput, struct{}]{
+var RestartApp = InternalRpcMethod[RestartAppInput, struct{}]{
 	Name: "RestartApp",
 	Run: func(req RpcRequest[RestartAppInput]) (struct{}, *HttpError) {
 		_, err := compile.LoadRobinAppById(req.Data.AppId)

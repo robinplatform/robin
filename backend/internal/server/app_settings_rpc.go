@@ -11,7 +11,7 @@ type GetAppSettingsByIdInput struct {
 	AppId string `json:"appId"`
 }
 
-var GetAppSettingsById = RpcMethod[GetAppSettingsByIdInput, map[string]any]{
+var GetAppSettingsById = AppsRpcMethod[GetAppSettingsByIdInput, map[string]any]{
 	Name: "GetAppSettingsById",
 	Run: func(req RpcRequest[GetAppSettingsByIdInput]) (map[string]any, *HttpError) {
 		app, err := compile.LoadRobinAppById(req.Data.AppId)
@@ -42,7 +42,7 @@ type UpdateAppSettingsInput struct {
 	Settings map[string]any `json:"settings"`
 }
 
-var UpdateAppSettings = RpcMethod[UpdateAppSettingsInput, struct{}]{
+var UpdateAppSettings = AppsRpcMethod[UpdateAppSettingsInput, struct{}]{
 	Name: "UpdateAppSettings",
 	Run: func(req RpcRequest[UpdateAppSettingsInput]) (struct{}, *HttpError) {
 		app, err := compile.LoadRobinAppById(req.Data.AppId)

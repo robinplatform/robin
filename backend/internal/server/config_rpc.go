@@ -13,7 +13,7 @@ type GetVersionResponse struct {
 	Arch    string `json:"arch"`
 }
 
-var GetVersion = RpcMethod[struct{}, GetVersionResponse]{
+var GetVersion = InternalRpcMethod[struct{}, GetVersionResponse]{
 	Name:             "GetVersion",
 	SkipInputParsing: true,
 	Run: func(_ RpcRequest[struct{}]) (GetVersionResponse, *HttpError) {
@@ -25,7 +25,7 @@ var GetVersion = RpcMethod[struct{}, GetVersionResponse]{
 	},
 }
 
-var GetConfig = RpcMethod[struct{}, config.RobinConfig]{
+var GetConfig = InternalRpcMethod[struct{}, config.RobinConfig]{
 	Name:             "GetConfig",
 	SkipInputParsing: true,
 	Run: func(_ RpcRequest[struct{}]) (config.RobinConfig, *HttpError) {
@@ -40,7 +40,7 @@ var GetConfig = RpcMethod[struct{}, config.RobinConfig]{
 	},
 }
 
-var UpdateConfig = RpcMethod[config.RobinConfig, struct{}]{
+var UpdateConfig = InternalRpcMethod[config.RobinConfig, struct{}]{
 	Name: "UpdateConfig",
 	Run: func(c RpcRequest[config.RobinConfig]) (struct{}, *HttpError) {
 		var empty struct{}

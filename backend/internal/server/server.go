@@ -35,22 +35,40 @@ func (routerGroup *RouterGroup) Handle(method, path string, handler httprouter.H
 	routerGroup.router.Handle(method, routerGroup.prefix+path, handler)
 }
 
-func (server *Server) loadRpcMethods(group RouterGroup) {
-	GetVersion.Register(server, group)
-	GetConfig.Register(server, group)
-	UpdateConfig.Register(server, group)
+type InternalRpcMethod[Input any, Output any] RpcMethod[Input, Output]
 
-	// Apps
-	GetAppById.Register(server, group)
-	GetApps.Register(server, group)
-	RunAppMethod.Register(server, group)
-	RestartApp.Register(server, group)
+func (method *InternalRpcMethod[Input, Output]) Register(server *Server) {
+	(*RpcMethod[Input, Output])(method).Register(server, RouterGroup{
+		router: server.router,
+		prefix: "/api/internal/rpc",
+	})
 }
 
-func (server *Server) loadAppsRpcMethods(group RouterGroup) {
-	// App settings
-	GetAppSettingsById.Register(server, group)
-	UpdateAppSettings.Register(server, group)
+type AppsRpcMethod[Input any, Output any] RpcMethod[Input, Output]
+
+func (method *AppsRpcMethod[Input, Output]) Register(server *Server) {
+	(*RpcMethod[Input, Output])(method).Register(server, RouterGroup{
+		router: server.router,
+		prefix: "/api/apps/rpc",
+	})
+}
+
+func (server *Server) loadRpcMethods() {
+	// Internal RPC methods
+
+	GetVersion.Register(server)
+	GetConfig.Register(server)
+	UpdateConfig.Register(server)
+
+	GetAppById.Register(server)
+	GetApps.Register(server)
+	RunAppMethod.Register(server)
+	RestartApp.Register(server)
+
+	// Apps RPC methods
+
+	GetAppSettingsById.Register(server)
+	UpdateAppSettings.Register(server)
 }
 
 func createErrorJs(errMessage string) string {
@@ -182,15 +200,7 @@ func (server *Server) Run() error {
 		res.Write([]byte(app.ClientJs))
 	})
 
-	server.loadRpcMethods(RouterGroup{
-		router: server.router,
-		prefix: "/api/internal/rpc",
-	})
-	server.loadAppsRpcMethods(RouterGroup{
-		router: server.router,
-		prefix: "/api/apps/rpc",
-	})
-
+	server.loadRpcMethods()
 	portBinding := fmt.Sprintf("%s:%d", server.BindAddress, server.Port)
 
 	// TODO: Simplify this
