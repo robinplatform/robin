@@ -9,14 +9,14 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 
 function Page() {
-	const { data: settings } = useQuery({
-		queryKey: ['app-settings'],
-		queryFn: () => getAppSettings(z.object({ filename: z.string() })),
-	});
+	const { data: settings } = useRpcQuery(
+		getAppSettings,
+		z.object({ filename: z.string() }),
+	);
 	const { data, error } = useRpcQuery(
 		getSelfSource,
 		{
-			filename: settings?.filename ?? './package.json',
+			filename: String(settings?.filename ?? './package.json'),
 		},
 		{
 			enabled: !!settings,

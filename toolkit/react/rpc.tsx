@@ -2,6 +2,7 @@ import {
 	QueryClientProvider,
 	QueryClient,
 	useQuery,
+	UseQueryOptions,
 } from '@tanstack/react-query';
 import React from 'react';
 
@@ -27,27 +28,28 @@ export function ReactQueryProvider({
 }
 
 interface RpcMethod<Input, Output> {
-	serverFile: string;
-	methodName: string;
+	queryKeyPrefix: string[];
 	(data: Input): Promise<Output>;
 }
 
 export function useRpcQuery<Input, Output>(
 	method: (data: Input) => Promise<Output>,
 	data: Input,
+	overrides?: Omit<
+		UseQueryOptions<Output, unknown, Output, unknown[]>,
+		'queryKey' | 'queryFn'
+	>,
 ) {
 	const rpcMethod = method as RpcMethod<Input, Output>;
-	if (
-		typeof rpcMethod.serverFile !== 'string' ||
-		typeof rpcMethod.methodName !== 'string'
-	) {
+	if (!Array.isArray(rpcMethod.queryKeyPrefix)) {
 		throw new Error(
 			`Invalid RPC method passed to useRpcQuery. Make sure you are importing from a '.server.ts' file.`,
 		);
 	}
 
 	return useQuery({
-		queryKey: [rpcMethod.serverFile, rpcMethod.methodName, data],
+		queryKey: [...rpcMethod.queryKeyPrefix, data] as unknown[],
 		queryFn: () => method(data),
+		...overrides,
 	});
 }

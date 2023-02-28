@@ -57,14 +57,19 @@ export async function request<T>({
 	return resultType.parse(resBody);
 }
 
-export async function getAppSettings<T extends Record<string, unknown>>(
-	settingsShape: z.Schema<T>,
-) {
-	return request({
-		pathname: `/api/apps/rpc/GetAppSettingsById`,
-		resultType: settingsShape,
-		body: {
-			appId: ROBIN_APP_ID,
-		},
-	});
-}
+export const getAppSettings = Object.assign(
+	async function <T extends Record<string, unknown>>(
+		settingsShape: z.Schema<T>,
+	) {
+		return request({
+			pathname: `/api/apps/rpc/GetAppSettingsById`,
+			resultType: settingsShape,
+			body: {
+				appId: ROBIN_APP_ID,
+			},
+		});
+	},
+	{
+		queryKeyPrefix: ['GetAppSettingsById'],
+	},
+);
