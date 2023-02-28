@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 )
@@ -11,7 +12,13 @@ type resolverTester struct {
 	resolver *Resolver
 }
 
-func createTester(t *testing.T, vfs map[string]*fstest.MapFile) resolverTester {
+func createTester(t *testing.T, inputVfs map[string]*fstest.MapFile) resolverTester {
+	vfs := make(map[string]*fstest.MapFile, len(inputVfs))
+
+	for key, value := range inputVfs {
+		vfs[filepath.FromSlash(key)] = value
+	}
+
 	return resolverTester{
 		t:        t,
 		fs:       vfs,
@@ -26,6 +33,9 @@ func (test *resolverTester) assertNotExists(target string) {
 }
 
 func (test *resolverTester) assertResolved(target, expected string) {
+	target = filepath.FromSlash(target)
+	expected = filepath.FromSlash(expected)
+
 	if resolvedTarget, err := test.resolver.Resolve(target); err != nil {
 		test.t.Fatalf("expected no error when resolving '%s', got '%s'", target, err)
 	} else if resolvedTarget != expected {
@@ -34,6 +44,10 @@ func (test *resolverTester) assertResolved(target, expected string) {
 }
 
 func (test *resolverTester) assertResolvedFrom(source, target, expected string) {
+	source = filepath.FromSlash(source)
+	target = filepath.FromSlash(target)
+	expected = filepath.FromSlash(expected)
+
 	if resolvedTarget, err := test.resolver.ResolveFrom(source, target); err != nil {
 		test.t.Fatalf("expected no error when resolving '%s' from '%s', got '%s'", target, source, err)
 	} else if resolvedTarget != expected {
