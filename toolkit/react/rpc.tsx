@@ -9,6 +9,7 @@ const globalQueryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			refetchOnWindowFocus: true,
+			retry: 1,
 		},
 	},
 });
