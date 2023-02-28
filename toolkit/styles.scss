@@ -1,5 +1,19 @@
 @import '../frontend/styles/variables';
 
+// Some resets missing from normalize
+
+button {
+	border: none;
+	cursor: pointer;
+}
+
+code {
+	display: block;
+	overflow: auto;
+}
+
+// Some variables from robin to keep things consistent
+
 :root {
 	@each $name, $value in $colors {
 		--robin-color-#{$name}: #{$value};

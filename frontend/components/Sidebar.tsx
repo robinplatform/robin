@@ -1,9 +1,8 @@
-import styles from './sidebar.module.scss';
+import styles from './Sidebar.module.scss';
 import React from 'react';
 import Link from 'next/link';
 import cx from 'classnames';
-import { useRouter } from 'next/router';
-import { ToolsIcon, HomeIcon, GearIcon } from '@primer/octicons-react';
+import { HomeIcon, GearIcon } from '@primer/octicons-react';
 import { toast } from 'react-hot-toast';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import { z } from 'zod';
