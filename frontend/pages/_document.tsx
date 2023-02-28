@@ -11,6 +11,11 @@ export default function Document() {
 					data-name={'vs/editor/editor.main'}
 					type={'text/css'}
 					rel={'stylesheet'}
+					media={'print'}
+					onLoad={function () {
+						// @ts-ignore
+						this.media = 'all';
+					}}
 				/>
 			</Head>
 
