@@ -1,7 +1,6 @@
 package httpcache
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -27,11 +26,10 @@ func NewClient(filename string, maxSize int) (CacheClient, error) {
 		return CacheClient{}, err
 	}
 
-	client := &CacheClient{
+	return CacheClient{
 		cache:  cache,
 		client: &http.Client{},
-	}
-	return *client, nil
+	}, nil
 }
 
 // parseCacheControl will attempt to parse the given `Cache-Control` header and
@@ -127,6 +125,16 @@ func (client *CacheClient) Head(targetUrl string) (bool, error) {
 	return true, nil
 }
 
+type HttpError struct {
+	URL        string
+	StatusCode int
+	Status     string
+}
+
+func (err HttpError) Error() string {
+	return err.Status
+}
+
 // Get will perform a GET request to the given URL, and return the response body. If a copy
 // of the resource is cached, the GET request will not be performed. The GET request will
 // be cached if the `Cache-Control` header contains a `max-age` or `immutable` directive.
@@ -147,7 +155,15 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", false, fmt.Errorf("failed to get %s: %s", targetUrl, string(buf))
+		logger.Debug("HTTP resource is not cacheable", log.Ctx{
+			"targetUrl":  targetUrl,
+			"statusCode": resp.StatusCode,
+		})
+		return "", false, HttpError{
+			URL:        targetUrl,
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+		}
 	}
 
 	cacheControl := resp.Header.Get("Cache-Control")

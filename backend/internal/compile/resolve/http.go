@@ -4,28 +4,22 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"path"
 	"time"
+
+	"robinplatform.dev/internal/httpcache"
 )
 
-// HttpResolverFs is an implementation of fs.FS that resolves files from a CDN. Right now, we
-// only use this to load files from unpkg.com.
-//
-// This design makes two assumptions:
-//  1. The remote CDN is setup so that all files are visible and layed out in the same way
-//     as a local file system. This is only true for unpkg.com for now.
-//  2. The cost of a HEAD+GET request is more expensive than a GET request that returns a 404.
-//     With this assumption, the resolver struct only has an "Open" (no stat) method, even though
-//     on a local filesystem, you would usually use a statcache to perform resolution.
+// HttpResolverFs is an implementation of fs.FS that resolves files from a CDN.
 type HttpResolverFs struct {
 	BaseURL *url.URL
+	client  httpcache.CacheClient
 }
 
 // NewHttpResolver creates a new resolver that is backed by a CDN. Only the scheme, host, and
 // user information are used from the given URL. The path is ignored.
-func NewHttpResolver(givenUrl *url.URL) *Resolver {
+func NewHttpResolver(givenUrl *url.URL, client httpcache.CacheClient) *Resolver {
 	baseUrl := &url.URL{
 		Scheme: givenUrl.Scheme,
 		Host:   givenUrl.Host,
@@ -34,38 +28,39 @@ func NewHttpResolver(givenUrl *url.URL) *Resolver {
 	return &Resolver{
 		FS: &HttpResolverFs{
 			BaseURL: baseUrl,
+			client:  client,
 		},
 	}
 }
 
 // HttpFileEntry is an implementation of fs.File that is backed by an HTTP response.
-// This lines up with assumption (2) above.
 type HttpFileEntry struct {
-	res *http.Response
+	path     string
+	contents string
 }
 
 func (entry HttpFileEntry) Name() string {
-	return path.Base(entry.res.Request.URL.Path)
+	return path.Base(entry.path)
 }
 
 func (entry HttpFileEntry) Size() int64 {
-	return entry.res.ContentLength
+	panic(fmt.Errorf("unsupported method"))
 }
 
 func (entry HttpFileEntry) Mode() fs.FileMode {
-	return 0
+	panic(fmt.Errorf("unsupported method"))
 }
 
 func (entry HttpFileEntry) ModTime() time.Time {
-	return time.Now()
+	panic(fmt.Errorf("unsupported method"))
 }
 
 func (entry HttpFileEntry) IsDir() bool {
-	return false
+	panic(fmt.Errorf("unsupported method"))
 }
 
 func (entry HttpFileEntry) Sys() interface{} {
-	return nil
+	panic(fmt.Errorf("unsupported method"))
 }
 
 func (entry HttpFileEntry) Stat() (fs.FileInfo, error) {
@@ -73,29 +68,25 @@ func (entry HttpFileEntry) Stat() (fs.FileInfo, error) {
 }
 
 func (entry HttpFileEntry) Read(p []byte) (n int, err error) {
-	return entry.res.Body.Read(p)
+	n = copy(p, entry.contents)
+	return n, io.EOF
 }
 
 func (entry HttpFileEntry) Close() error {
-	return entry.res.Body.Close()
+	return nil
 }
 
 func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	fileUrl := hfs.BaseURL.ResolveReference(&url.URL{Path: filename})
-	resp, err := http.Get(fileUrl.String())
+	contents, _, err := hfs.client.Get(fileUrl.String())
+
+	// TODO: return a fs.ErrNotExist if the status code is 404
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode == http.StatusNotFound {
-		resp.Body.Close()
-		return nil, fmt.Errorf("file not found: %s (status %d)", filename, resp.StatusCode)
-	}
-	if resp.StatusCode != http.StatusOK {
-		buf, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to make request: %s (status: %d)", fileUrl, resp.StatusCode)
-		}
-		return nil, fmt.Errorf("failed to make request: %s (status: %d, body: %s)", fileUrl, resp.StatusCode, buf)
-	}
-	return HttpFileEntry{resp}, nil
+
+	return HttpFileEntry{
+		path:     filename,
+		contents: contents,
+	}, nil
 }

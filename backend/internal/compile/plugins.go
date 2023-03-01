@@ -2,15 +2,41 @@ package compile
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"path"
+	"path/filepath"
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
 )
+
+var httpClient httpcache.CacheClient
+var esmSHResolver *resolve.Resolver
+
+func init() {
+	robinPath := config.GetRobinPath()
+
+	var err error
+	httpClient, err = httpcache.NewClient(filepath.Join(robinPath, "http-cache.json"), 1024*1024*1024)
+	if err != nil {
+		panic(fmt.Errorf("failed to initialize HTTP client: %w", err))
+	}
+
+	esmSHResolver = resolve.NewHttpResolver(&url.URL{
+		Scheme: "https",
+		Host:   "esm.sh",
+	}, httpClient)
+}
+
+func getHttpResolver(importerUrl *url.URL) *resolve.Resolver {
+	if importerUrl.Host == "esm.sh" {
+		return esmSHResolver
+	}
+	return resolve.NewHttpResolver(importerUrl, httpClient)
+}
 
 func concat[T any](lists ...[]T) []T {
 	concatLen := 0
@@ -131,7 +157,7 @@ var esbuildPluginLoadHttp = es.Plugin{
 				return es.OnResolveResult{}, fmt.Errorf("invalid importer url %s", args.Importer)
 			}
 
-			resolver := resolve.NewHttpResolver(importerUrl)
+			resolver := getHttpResolver(importerUrl)
 			resolvedPath, err := resolver.ResolveFrom(importerUrl.Path, args.Path)
 			if err != nil {
 				return es.OnResolveResult{}, fmt.Errorf("failed to resolve %s (imported by %s)", args.Path, args.Importer)
@@ -154,20 +180,11 @@ var esbuildPluginLoadHttp = es.Plugin{
 				targetUrl.RawQuery += "target=esnext"
 			}
 
-			res, err := http.Get(args.Path)
+			str, _, err := httpClient.Get(args.Path)
 			if err != nil {
-				return es.OnLoadResult{}, fmt.Errorf("failed to load http resource %s: %w", args.Path, err)
-			}
-			if res.StatusCode != http.StatusOK {
-				return es.OnLoadResult{}, fmt.Errorf("failed to load http resource %s: %s", args.Path, res.Status)
+				return es.OnLoadResult{}, fmt.Errorf("failed to load %s: %w", args.Path, err)
 			}
 
-			buf, err := io.ReadAll(res.Body)
-			if err != nil {
-				return es.OnLoadResult{}, fmt.Errorf("failed to load http resource %s: %w", args.Path, err)
-			}
-
-			str := string(buf)
 			if strings.HasSuffix(targetUrl.Path, ".css") {
 				str = wrapWithCssLoader(args.Path, str)
 			}
@@ -176,6 +193,11 @@ var esbuildPluginLoadHttp = es.Plugin{
 				Contents: &str,
 				Loader:   es.LoaderJS,
 			}, nil
+		})
+
+		build.OnEnd(func(_ *es.BuildResult) (es.OnEndResult, error) {
+			err := httpClient.Save()
+			return es.OnEndResult{}, err
 		})
 	},
 }
