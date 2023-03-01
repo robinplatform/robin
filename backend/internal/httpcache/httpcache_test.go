@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -391,6 +392,108 @@ func TestHttpCacheWithPersistedDeadline(t *testing.T) {
 
 		if fromCache {
 			t.Fatalf("unexpected cache hit")
+		}
+	}
+}
+
+func BenchmarkClientColdGet(b *testing.B) {
+	server := http.Server{}
+	server.Addr = ":0"
+	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "immutable")
+		w.WriteHeader(http.StatusOK)
+
+		// we will always return 1000 byte responses
+		w.Write([]byte(strings.Repeat("a", 1000)))
+	})
+
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	go server.Serve(listener)
+
+	client, err := NewClient("", 2000)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	targetUrl := fmt.Sprintf("http://%s/", listener.Addr().String())
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		res, fromCache, err := client.Get(targetUrl + strconv.FormatInt(int64(i), 10))
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if len(res) != 1000 {
+			b.Fatalf("unexpected response: %s", res)
+		}
+		if fromCache {
+			b.Fatalf("unexpected cache hit")
+		}
+	}
+}
+
+func BenchmarkClientWarmGet(b *testing.B) {
+	server := http.Server{}
+	server.Addr = ":0"
+	server.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "immutable")
+		w.WriteHeader(http.StatusOK)
+
+		// we will always return 1000 byte responses
+		w.Write([]byte(strings.Repeat("a", 1000)))
+	})
+
+	listener, err := net.Listen("tcp", server.Addr)
+	if err != nil {
+		b.Fatal(err)
+	}
+	go server.Serve(listener)
+
+	// this client can store up to 10 responses
+	client, err := NewClient("", 2000)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	targetUrl := fmt.Sprintf("http://%s/test", listener.Addr().String())
+
+	{
+		res, fromCache, err := client.Get(targetUrl)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if len(res) != 1000 {
+			b.Fatalf("unexpected response: %s", res)
+		}
+		if fromCache {
+			b.Fatalf("unexpected cache hit")
+		}
+	}
+
+	server.Close()
+	listener.Close()
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		res, fromCache, err := client.Get(targetUrl)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if len(res) != 1000 {
+			b.Fatalf("unexpected response: %s", res)
+		}
+		if !fromCache {
+			b.Fatalf("unexpected cache miss")
 		}
 	}
 }
