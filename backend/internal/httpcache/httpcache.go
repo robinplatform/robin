@@ -91,8 +91,10 @@ func (cache *httpCache) Save() error {
 		return fmt.Errorf("cannot save cache without a filename")
 	}
 
-	cache.mux.RLock()
-	defer cache.mux.RUnlock()
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
+	cache.compact()
 
 	file, err := os.Create(cache.filename)
 	if err != nil {
@@ -128,6 +130,46 @@ func (cache *httpCache) delete(key string) {
 		cache.Size -= len(node.Value)
 		delete(cache.Values, key)
 	}
+}
+
+func (cache *httpCache) compact() {
+	if cache.Size < cache.maxSize {
+		return
+	}
+
+	cacheStartSize := cache.Size
+	cacheStartNumEntries := len(cache.Values)
+
+	// delete all stale entries
+	for key, entry := range cache.Values {
+		if entry.Deadline != nil && *entry.Deadline < time.Now().UnixNano() {
+			cache.delete(key)
+		}
+	}
+
+	// until we reach target size, delete the last used entry
+	for cache.Size > cache.maxSize {
+		var lastUsedKey string
+		var lastUsedEntry *CacheEntry
+		for key, node := range cache.Values {
+			if lastUsedEntry == nil || *node.LastUsed < *lastUsedEntry.LastUsed {
+				lastUsedKey = key
+				lastUsedEntry = node
+			}
+		}
+
+		if lastUsedEntry == nil {
+			break
+		}
+		cache.delete(lastUsedKey)
+	}
+
+	logger.Debug("HTTP cache compacted", log.Ctx{
+		"startSize":       cacheStartSize,
+		"startNumEntries": cacheStartNumEntries,
+		"endSize":         cache.Size,
+		"endNumEntries":   len(cache.Values),
+	})
 }
 
 func (cache *httpCache) Delete(key string) {
@@ -182,17 +224,5 @@ func (cache *httpCache) Set(key string, entry CacheEntry) {
 		"size":             len(entry.Value),
 		"updatedCacheSize": cache.Size,
 	})
-
-	for cache.Size > cache.maxSize && len(cache.Values) > 1 {
-		var lastUsedKey string
-		var lastUsedEntry *CacheEntry
-		for key, node := range cache.Values {
-			if lastUsedEntry == nil || *node.LastUsed < *lastUsedEntry.LastUsed {
-				lastUsedKey = key
-				lastUsedEntry = node
-			}
-		}
-
-		cache.delete(lastUsedKey)
-	}
+	cache.compact()
 }

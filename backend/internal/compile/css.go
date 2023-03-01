@@ -99,7 +99,7 @@ func buildSass(srcPath, sass string) (string, error) {
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
 			Contents: fmt.Sprintf(`
-				import sass from 'https://esm.sh/sass@1.58.3?bundle&target=esnext'
+				import sass from 'https://esm.sh/sass@1.58.3'
 
 				let style = document.createElement('style')
 				style.setAttribute('data-path', '%s')
