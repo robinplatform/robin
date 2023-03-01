@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"runtime"
 
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
@@ -43,7 +44,9 @@ func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 }
 
 func (cmd *StartCommand) Run() error {
-	go upgrade.WatchForUpdates()
+	if runtime.GOOS != "windows" {
+		go upgrade.WatchForUpdates()
+	}
 
 	if cmd.forceStableToolkit {
 		compile.DisableEmbeddedToolkit()
