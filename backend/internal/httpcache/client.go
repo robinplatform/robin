@@ -16,6 +16,11 @@ type CacheClient struct {
 	client *http.Client
 }
 
+// NewClient will create a new CacheClient, which will use the given filename as the
+// backing cache file. The cache will be limited to the given size, in bytes. The exact
+// size of the cache file on disk might be slightly larger than the given size, due to
+// the overhead of the cache file format. If an empty string is given for the filename,
+// loading the cache will be skipped.
 func NewClient(filename string, maxSize int) (CacheClient, error) {
 	cache, err := New(filename, maxSize)
 	if err != nil {
@@ -102,6 +107,29 @@ func parseAge(age string) time.Duration {
 	return time.Duration(elapsedSecs) * time.Second
 }
 
+// Head will perform a HEAD request to the given URL, and return a bool indicating whether
+// the resource exists. If a copy of the resource is cached, the HEAD request will not be
+// performed. The HEAD request will never be cached.
+func (client *CacheClient) Head(targetUrl string) (bool, error) {
+	if _, ok := client.cache.Get(targetUrl); ok {
+		return true, nil
+	}
+
+	resp, err := client.client.Head(targetUrl)
+	if err != nil {
+		return false, err
+	}
+	resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return false, nil
+	}
+	return true, nil
+}
+
+// Get will perform a GET request to the given URL, and return the response body. If a copy
+// of the resource is cached, the GET request will not be performed. The GET request will
+// be cached if the `Cache-Control` header contains a `max-age` or `immutable` directive.
 func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 	if value, ok := client.cache.Get(targetUrl); ok {
 		return value, true, nil
@@ -143,10 +171,12 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 	return string(buf), false, nil
 }
 
+// GetCacheSize will return the size of the cache in bytes
 func (client *CacheClient) GetCacheSize() int {
 	return client.cache.GetSize()
 }
 
+// Save will save the cache to disk
 func (client *CacheClient) Save() error {
 	return client.cache.Save()
 }
