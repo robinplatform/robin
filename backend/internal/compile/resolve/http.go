@@ -2,6 +2,7 @@ package resolve
 
 import (
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -85,8 +86,16 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode == http.StatusNotFound {
+		resp.Body.Close()
 		return nil, fmt.Errorf("file not found: %s (status %d)", filename, resp.StatusCode)
+	}
+	if resp.StatusCode != http.StatusOK {
+		buf, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to make request: %s (status: %d)", fileUrl, resp.StatusCode)
+		}
+		return nil, fmt.Errorf("failed to make request: %s (status: %d, body: %s)", fileUrl, resp.StatusCode, buf)
 	}
 	return HttpFileEntry{resp}, nil
 }

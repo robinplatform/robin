@@ -14,12 +14,15 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
+
+	es "github.com/evanw/esbuild/pkg/api"
 )
 
 type processMeta struct {
@@ -44,6 +47,58 @@ func init() {
 	))
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize compiler: %w", err))
+	}
+}
+
+func (appConfig RobinAppConfig) getExtractServerPlugins(app *CompiledApp) []es.Plugin {
+	return []es.Plugin{
+		{
+			Name: "extract-server-ts",
+			Setup: func(build es.PluginBuild) {
+				build.OnLoad(es.OnLoadOptions{
+					Filter: "\\.server\\.ts$",
+				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+					var source []byte
+					var err error
+
+					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+						_, source, err = appConfig.ReadFile(args.Path)
+					} else {
+						source, err = os.ReadFile(args.Path)
+					}
+					if err != nil {
+						return es.OnLoadResult{}, fmt.Errorf("failed to read server file %s: %w", args.Path, err)
+					}
+
+					exports, err := getFileExports(&es.StdinOptions{
+						Contents:   string(source),
+						Sourcefile: args.Path,
+						Loader:     es.LoaderTS,
+					})
+					if err != nil {
+						return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
+					}
+
+					serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/internal/rpc';\n\n"
+					for _, export := range exports {
+						serverPolyfill += fmt.Sprintf(
+							"export const %s = createRpcMethod(%q, %q, %q);\n",
+							export,
+							appConfig.Id,
+							args.Path,
+							export,
+						)
+					}
+
+					app.serverExports[args.Path] = exports
+
+					return es.OnLoadResult{
+						Contents: &serverPolyfill,
+						Loader:   es.LoaderJS,
+					}, nil
+				})
+			},
+		},
 	}
 }
 

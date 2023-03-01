@@ -18,11 +18,11 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugin {
+func (appConfig RobinAppConfig) getToolkitPlugins() []es.Plugin {
 	toolkitInit.Do(initToolkit)
 
 	if toolkitFS == nil {
-		return plugins
+		return nil
 	}
 
 	resolver := resolve.Resolver{
@@ -31,9 +31,8 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 
 	// The first set of plugins aim to resolve the toolkit source itself, and immediately give up on any
 	// third-party module resolution requests. We try to avoid resolving modules at all, and trust that esbuild
-	// or robin-resolver will do a better job. Instead, when we load parts of toolkit, we ensure that it is loaded
-	// with a resolveDir relative to the app.
-	pluginsStart := []es.Plugin{
+	// or robin-resolver will do a better job.
+	return []es.Plugin{
 		{
 			Name: "resolve-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
@@ -46,6 +45,10 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}
 
+					logger.Debug("Resolved toolkit path", log.Ctx{
+						"args":         args,
+						"resolvedPath": resolvedPath,
+					})
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
 						Path:      resolvedPath,
@@ -62,6 +65,10 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}
 
+					logger.Debug("Resolved toolkit path", log.Ctx{
+						"args":         args,
+						"resolvedPath": resolvedPath,
+					})
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
 						Path:      resolvedPath,
@@ -69,8 +76,6 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 				})
 			},
 		},
-	}
-	pluginsEnd := []es.Plugin{
 		{
 			Name: "load-robin-toolkit",
 			Setup: func(build es.PluginBuild) {
@@ -117,8 +122,4 @@ func getToolkitPlugins(appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugi
 			},
 		},
 	}
-
-	plugins = append(pluginsStart, plugins...)
-	plugins = append(plugins, pluginsEnd...)
-	return plugins
 }

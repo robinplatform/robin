@@ -44,7 +44,8 @@ func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 }
 
 func (cmd *StartCommand) Run() error {
-	if runtime.GOOS != "windows" {
+	releaseChannel := config.GetReleaseChannel()
+	if runtime.GOOS != "windows" && releaseChannel != config.ReleaseChannelDev {
 		go upgrade.WatchForUpdates()
 	}
 

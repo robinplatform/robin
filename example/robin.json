@@ -1,8 +1,8 @@
 {
 	"apps": [
-		"./my-ext",
-		"./bad-js-ext",
-		"./failing-ext",
-		"https://esm.sh/@robinplatform/app-example"
+		"./my-ext/robin.app.json",
+		"./bad-js-ext/robin.app.json",
+		"./failing-ext/robin.app.json",
+		"https://esm.sh/@robinplatform/app-example@0.0.9"
 	]
 }
