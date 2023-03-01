@@ -373,6 +373,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		Write:    false,
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
+			[]es.Plugin{esbuildPluginMarkBuiltinsAsExternal},
 			[]es.Plugin{esbuildPluginLoadHttp},
 			[]es.Plugin{
 				{
