@@ -23,10 +23,10 @@ type cacheEntry struct {
 type httpCache struct {
 	filename string
 	mux      *sync.RWMutex
+	maxSize  int
 
-	MaxSize int
-	Size    int
-	Values  map[string]*cacheEntry
+	Size   int
+	Values map[string]*cacheEntry
 }
 
 type Cache interface {
@@ -41,9 +41,10 @@ func New(filename string, maxSize int) (Cache, error) {
 	cache := &httpCache{
 		filename: filename,
 		mux:      &sync.RWMutex{},
-		MaxSize:  maxSize,
+		maxSize:  maxSize,
 		Values:   make(map[string]*cacheEntry),
 	}
+	fmt.Printf("cache max size: %d\n", maxSize)
 	return cache, cache.open()
 }
 
@@ -71,6 +72,13 @@ func (cache *httpCache) open() error {
 	if err := json.Unmarshal(buf, cache); err != nil {
 		return fmt.Errorf("failed to unmarshal cache from %s: %w", cache.filename, err)
 	}
+
+	logger.Debug("Loaded http cache", log.Ctx{
+		"filename":   cache.filename,
+		"numEntries": len(cache.Values),
+		"size":       cache.Size,
+		"maxSize":    cache.maxSize,
+	})
 
 	return nil
 }
@@ -146,10 +154,11 @@ func (cache *httpCache) Get(key string) (string, bool) {
 
 func (cache *httpCache) Set(key, value string, ttl *time.Duration) {
 	// do not allow single resources that are larger than the cache
-	if len(value) >= cache.MaxSize {
+	if len(value) >= cache.maxSize {
 		logger.Debug("Refusing to cache large resource", log.Ctx{
 			"url":  key,
 			"size": len(value),
+			"max":  cache.maxSize,
 		})
 		return
 	}
@@ -178,7 +187,7 @@ func (cache *httpCache) Set(key, value string, ttl *time.Duration) {
 		"updatedCacheSize": cache.Size,
 	})
 
-	for cache.Size > cache.MaxSize && len(cache.Values) > 1 {
+	for cache.Size > cache.maxSize && len(cache.Values) > 1 {
 		var lastUsedKey string
 		var lastUsedEntry *cacheEntry
 		for key, node := range cache.Values {
