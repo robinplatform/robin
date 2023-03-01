@@ -82,16 +82,15 @@ var esbuildPluginLoadHttp = es.Plugin{
 			}, nil
 		})
 
-		// A catch all if we miss anything that was tagged for this namespace
-		build.OnResolve(es.OnResolveOptions{Filter: ".", Namespace: "http"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-			return es.OnResolveResult{}, fmt.Errorf("unexpected import of %s from http resource %s", args.Path, args.Importer)
-		})
-
 		// Finally, we can load HTTP resources by making a simple request and following redirects.
 		build.OnLoad(es.OnLoadOptions{Filter: "^https?://"}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
 			targetUrl, err := url.Parse(args.Path)
 			if err != nil {
 				return es.OnLoadResult{}, fmt.Errorf("failed to parse url %s: %w", args.Path, err)
+			}
+
+			if targetUrl.Host == "esm.sh" {
+				targetUrl.RawQuery += "target=esnext"
 			}
 
 			res, err := http.Get(args.Path)

@@ -141,13 +141,16 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 					// the rest of the filepath being imported _from_ react, which is `jsx-runtime`.
 					pathPieces := strings.Split(args.Path, "/")
 					moduleName := pathPieces[0]
+					moduleSourceFilePath := ""
 					if len(moduleName) == 0 {
 						return es.OnResolveResult{}, fmt.Errorf("expected module name to be non-empty in: %s", args.Path)
 					}
 					if moduleName[0] == '@' {
 						moduleName = moduleName + "/" + pathPieces[1]
+						moduleSourceFilePath = strings.Join(pathPieces[2:], "/")
+					} else {
+						moduleSourceFilePath = strings.Join(pathPieces[1:], "/")
 					}
-					moduleSourceFilePath := strings.Join(pathPieces[1:], "/")
 
 					// To load the source of the module, we need to know the relative version of the module.
 					//
@@ -158,7 +161,7 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 					//
 					// However, `esm.sh` takes care of most of this anyways, so we really just need to perform lookups for modules that
 					// are immediately imported by the app. So we'll just look in the package.json of the immediate importer.
-					_, rawPackageJson, err := appConfig.ReadFile("package.json")
+					packageJsonPath, rawPackageJson, err := appConfig.ReadFile("package.json")
 					if err != nil {
 						return es.OnResolveResult{}, err
 					}
@@ -170,12 +173,17 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 
 					moduleVersion, found := packageJson.Dependencies[moduleName]
 					if !found {
+						logger.Debug("Failed to find module version in package.json", log.Ctx{
+							"packageJsonPath": packageJsonPath,
+							"packageJson":     packageJson,
+							"moduleName":      moduleName,
+						})
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
 					reqPath, _, err := appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
 					if err != nil {
-						return es.OnResolveResult{}, fmt.Errorf("could not read '%s': %w", reqPath, err)
+						return es.OnResolveResult{}, fmt.Errorf("failed to get module %s@%s/%s: %w", moduleName, moduleVersion, moduleSourceFilePath, err)
 					}
 
 					logger.Debug("Resolved remote module for remote module", log.Ctx{
@@ -273,11 +281,23 @@ func (app *CompiledApp) buildClientJs() error {
 		Metafile: true,
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
-			[]es.Plugin{esbuildPluginLoadHttp},
 			appConfig.getExtractServerPlugins(app),
 			appConfig.getToolkitPlugins(),
+			[]es.Plugin{esbuildPluginLoadHttp},
 			appConfig.getResolverPlugins(pagePath),
 			appConfig.getCssLoaderPlugins(),
+
+			[]es.Plugin{
+				{
+					Name: "catch-all",
+					Setup: func(build es.PluginBuild) {
+						// A catch all if we miss anything
+						build.OnResolve(es.OnResolveOptions{Filter: ".", Namespace: "http"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+							return es.OnResolveResult{}, fmt.Errorf("unexpected import of %s from http resource %s", args.Path, args.Importer)
+						})
+					},
+				},
+			},
 		),
 	})
 
@@ -373,7 +393,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		),
 	})
 	if len(result.Errors) != 0 {
-		return BuildError(result)
+		return fmt.Errorf("failed to build server: %w", BuildError(result))
 	}
 	if len(result.OutputFiles) != 1 {
 		return fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))

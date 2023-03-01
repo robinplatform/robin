@@ -45,14 +45,14 @@ func (appConfig RobinAppConfig) getToolkitPlugins() []es.Plugin {
 						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}
 
-					logger.Debug("Resolved toolkit path", log.Ctx{
+					logger.Debug("Resolved toolkit path (source: toolkit)", log.Ctx{
 						"args":         args,
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
 						Path:      resolvedPath,
-					}, err
+					}, nil
 				})
 
 				build.OnResolve(es.OnResolveOptions{
@@ -65,14 +65,14 @@ func (appConfig RobinAppConfig) getToolkitPlugins() []es.Plugin {
 						return es.OnResolveResult{}, fmt.Errorf("could not resolve: %s (imported by %s)", args.Path, args.Importer)
 					}
 
-					logger.Debug("Resolved toolkit path", log.Ctx{
+					logger.Debug("Resolved toolkit path (source: external)", log.Ctx{
 						"args":         args,
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
 						Namespace: "robin-toolkit",
 						Path:      resolvedPath,
-					}, err
+					}, nil
 				})
 			},
 		},
