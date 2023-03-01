@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -325,7 +325,7 @@ func (app *CompiledApp) buildClientJs() error {
 		Loader:     es.LoaderTSX,
 	}
 	if pagePath.Scheme == "file" {
-		stdinOptions.ResolveDir = filepath.Dir(pagePath.Path)
+		stdinOptions.ResolveDir = path.Dir(pagePath.Path)
 	}
 
 	app.serverExports = make(map[string][]string)

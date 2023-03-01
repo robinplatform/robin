@@ -5,7 +5,7 @@ package compile
 import (
 	"embed"
 	"io/fs"
-	"path/filepath"
+	"path"
 
 	"robinplatform.dev/internal/log"
 )
@@ -13,7 +13,8 @@ import (
 type toolkitFsWrapper embed.FS
 
 func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
-	return embed.FS(e).Open(filepath.Join("toolkit", name))
+	// embed.FS always uses forward slashes
+	return embed.FS(e).Open(path.Join("toolkit", name))
 }
 
 //go:generate rm -rf toolkit
