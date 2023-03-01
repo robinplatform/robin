@@ -145,6 +145,18 @@ func TestHttpCache(t *testing.T) {
 			t.Fatalf("unexpected cache miss")
 		}
 	}
+
+	// HEAD request should succeed, even though the server is not running
+	{
+		exists, err := client.Head(fmt.Sprintf("http://%s/immutable", listener.Addr().String()))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !exists {
+			t.Fatalf("unexpected HEAD response (expected resouce to exist)")
+		}
+	}
 }
 
 func TestHttpCacheMaxSize(t *testing.T) {
