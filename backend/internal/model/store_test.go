@@ -1,7 +1,7 @@
 package model
 
 import (
-	"path"
+	"path/filepath"
 	"testing"
 )
 
@@ -12,7 +12,7 @@ func TestStoreWrite(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	db, err := NewStore[Data](path.Join(dir, "test"))
+	db, err := NewStore[Data](filepath.Join(dir, "test"))
 	if err != nil {
 		t.Fatal(err)
 	}

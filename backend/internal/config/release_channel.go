@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"path"
+	"path/filepath"
 )
 
 type ReleaseChannel string
@@ -38,7 +38,7 @@ func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
 }
 
 func (channel ReleaseChannel) GetPath() string {
-	return path.Join(robinPath, string(channel))
+	return filepath.Join(robinPath, string(channel))
 }
 
 func (channel ReleaseChannel) String() string {

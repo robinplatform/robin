@@ -13,6 +13,7 @@ import (
 type toolkitFsWrapper embed.FS
 
 func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
+	// embed.FS always uses forward slashes
 	return embed.FS(e).Open(path.Join("toolkit", name))
 }
 

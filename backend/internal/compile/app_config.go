@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 
 	"robinplatform.dev/internal/config"
 )
@@ -32,21 +33,23 @@ func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
 		return parsedUrl
 	}
 
-	if path.IsAbs(filePath) {
-		return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filePath})
+	if filepath.IsAbs(filePath) {
+		return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filepath.ToSlash(filePath)})
 	}
-	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: path.Join(path.Dir(appConfig.ConfigPath.Path), filePath)})
+
+	targetPath := filepath.Join(filepath.Dir(appConfig.ConfigPath.Path), filePath)
+	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filepath.ToSlash(targetPath)})
 }
 
-func (appConfig *RobinAppConfig) ReadFile(filePath string) (*url.URL, []byte, error) {
+func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, error) {
 	var buf []byte
 	var err error
-	fileUrl := appConfig.resolvePath(filePath)
+	fileUrl := appConfig.resolvePath(targetPath)
 
 	if fileUrl.Scheme == "file" {
 		buf, err = os.ReadFile(fileUrl.Path)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
+			return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
 		}
 		return fileUrl, buf, nil
 	}
@@ -69,16 +72,16 @@ func (appConfig *RobinAppConfig) ReadFile(filePath string) (*url.URL, []byte, er
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, resp.Status)
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, resp.Status)
 	}
 
 	buf, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", filePath, err)
+		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
 	}
 
 	return lastReq.URL, buf, nil
@@ -90,6 +93,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 		return fmt.Errorf("failed to get project path: %s", err)
 	}
 
+	configPath = filepath.ToSlash(configPath)
 	appConfig.ConfigPath, err = url.Parse(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config path '%s': %s", configPath, err)

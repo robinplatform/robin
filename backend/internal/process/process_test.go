@@ -1,14 +1,14 @@
 package process
 
 import (
-	"path"
+	"path/filepath"
 	"testing"
 	"time"
 )
 
 func TestSpawnProcess(t *testing.T) {
 	dir := t.TempDir()
-	dbFile := path.Join(dir, "testing.db")
+	dbFile := filepath.Join(dir, "testing.db")
 
 	manager, err := NewProcessManager[struct{}](dbFile)
 	if err != nil {
@@ -42,7 +42,7 @@ func TestSpawnProcess(t *testing.T) {
 
 func TestSpawnDead(t *testing.T) {
 	dir := t.TempDir()
-	dbFile := path.Join(dir, "testing.db")
+	dbFile := filepath.Join(dir, "testing.db")
 
 	manager, err := NewProcessManager[struct{}](dbFile)
 	if err != nil {

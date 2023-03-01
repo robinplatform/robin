@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -25,7 +25,7 @@ func createTempDir() (string, error) {
 		return "", err
 	}
 
-	tmp := path.Join(os.TempDir(), fmt.Sprintf("robin-upgrade-%x", buf))
+	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("robin-upgrade-%x", buf))
 	if err := os.Mkdir(tmp, 0755); os.IsExist(err) {
 		return createTempDir()
 	} else if err != nil {
@@ -114,16 +114,16 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 
 		// Create directories as needed, copying permissions from the tar header
 		if header.Typeflag == tar.TypeDir {
-			os.Mkdir(path.Join(tmp, header.Name), header.FileInfo().Mode())
+			os.Mkdir(filepath.Join(tmp, header.Name), header.FileInfo().Mode())
 			continue
 		}
 
 		// Skip non-files, and also whatever macOS puts in tarballs
-		if header.Typeflag != tar.TypeReg || path.Base(header.Name)[0:2] == "._" {
+		if header.Typeflag != tar.TypeReg || filepath.Base(header.Name)[0:2] == "._" {
 			continue
 		}
 
-		file, err := os.Create(path.Join(tmp, header.Name))
+		file, err := os.Create(filepath.Join(tmp, header.Name))
 		if err != nil {
 			return "", "", fmt.Errorf("failed to upgrade %s: error while downloading %s: %w", releaseChannel, header.Name, err)
 		}
@@ -138,7 +138,7 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 
 		// Read the VERSION file to figure out what version we just downloaded
 		if header.Name == "./VERSION" {
-			buf, err := os.ReadFile(path.Join(tmp, header.Name))
+			buf, err := os.ReadFile(filepath.Join(tmp, header.Name))
 			if err != nil {
 				return "", "", fmt.Errorf("failed to upgrade %s: error while reading VERSION file: %w", releaseChannel, err)
 			}
@@ -160,7 +160,7 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 	}
 
 	// Make sure the general `bin` directory exists
-	if err := os.MkdirAll(path.Join(config.GetRobinPath(), "bin"), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Join(config.GetRobinPath(), "bin"), 0755); err != nil {
 		panic(err)
 	}
 
@@ -178,12 +178,12 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 		upgradeExecName += ".exe"
 	}
 
-	if err := os.Symlink(path.Join(channelDir, "bin", "robin"), path.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsExist(err) {
+	if err := os.Symlink(filepath.Join(channelDir, "bin", "robin"), filepath.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsExist(err) {
 		return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 	}
 
 	if releaseChannel == config.ReleaseChannelStable {
-		if err := os.Symlink(path.Join(channelDir, "bin", upgradeExecName), path.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsExist(err) {
+		if err := os.Symlink(filepath.Join(channelDir, "bin", upgradeExecName), filepath.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsExist(err) {
 			return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 		}
 	}

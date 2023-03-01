@@ -1,7 +1,7 @@
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import React from 'react';
-import { AppWindow } from '../../components/AppWindow';
+import { AppWindow } from '../../../components/AppWindow';
 
 export default function Page() {
 	const router = useRouter();

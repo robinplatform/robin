@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 )
 
 type RobinProjectConfig struct {
@@ -20,7 +20,7 @@ func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig() error {
 		return err
 	}
 
-	configPath := path.Join(projectPath, "robin.json")
+	configPath := filepath.Join(projectPath, "robin.json")
 
 	buf, err := os.ReadFile(configPath)
 	if err != nil {
@@ -41,7 +41,7 @@ func (projectConfig *RobinProjectConfig) SaveRobinProjectConfig() error {
 		return err
 	}
 
-	configPath := path.Join(projectPath, "robin.json")
+	configPath := filepath.Join(projectPath, "robin.json")
 
 	// Let's indent the config so it is easily readable
 	buf, err := json.MarshalIndent(projectConfig, "", "\t")

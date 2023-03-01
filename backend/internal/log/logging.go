@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,7 +22,7 @@ func init() {
 
 	// Lumberjack implements log file rotation
 	writer := &lumberjack.Logger{
-		Filename:   path.Join(channel.GetPath(), "logs.db"),
+		Filename:   filepath.Join(channel.GetPath(), "logs.db"),
 		MaxSize:    512, // Megabytes
 		MaxBackups: 1,
 	}

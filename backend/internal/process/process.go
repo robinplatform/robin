@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
@@ -228,13 +228,13 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	defer empty.Close()
 
 	robinPath := config.GetRobinPath()
-	procFolderPath := path.Join(robinPath, "processes")
+	procFolderPath := filepath.Join(robinPath, "processes")
 
 	if err := os.MkdirAll(procFolderPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
-	procPath := path.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
+	procPath := filepath.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
 
 	output, err := os.OpenFile(procPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
