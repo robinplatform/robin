@@ -3,82 +3,96 @@ package compile
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
 )
 
-func (appConfig *RobinAppConfig) getCssLoaderPlugins(plugins []es.Plugin) []es.Plugin {
-	plugins = append(plugins, es.Plugin{
-		Name: "load-css",
-		Setup: func(build es.PluginBuild) {
-			build.OnLoad(es.OnLoadOptions{
-				Filter: "\\.css(\\?bundle)?$",
-			}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-				if args.Namespace == "robin-toolkit" {
-					return es.OnLoadResult{}, nil
-				}
+func wrapWithCssLoader(path string, css string) string {
+	return fmt.Sprintf(`!function(){
+		let style = document.createElement('style')
+		style.setAttribute('data-path', '%s')
+		style.innerText = %q
+		document.body.appendChild(style)
+	}()`, path, css)
+}
 
-				var css []byte
-				var err error
+func (appConfig *RobinAppConfig) getCssLoaderPlugins() []es.Plugin {
+	return []es.Plugin{
+		{
+			Name: "load-css",
+			Setup: func(build es.PluginBuild) {
+				build.OnLoad(es.OnLoadOptions{
+					Filter: "\\.css",
+				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+					if args.Namespace == "robin-toolkit" {
+						return es.OnLoadResult{}, nil
+					}
 
-				if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-					_, css, err = appConfig.ReadFile(args.Path)
-				} else {
-					css, err = os.ReadFile(args.Path)
-				}
-				if err != nil {
-					return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
-				}
+					targetUrl, err := url.Parse(args.Path)
+					if err != nil {
+						return es.OnLoadResult{}, nil
+					}
+					if !strings.HasSuffix(targetUrl.Path, ".css") {
+						return es.OnLoadResult{}, nil
+					}
 
-				script := fmt.Sprintf(`!function(){
-							let style = document.createElement('style')
-							style.setAttribute('data-path', '%s')
-							style.innerText = %q
-							document.body.appendChild(style)
-						}()`, args.Path, string(css))
-				return es.OnLoadResult{
-					Contents: &script,
-					Loader:   es.LoaderJS,
-				}, nil
-			})
+					var css []byte
+
+					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+						_, css, err = appConfig.ReadFile(args.Path)
+					} else {
+						css, err = os.ReadFile(args.Path)
+					}
+					if err != nil {
+						return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
+					}
+
+					script := wrapWithCssLoader(args.Path, string(css))
+					return es.OnLoadResult{
+						Contents: &script,
+						Loader:   es.LoaderJS,
+					}, nil
+				})
+			},
 		},
-	}, es.Plugin{
-		Name: "load-scss",
-		Setup: func(build es.PluginBuild) {
-			build.OnLoad(es.OnLoadOptions{
-				Filter: "\\.scss(\\?bundle)?$",
-			}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-				if args.Namespace == "robin-toolkit" {
-					return es.OnLoadResult{}, nil
-				}
+		{
+			Name: "load-scss",
+			Setup: func(build es.PluginBuild) {
+				build.OnLoad(es.OnLoadOptions{
+					Filter: "\\.scss(\\?bundle)?$",
+				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
+					if args.Namespace == "robin-toolkit" {
+						return es.OnLoadResult{}, nil
+					}
 
-				var sass []byte
-				var err error
+					var sass []byte
+					var err error
 
-				if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-					_, sass, err = appConfig.ReadFile(args.Path)
-				} else {
-					sass, err = os.ReadFile(args.Path)
-				}
-				if err != nil {
-					return es.OnLoadResult{}, fmt.Errorf("failed to read sass file %s: %w", args.Path, err)
-				}
+					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
+						_, sass, err = appConfig.ReadFile(args.Path)
+					} else {
+						sass, err = os.ReadFile(args.Path)
+					}
+					if err != nil {
+						return es.OnLoadResult{}, fmt.Errorf("failed to read sass file %s: %w", args.Path, err)
+					}
 
-				script, err := buildSass(args.Path, string(sass))
-				if err != nil {
-					return es.OnLoadResult{}, fmt.Errorf("failed to build sass file %s: %w", args.Path, err)
-				}
+					script, err := buildSass(args.Path, string(sass))
+					if err != nil {
+						return es.OnLoadResult{}, fmt.Errorf("failed to build sass file %s: %w", args.Path, err)
+					}
 
-				return es.OnLoadResult{
-					Contents: &script,
-					Loader:   es.LoaderJS,
-				}, nil
-			})
+					return es.OnLoadResult{
+						Contents: &script,
+						Loader:   es.LoaderJS,
+					}, nil
+				})
+			},
 		},
-	})
-	return plugins
+	}
 }
 
 func buildSass(srcPath, sass string) (string, error) {

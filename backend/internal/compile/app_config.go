@@ -54,7 +54,6 @@ func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, 
 		return fileUrl, buf, nil
 	}
 
-	fileUrl.RawQuery = "bundle"
 	req := &http.Request{
 		Method: "GET",
 		URL:    fileUrl,

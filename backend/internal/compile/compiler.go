@@ -15,7 +15,6 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 )
@@ -110,37 +109,16 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	return app, nil
 }
 
-func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugins []es.Plugin) []es.Plugin {
+func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.Plugin {
 	if appConfig.ConfigPath.Scheme == "file" {
-		return plugins
+		return nil
 	}
 
-	resolverPlugins := []es.Plugin{
+	return []es.Plugin{
 		{
 			Name: "robin-resolver",
 			Setup: func(build es.PluginBuild) {
-				build.OnResolve(es.OnResolveOptions{Filter: "."}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-					// If the request is to resolve a resource over HTTP/HTTPS, we should adopt a Just Do It approach
-					if strings.HasPrefix(args.Path, "http:") || strings.HasPrefix(args.Path, "https:") {
-						reqPath, contents, err := appConfig.ReadFile(args.Path)
-						if err != nil {
-							return es.OnResolveResult{}, fmt.Errorf("could not read '%s': %w", args.Path, err)
-						}
-
-						logger.Debug("Loaded remote module", log.Ctx{
-							"importer":     args.Importer,
-							"path":         args.Path,
-							"resolvedPath": reqPath.String(),
-						})
-						return es.OnResolveResult{
-							Namespace: "robin-resolver",
-							Path:      reqPath.String(),
-							PluginData: map[string]string{
-								"contents": string(contents),
-							},
-						}, nil
-					}
-
+				build.OnResolve(es.OnResolveOptions{Filter: "^[^/\\.]"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					// If we're resolving a module from the virtual toolkit, we should assume that the extension
 					// itself asked for it
 					if args.Namespace == "robin-toolkit" {
@@ -158,48 +136,21 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 						return es.OnResolveResult{}, fmt.Errorf("expected all app imports to come from the same host: %s", importerUrl)
 					}
 
-					// Resolve local file paths relative to the remote importer's path
-					// The logic for this almost entirely lives in the resolve package
-					if args.Path[0] == '.' || args.Path[0] == '/' {
-						resolver := resolve.NewHttpResolver(importerUrl)
-						resolved, err := resolver.ResolveFrom(importerUrl.Path, args.Path)
-						if err != nil {
-							return es.OnResolveResult{}, fmt.Errorf("could not resolve '%s' (imported by %s): %w", args.Path, args.Importer, err)
-						}
-
-						reqPath, contents, err := appConfig.ReadFile("/" + resolved)
-						if err != nil {
-							return es.OnResolveResult{}, fmt.Errorf("could not read '%s': %w", resolved, err)
-						}
-
-						logger.Debug("Resolved local file for remote module", log.Ctx{
-							"importer":     args.Importer,
-							"path":         args.Path,
-							"resolvedPath": reqPath.String(),
-						})
-						return es.OnResolveResult{
-							Namespace: "robin-resolver",
-							Path:      reqPath.String(),
-							PluginData: map[string]string{
-								"contents": string(contents),
-							},
-						}, nil
-					}
-
-					// Resolve modules
-
 					// We want to parse the pathname, which will look something like: `react/jsx-runtime`
 					// The output should be the moduleName as `react` (with a possible scope name prefix), and then
 					// the rest of the filepath being imported _from_ react, which is `jsx-runtime`.
 					pathPieces := strings.Split(args.Path, "/")
 					moduleName := pathPieces[0]
+					moduleSourceFilePath := ""
 					if len(moduleName) == 0 {
 						return es.OnResolveResult{}, fmt.Errorf("expected module name to be non-empty in: %s", args.Path)
 					}
 					if moduleName[0] == '@' {
 						moduleName = moduleName + "/" + pathPieces[1]
+						moduleSourceFilePath = strings.Join(pathPieces[2:], "/")
+					} else {
+						moduleSourceFilePath = strings.Join(pathPieces[1:], "/")
 					}
-					moduleSourceFilePath := strings.Join(pathPieces[1:], "/")
 
 					// To load the source of the module, we need to know the relative version of the module.
 					//
@@ -210,7 +161,7 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 					//
 					// However, `esm.sh` takes care of most of this anyways, so we really just need to perform lookups for modules that
 					// are immediately imported by the app. So we'll just look in the package.json of the immediate importer.
-					_, rawPackageJson, err := appConfig.ReadFile("package.json")
+					packageJsonPath, rawPackageJson, err := appConfig.ReadFile("package.json")
 					if err != nil {
 						return es.OnResolveResult{}, err
 					}
@@ -222,12 +173,17 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 
 					moduleVersion, found := packageJson.Dependencies[moduleName]
 					if !found {
+						logger.Debug("Failed to find module version in package.json", log.Ctx{
+							"packageJsonPath": packageJsonPath,
+							"packageJson":     packageJson,
+							"moduleName":      moduleName,
+						})
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
-					reqPath, contents, err := appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
+					reqPath, _, err := appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
 					if err != nil {
-						return es.OnResolveResult{}, err
+						return es.OnResolveResult{}, fmt.Errorf("failed to get module %s@%s/%s: %w", moduleName, moduleVersion, moduleSourceFilePath, err)
 					}
 
 					logger.Debug("Resolved remote module for remote module", log.Ctx{
@@ -239,35 +195,17 @@ func getResolverPlugins(pageSourceUrl *url.URL, appConfig RobinAppConfig, plugin
 						"resolvedPath":         reqPath.String(),
 					})
 					return es.OnResolveResult{
-						Namespace: "robin-resolver",
+						Namespace: "http",
 						Path:      reqPath.String(),
 						PluginData: map[string]string{
 							"moduleName": moduleName,
 							"version":    moduleVersion,
-							"contents":   string(contents),
 						},
-					}, nil
-				})
-
-				// The fake loader will just return the contents of the module that we loaded in the resolver.
-				build.OnLoad(es.OnLoadOptions{
-					Namespace: "robin-resolver",
-					Filter:    ".",
-				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					pluginData, ok := args.PluginData.(map[string]string)
-					if !ok {
-						return es.OnLoadResult{}, fmt.Errorf("invalid plugin data")
-					}
-
-					contents := pluginData["contents"]
-					return es.OnLoadResult{
-						Contents: &contents,
 					}, nil
 				})
 			},
 		},
 	}
-	return append(plugins, resolverPlugins...)
 }
 
 func getFileExports(input *es.StdinOptions) ([]string, error) {
@@ -341,60 +279,26 @@ func (app *CompiledApp) buildClientJs() error {
 			".jpeg": es.LoaderBase64,
 		},
 		Metafile: true,
+		Define:   app.getEnvConstants(),
+		Plugins: concat(
+			appConfig.getExtractServerPlugins(app),
+			appConfig.getToolkitPlugins(),
+			[]es.Plugin{esbuildPluginLoadHttp},
+			appConfig.getResolverPlugins(pagePath),
+			appConfig.getCssLoaderPlugins(),
 
-		Define: app.getEnvConstants(),
-
-		// Instead of using `append()`, this API style allows the plugin to decide its own precendence.
-		// For instance, toolkit plugins are broken down and wrap the resolver plugins.
-		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, appConfig.getCssLoaderPlugins([]es.Plugin{
-			{
-				Name: "extract-server-ts",
-				Setup: func(build es.PluginBuild) {
-					build.OnLoad(es.OnLoadOptions{
-						Filter: "\\.server\\.ts$",
-					}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-						var source []byte
-						var err error
-
-						if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-							_, source, err = appConfig.ReadFile(args.Path)
-						} else {
-							source, err = os.ReadFile(args.Path)
-						}
-						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to read server file %s: %w", args.Path, err)
-						}
-
-						exports, err := getFileExports(&es.StdinOptions{
-							Contents:   string(source),
-							Sourcefile: args.Path,
-							Loader:     es.LoaderTS,
+			[]es.Plugin{
+				{
+					Name: "catch-all",
+					Setup: func(build es.PluginBuild) {
+						// A catch all if we miss anything
+						build.OnResolve(es.OnResolveOptions{Filter: ".", Namespace: "http"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+							return es.OnResolveResult{}, fmt.Errorf("unexpected import of %s from http resource %s", args.Path, args.Importer)
 						})
-						if err != nil {
-							return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
-						}
-
-						serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/internal/rpc';\n\n"
-						for _, export := range exports {
-							serverPolyfill += fmt.Sprintf(
-								"export const %s = createRpcMethod(%q, %q, %q);\n",
-								export,
-								appConfig.Id,
-								args.Path,
-								export,
-							)
-						}
-
-						app.serverExports[args.Path] = exports
-
-						return es.OnLoadResult{
-							Contents: &serverPolyfill,
-							Loader:   es.LoaderJS,
-						}, nil
-					})
+					},
 				},
 			},
-		}))),
+		),
 	})
 
 	if len(result.Errors) != 0 {
@@ -468,23 +372,29 @@ func (app *CompiledApp) buildServerBundle() error {
 		Bundle:   true,
 		Write:    false,
 		Define:   app.getEnvConstants(),
-		Plugins: getToolkitPlugins(appConfig, getResolverPlugins(pagePath, appConfig, []es.Plugin{
-			{
-				Name: "resolve-abs-paths",
-				Setup: func(build es.PluginBuild) {
-					build.OnResolve(es.OnResolveOptions{
-						Filter: "^/",
-					}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-						return es.OnResolveResult{
-							Path: args.Path,
-						}, nil
-					})
+		Plugins: concat(
+			[]es.Plugin{esbuildPluginMarkBuiltinsAsExternal},
+			[]es.Plugin{esbuildPluginLoadHttp},
+			[]es.Plugin{
+				{
+					Name: "resolve-abs-paths",
+					Setup: func(build es.PluginBuild) {
+						build.OnResolve(es.OnResolveOptions{
+							Filter: "^/",
+						}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
+							return es.OnResolveResult{
+								Path: args.Path,
+							}, nil
+						})
+					},
 				},
 			},
-		})),
+			appConfig.getToolkitPlugins(),
+			appConfig.getResolverPlugins(pagePath),
+		),
 	})
 	if len(result.Errors) != 0 {
-		return BuildError(result)
+		return fmt.Errorf("failed to build server: %w", BuildError(result))
 	}
 	if len(result.OutputFiles) != 1 {
 		return fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))
