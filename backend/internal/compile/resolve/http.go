@@ -78,6 +78,20 @@ func (entry HttpFileEntry) Close() error {
 
 func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	fileUrl := hfs.BaseURL.ResolveReference(&url.URL{Path: filename})
+
+	// This is a bit silly, but esm.sh is really slow to detect bad URLs, but unpkg.com is very
+	// fast thanks to edge caching. So we check if the file exists on unpkg.com first, and if it
+	// does, we allow the request to go through.
+	//
+	// unpkg.com also realizes that the URL is actually immutable, and will ask the client to cache
+	// it while esm.sh reports the response as 'no-cache'.
+	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" {
+		_, _, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	contents, _, err := hfs.client.Get(fileUrl.String())
 
 	// TODO: return a fs.ErrNotExist if the status code is 404

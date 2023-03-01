@@ -109,9 +109,6 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
 	}
-	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "esm.sh" {
-		return fmt.Errorf("cannot load file from host '%s' (only esm.sh is supported)", appConfig.ConfigPath.Host)
-	}
 
 	// All paths must end with `robin.app.json`
 	if path.Base(appConfig.ConfigPath.Path) != "robin.app.json" {

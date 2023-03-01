@@ -1,6 +1,7 @@
 package httpcache
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -21,15 +22,12 @@ type CacheClient struct {
 // the overhead of the cache file format. If an empty string is given for the filename,
 // loading the cache will be skipped.
 func NewClient(filename string, maxSize int) (CacheClient, error) {
+	// Since the cache is always valid, we will always return a valid client
 	cache, err := New(filename, maxSize)
-	if err != nil {
-		return CacheClient{}, err
-	}
-
 	return CacheClient{
 		cache:  cache,
 		client: &http.Client{},
-	}, nil
+	}, err
 }
 
 // parseCacheControl will attempt to parse the given `Cache-Control` header and
@@ -119,10 +117,18 @@ func (client *CacheClient) Head(targetUrl string) (bool, error) {
 	}
 	resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
 	}
-	return true, nil
+	if resp.StatusCode == http.StatusOK {
+		return true, nil
+	}
+
+	return false, HttpError{
+		URL:        targetUrl,
+		StatusCode: resp.StatusCode,
+		Status:     resp.Status,
+	}
 }
 
 type HttpError struct {
@@ -139,10 +145,22 @@ func (err HttpError) Error() string {
 // of the resource is cached, the GET request will not be performed. The GET request will
 // be cached if the `Cache-Control` header contains a `max-age` or `immutable` directive.
 func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
-	if value, ok := client.cache.Get(targetUrl); ok {
-		return value, true, nil
+	if entry, ok := client.cache.Get(targetUrl); ok {
+		if entry.StatusCode != http.StatusOK {
+			return "", false, HttpError{
+				URL:        targetUrl,
+				StatusCode: entry.StatusCode,
+				Status:     fmt.Sprintf("HTTP %d", entry.StatusCode),
+			}
+		}
+
+		return entry.Value, true, nil
 	}
 
+	logger.Debug("HTTP fetching", log.Ctx{
+		"targetUrl": targetUrl,
+	})
+	requestStartTime := time.Now()
 	resp, err := client.client.Get(targetUrl)
 	if err != nil {
 		return "", false, err
@@ -154,16 +172,12 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 		return "", false, err
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		logger.Debug("HTTP resource is not cacheable", log.Ctx{
-			"targetUrl":  targetUrl,
-			"statusCode": resp.StatusCode,
+	duration := time.Since(requestStartTime)
+	if duration >= 50*time.Millisecond {
+		logger.Debug("HTTP request took a long time", log.Ctx{
+			"targetUrl": targetUrl,
+			"duration":  duration.String(),
 		})
-		return "", false, HttpError{
-			URL:        targetUrl,
-			StatusCode: resp.StatusCode,
-			Status:     resp.Status,
-		}
 	}
 
 	cacheControl := resp.Header.Get("Cache-Control")
@@ -176,14 +190,27 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 		return string(buf), false, nil
 	}
 
-	var ttl *time.Duration
+	entry := CacheEntry{
+		Value:      string(buf),
+		StatusCode: resp.StatusCode,
+	}
 	if maxAge != nil {
 		age := parseAge(resp.Header.Get("Age"))
 		ttlLocal := *maxAge - age
-		ttl = &ttlLocal
+
+		deadline := time.Now().Add(ttlLocal).UnixNano()
+		entry.Deadline = &deadline
 	}
 
-	client.cache.Set(targetUrl, string(buf), ttl)
+	client.cache.Set(targetUrl, entry)
+
+	if resp.StatusCode != http.StatusOK {
+		return "", false, HttpError{
+			URL:        targetUrl,
+			StatusCode: resp.StatusCode,
+			Status:     resp.Status,
+		}
+	}
 	return string(buf), false, nil
 }
 

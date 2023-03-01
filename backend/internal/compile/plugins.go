@@ -11,6 +11,7 @@ import (
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/httpcache"
+	"robinplatform.dev/internal/log"
 )
 
 var httpClient httpcache.CacheClient
@@ -20,9 +21,14 @@ func init() {
 	robinPath := config.GetRobinPath()
 
 	var err error
-	httpClient, err = httpcache.NewClient(filepath.Join(robinPath, "http-cache.json"), 1024*1024*1024)
+	cacheFilename := filepath.Join(robinPath, "http-cache.json")
+	httpClient, err = httpcache.NewClient(cacheFilename, 1024*1024*1024)
 	if err != nil {
-		panic(fmt.Errorf("failed to initialize HTTP client: %w", err))
+		httpLogger := log.New("http")
+		httpLogger.Debug("Failed to load HTTP cache, will recreate", log.Ctx{
+			"error": err,
+			"path":  cacheFilename,
+		})
 	}
 
 	esmSHResolver = resolve.NewHttpResolver(&url.URL{
