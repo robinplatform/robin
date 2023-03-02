@@ -77,6 +77,29 @@ func (entry HttpFileEntry) Close() error {
 	return nil
 }
 
+func isNodeBuiltinPath(path string) bool {
+	path = path[1:]
+	if path[0] != 'v' {
+		return false
+	}
+
+	// skip all numbers next
+	for i := 1; i < len(path); i++ {
+		if path[i] < '0' || path[i] > '9' {
+			path = path[i:]
+			break
+		}
+	}
+
+	// next should be a slash
+	if path[0] != '/' {
+		return false
+	}
+	path = path[1:]
+
+	return strings.HasPrefix(path, "node_") && !strings.ContainsRune(path, '/')
+}
+
 func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	fileUrl := hfs.BaseURL.ResolveReference(&url.URL{Path: filename})
 
@@ -89,7 +112,7 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	//
 	// However, we will skip node builtin polyfills, which are hosted on `esm.sh`, but don't exist
 	// on `unpkg.com`.
-	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !strings.HasPrefix(fileUrl.Path, "/node_") {
+	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !isNodeBuiltinPath(fileUrl.Path) {
 		_, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
 		if err != nil {
 			return nil, err
