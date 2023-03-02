@@ -86,13 +86,13 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	// unpkg.com also realizes that the URL is actually immutable, and will ask the client to cache
 	// it while esm.sh reports the response as 'no-cache'.
 	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" {
-		_, _, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
+		_, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	contents, _, err := hfs.client.Get(fileUrl.String())
+	res, err := hfs.client.Get(fileUrl.String())
 
 	// TODO: return a fs.ErrNotExist if the status code is 404
 	if err != nil {
@@ -101,6 +101,6 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 
 	return HttpFileEntry{
 		path:     filename,
-		contents: contents,
+		contents: res.Body,
 	}, nil
 }

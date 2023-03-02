@@ -186,11 +186,12 @@ var esbuildPluginLoadHttp = es.Plugin{
 				targetUrl.RawQuery += "target=esnext"
 			}
 
-			str, _, err := httpClient.Get(args.Path)
+			res, err := httpClient.Get(args.Path)
 			if err != nil {
 				return es.OnLoadResult{}, fmt.Errorf("failed to load %s: %w", args.Path, err)
 			}
 
+			str := res.Body
 			if strings.HasSuffix(targetUrl.Path, ".css") {
 				str = wrapWithCssLoader(args.Path, str)
 			}
@@ -202,8 +203,8 @@ var esbuildPluginLoadHttp = es.Plugin{
 		})
 
 		build.OnEnd(func(_ *es.BuildResult) (es.OnEndResult, error) {
-			err := httpClient.Save()
-			return es.OnEndResult{}, err
+			go httpClient.Save()
+			return es.OnEndResult{}, nil
 		})
 	},
 }

@@ -42,48 +42,23 @@ func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
 }
 
 func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, error) {
-	var buf []byte
-	var err error
 	fileUrl := appConfig.resolvePath(targetPath)
 
 	if fileUrl.Scheme == "file" {
-		buf, err = os.ReadFile(fileUrl.Path)
+		buf, err := os.ReadFile(fileUrl.Path)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
+			return nil, nil, fmt.Errorf("failed to read file '%s': %w", targetPath, err)
 		}
 		return fileUrl, buf, nil
 	}
 
-	req := &http.Request{
-		Method: "GET",
-		URL:    fileUrl,
-	}
-	lastReq := req
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("stopped after 10 redirects")
-			}
-			lastReq = req
-			return nil
-		},
-	}
-
-	resp, err := client.Do(req)
+	res, err := httpClient.Get(fileUrl.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
+		return nil, nil, fmt.Errorf("failed to read file '%s': %w", targetPath, err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, resp.Status)
-	}
-
-	buf, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
-	}
-
-	return lastReq.URL, buf, nil
+	lastUrl, _ := url.Parse(res.RequestUrl)
+	return lastUrl, []byte(res.Body), nil
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {

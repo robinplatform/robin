@@ -141,20 +141,30 @@ func (err HttpError) Error() string {
 	return err.Status
 }
 
+type CacheClientResponse struct {
+	RequestUrl string
+	Body       string
+	FromCache  bool
+}
+
 // Get will perform a GET request to the given URL, and return the response body. If a copy
 // of the resource is cached, the GET request will not be performed. The GET request will
 // be cached if the `Cache-Control` header contains a `max-age` or `immutable` directive.
-func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
+func (client *CacheClient) Get(targetUrl string) (CacheClientResponse, error) {
 	if entry, ok := client.cache.Get(targetUrl); ok {
 		if entry.StatusCode != http.StatusOK {
-			return "", false, HttpError{
+			return CacheClientResponse{}, HttpError{
 				URL:        targetUrl,
 				StatusCode: entry.StatusCode,
 				Status:     fmt.Sprintf("HTTP %d", entry.StatusCode),
 			}
 		}
 
-		return entry.Value, true, nil
+		return CacheClientResponse{
+			RequestUrl: targetUrl,
+			Body:       entry.Value,
+			FromCache:  true,
+		}, nil
 	}
 
 	logger.Debug("HTTP fetching", log.Ctx{
@@ -163,13 +173,13 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 	requestStartTime := time.Now()
 	resp, err := client.client.Get(targetUrl)
 	if err != nil {
-		return "", false, err
+		return CacheClientResponse{}, err
 	}
 	defer resp.Body.Close()
 
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", false, err
+		return CacheClientResponse{}, err
 	}
 
 	duration := time.Since(requestStartTime)
@@ -204,13 +214,17 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return "", false, HttpError{
+		return CacheClientResponse{}, HttpError{
 			URL:        targetUrl,
 			StatusCode: resp.StatusCode,
 			Status:     resp.Status,
 		}
 	}
-	return string(buf), false, nil
+	return CacheClientResponse{
+		RequestUrl: resp.Request.RequestURI,
+		Body:       string(buf),
+		FromCache:  false,
+	}, nil
 }
 
 // GetCacheSize will return the size of the cache in bytes
