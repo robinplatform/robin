@@ -89,7 +89,7 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	//
 	// However, we will skip node builtin polyfills, which are hosted on `esm.sh`, but don't exist
 	// on `unpkg.com`.
-	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !strings.ContainsRune(fileUrl.Path[1:], '/') {
+	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !strings.HasPrefix(fileUrl.Path, "/node_") {
 		_, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
 		if err != nil {
 			return nil, err
