@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"net/url"
 	"path"
+	"strings"
 	"time"
 
 	"robinplatform.dev/internal/httpcache"
@@ -85,7 +86,10 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	//
 	// unpkg.com also realizes that the URL is actually immutable, and will ask the client to cache
 	// it while esm.sh reports the response as 'no-cache'.
-	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" {
+	//
+	// However, we will skip node builtin polyfills, which are hosted on `esm.sh`, but don't exist
+	// on `unpkg.com`.
+	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !strings.ContainsRune(fileUrl.Path[1:], '/') {
 		_, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
 		if err != nil {
 			return nil, err
