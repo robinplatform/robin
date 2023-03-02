@@ -71,28 +71,28 @@ func TestHttpCache(t *testing.T) {
 	}
 
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 
 		// re-fetch from cache immediately
-		res, fromCache, err = client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
+		res, err = client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if !fromCache {
+		if !res.FromCache {
 			t.Logf("%#v\n", client.cache)
 			t.Fatalf("unexpected cache miss")
 		}
@@ -101,31 +101,30 @@ func TestHttpCache(t *testing.T) {
 		time.Sleep(3 * time.Second)
 
 		// re-fetch from server
-		res, fromCache, err = client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
+		res, err = client.Get(fmt.Sprintf("http://%s/1s", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
 
 	{
 		// load immutable resource, should get cached
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/immutable", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/immutable", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 
@@ -134,15 +133,15 @@ func TestHttpCache(t *testing.T) {
 		listener.Close()
 
 		// re-fetch from cache
-		res, fromCache, err = client.Get(fmt.Sprintf("http://%s/immutable", listener.Addr().String()))
+		res, err = client.Get(fmt.Sprintf("http://%s/immutable", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if !fromCache {
+		if !res.FromCache {
 			t.Fatalf("unexpected cache miss")
 		}
 	}
@@ -200,15 +199,15 @@ func TestHttpCacheMaxSize(t *testing.T) {
 
 	// make 10 requests, which should all be cached
 	for i := 0; i < 10; i++ {
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
+		res, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			t.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
@@ -225,15 +224,15 @@ func TestHttpCacheMaxSize(t *testing.T) {
 
 	// re-fetch all 10, should all hit the cache
 	for i := 0; i < 10; i++ {
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
+		res, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			t.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if !fromCache {
+		if !res.FromCache {
 			t.Fatalf("unexpected cache miss")
 		}
 
@@ -244,31 +243,31 @@ func TestHttpCacheMaxSize(t *testing.T) {
 	// make one more request, which should immediately cause the first request
 	// to get bumped out of the cache
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/10", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/10", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			t.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
 
 	// check first request again
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/0", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/0", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			t.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
 
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
@@ -335,32 +334,31 @@ func TestHttpCacheWithPersistedDeadline(t *testing.T) {
 
 	// run a single request to cache it
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if string(res) != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
 
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
 
 	//  make sure the value is in the cache
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if string(res) != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-
-		if !fromCache {
+		if !res.FromCache {
 			t.Fatalf("unexpected cache miss")
 		}
 	}
@@ -381,16 +379,15 @@ func TestHttpCacheWithPersistedDeadline(t *testing.T) {
 
 	// re-run the request, which should be a cache miss
 	{
-		res, fromCache, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
+		res, err := client.Get(fmt.Sprintf("http://%s/", listener.Addr().String()))
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if string(res) != "Hello, world!" {
-			t.Fatalf("unexpected response: %s", res)
+		if res.Body != "Hello, world!" {
+			t.Fatalf("unexpected response: %s", res.Body)
 		}
-
-		if fromCache {
+		if res.FromCache {
 			t.Fatalf("unexpected cache hit")
 		}
 	}
@@ -424,15 +421,15 @@ func BenchmarkClientColdGet(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		res, fromCache, err := client.Get(targetUrl + strconv.FormatInt(int64(i), 10))
+		res, err := client.Get(targetUrl + strconv.FormatInt(int64(i), 10))
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			b.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			b.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			b.Fatalf("unexpected cache hit")
 		}
 	}
@@ -464,15 +461,15 @@ func BenchmarkClientWarmGet(b *testing.B) {
 	targetUrl := fmt.Sprintf("http://%s/test", listener.Addr().String())
 
 	{
-		res, fromCache, err := client.Get(targetUrl)
+		res, err := client.Get(targetUrl)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			b.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			b.Fatalf("unexpected response: %s", res.Body)
 		}
-		if fromCache {
+		if res.FromCache {
 			b.Fatalf("unexpected cache hit")
 		}
 	}
@@ -484,15 +481,15 @@ func BenchmarkClientWarmGet(b *testing.B) {
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
-		res, fromCache, err := client.Get(targetUrl)
+		res, err := client.Get(targetUrl)
 		if err != nil {
 			b.Fatal(err)
 		}
 
-		if len(res) != 1000 {
-			b.Fatalf("unexpected response: %s", res)
+		if len(res.Body) != 1000 {
+			b.Fatalf("unexpected response: %s", res.Body)
 		}
-		if !fromCache {
+		if !res.FromCache {
 			b.Fatalf("unexpected cache miss")
 		}
 	}
