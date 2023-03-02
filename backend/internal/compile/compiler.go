@@ -38,8 +38,9 @@ type Compiler struct {
 }
 
 type CompiledApp struct {
-	httpClient *http.Client
-	compiler   *Compiler
+	httpClient       *http.Client
+	compiler         *Compiler
+	keepAliveRunning bool
 
 	Id string
 

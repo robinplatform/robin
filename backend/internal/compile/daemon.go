@@ -129,6 +129,8 @@ func (app *CompiledApp) IsAlive() bool {
 }
 
 func (app *CompiledApp) keepAlive() {
+	defer func() { app.keepAliveRunning = false }()
+
 	numErrs := 0
 	for {
 		if app.IsAlive() {
@@ -139,6 +141,7 @@ func (app *CompiledApp) keepAlive() {
 				logger.Warn("App server shutdown", log.Ctx{
 					"appId": app.Id,
 				})
+				return
 			}
 		}
 
@@ -242,7 +245,9 @@ func (app *CompiledApp) StartServer() error {
 		// Send a ping to the process
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
 		if err == nil && resp.StatusCode == http.StatusOK {
+			app.keepAliveRunning = true
 			go app.keepAlive()
+
 			return nil
 		}
 		if resp == nil {
@@ -332,6 +337,11 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 
 	if respBody.Type == "error" {
 		return nil, fmt.Errorf("failed to make app request: %s", respBody.Error)
+	}
+
+	if !app.keepAliveRunning {
+		app.keepAliveRunning = true
+		go app.keepAlive()
 	}
 
 	return respBody.Result, nil
