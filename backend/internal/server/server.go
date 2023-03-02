@@ -118,13 +118,15 @@ func (server *Server) Run() error {
 	// Start precompiling apps, and ignore the errors for now
 	// The errors will get handled when the app is requested
 	go func() {
-		apps, err := compile.GetAllProjectApps()
-		if err != nil {
-			return
-		}
+		if compile.CacheEnabled {
+			apps, err := compile.GetAllProjectApps()
+			if err != nil {
+				return
+			}
 
-		for _, app := range apps {
-			go server.compiler.GetApp(app.Id)
+			for _, app := range apps {
+				go server.compiler.GetApp(app.Id)
+			}
 		}
 	}()
 

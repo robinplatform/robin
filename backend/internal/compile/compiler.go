@@ -27,7 +27,7 @@ var (
 
 	logger log.Logger = log.New("compile")
 
-	cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
+	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )
 
 type Compiler struct {
@@ -70,7 +70,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		return app, nil
 	}
 
-	if compiler.appCache == nil && cacheEnabled {
+	if compiler.appCache == nil && CacheEnabled {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
