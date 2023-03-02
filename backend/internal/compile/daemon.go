@@ -110,6 +110,42 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 	}
 }
 
+func (app *CompiledApp) IsAlive() bool {
+	process, err := processManager.FindById(app.getProcessId())
+	if err != nil {
+		return false
+	}
+
+	if !process.IsAlive() {
+		return false
+	}
+
+	// Send a ping to the process
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", process.Meta.Port))
+	if resp != nil {
+		resp.Body.Close()
+	}
+	return err == nil && resp.StatusCode == http.StatusOK
+}
+
+func (app *CompiledApp) keepAlive() {
+	numErrs := 0
+	for {
+		if app.IsAlive() {
+			numErrs = 0
+		} else {
+			numErrs++
+			if numErrs >= 3 {
+				logger.Warn("App server shutdown", log.Ctx{
+					"appId": app.Id,
+				})
+			}
+		}
+
+		time.Sleep(10 * time.Second)
+	}
+}
+
 func (app *CompiledApp) StartServer() error {
 	daemonProcessMux.Lock()
 	defer daemonProcessMux.Unlock()
@@ -206,6 +242,7 @@ func (app *CompiledApp) StartServer() error {
 		// Send a ping to the process
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
 		if err == nil && resp.StatusCode == http.StatusOK {
+			go app.keepAlive()
 			return nil
 		}
 		if resp == nil {

@@ -175,15 +175,11 @@ func (manager *ProcessManager[Meta]) FindById(id ProcessId) (*Process[Meta], err
 }
 
 func (m *ProcessManager[Meta]) IsAlive(id ProcessId) bool {
-	r := m.db.ReadHandle()
-	defer r.Close()
-
-	procEntry, found := r.Find(findById[Meta](id))
-	if !found {
+	process, err := m.FindById(id)
+	if err != nil {
 		return false
 	}
-
-	return procEntry.IsAlive()
+	return process.IsAlive()
 }
 
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning

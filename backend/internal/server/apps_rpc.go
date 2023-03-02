@@ -68,10 +68,12 @@ var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 			}
 		}
 
-		if err := app.StartServer(); err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to start app server: %s", err),
+		if !app.IsAlive() {
+			if err := app.StartServer(); err != nil {
+				return nil, &HttpError{
+					StatusCode: http.StatusInternalServerError,
+					Message:    fmt.Sprintf("Failed to start app server: %s", err),
+				}
 			}
 		}
 
