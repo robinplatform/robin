@@ -182,27 +182,26 @@ func (client *CacheClient) Get(targetUrl string) (string, bool, error) {
 
 	cacheControl := resp.Header.Get("Cache-Control")
 	maxAge, shouldCache := parseCacheControl(cacheControl)
-	if !shouldCache {
+	if shouldCache {
+		entry := CacheEntry{
+			Value:      string(buf),
+			StatusCode: resp.StatusCode,
+		}
+		if maxAge != nil {
+			age := parseAge(resp.Header.Get("Age"))
+			ttlLocal := *maxAge - age
+
+			deadline := time.Now().Add(ttlLocal).UnixNano()
+			entry.Deadline = &deadline
+		}
+
+		client.cache.Set(targetUrl, entry)
+	} else {
 		logger.Debug("HTTP resource is not cacheable", log.Ctx{
 			"targetUrl":    targetUrl,
 			"cacheControl": cacheControl,
 		})
-		return string(buf), false, nil
 	}
-
-	entry := CacheEntry{
-		Value:      string(buf),
-		StatusCode: resp.StatusCode,
-	}
-	if maxAge != nil {
-		age := parseAge(resp.Header.Get("Age"))
-		ttlLocal := *maxAge - age
-
-		deadline := time.Now().Add(ttlLocal).UnixNano()
-		entry.Deadline = &deadline
-	}
-
-	client.cache.Set(targetUrl, entry)
 
 	if resp.StatusCode != http.StatusOK {
 		return "", false, HttpError{
