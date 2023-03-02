@@ -62,6 +62,12 @@ type CompiledApp struct {
 	serverExports map[string][]string
 }
 
+func (compiler *Compiler) ResetAppCache(id string) {
+	compiler.mux.Lock()
+	delete(compiler.appCache, id)
+	compiler.mux.Unlock()
+}
+
 func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
