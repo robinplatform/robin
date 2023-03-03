@@ -14,6 +14,7 @@ import (
 type StartCommand struct {
 	port               int
 	bindAddress        string
+	enablePprof        bool
 	forceStableToolkit bool
 }
 
@@ -28,6 +29,7 @@ func (cmd *StartCommand) Description() string {
 func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 	flagSet.IntVar(&cmd.port, "port", 9010, "The port to listen on")
 	flagSet.StringVar(&cmd.bindAddress, "bind", "[::1]", "The address to bind to")
+	flagSet.BoolVar(&cmd.enablePprof, "pprof", false, "Enable pprof endpoints")
 
 	if config.GetReleaseChannel() != config.ReleaseChannelStable {
 		flagSet.BoolVar(&cmd.forceStableToolkit, "use-stable-toolkit", false, "Force the use of the stable toolkit")
@@ -56,6 +58,7 @@ func (cmd *StartCommand) Run() error {
 	app := server.Server{
 		BindAddress: cmd.bindAddress,
 		Port:        cmd.port,
+		EnablePprof: cmd.enablePprof || releaseChannel == config.ReleaseChannelDev,
 	}
 	return app.Run()
 }

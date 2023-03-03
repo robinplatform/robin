@@ -27,7 +27,7 @@ var (
 
 	logger log.Logger = log.New("compile")
 
-	cacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
+	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )
 
 type Compiler struct {
@@ -70,7 +70,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		return app, nil
 	}
 
-	if compiler.appCache == nil && cacheEnabled {
+	if compiler.appCache == nil && CacheEnabled {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
@@ -79,19 +79,10 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
 	}
 
-	htmlOutput := bytes.NewBuffer(nil)
-	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
-		"AppConfig": appConfig,
-		"ScriptURL": fmt.Sprintf("/api/app-resources/%s/bootstrap.js", id),
-	}); err != nil {
-		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
-	}
-
 	app := CompiledApp{
 		compiler: compiler,
 
 		Id:     id,
-		Html:   htmlOutput.String(),
 		Cached: true,
 	}
 	if err := app.buildClientJs(); err != nil {
@@ -100,6 +91,15 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	if err := app.buildServerBundle(); err != nil {
 		return CompiledApp{}, err
 	}
+
+	htmlOutput := bytes.NewBuffer(nil)
+	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
+		"AppConfig":    appConfig,
+		"ScriptSource": app.ClientJs,
+	}); err != nil {
+		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
+	}
+	app.Html = htmlOutput.String()
 
 	if compiler.appCache != nil {
 		compiler.appCache[id] = app
