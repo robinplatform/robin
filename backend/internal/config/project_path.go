@@ -63,10 +63,6 @@ func checkProjectPath(givenProjectPath string) (string, error) {
 	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
 }
 
-func GetProjectPath() (string, error) {
-	return projectPathState.GetValue()
-}
-
 var projectPathState = static.CreateOnce(func() (string, error) {
 	// First try to load it from the env. We don't use this as a hint, but rather as an
 	// exact path to the project. We just perform a quick check to make sure it is a valid
@@ -99,6 +95,10 @@ func SetProjectPath(givenProjectPath string) (string, error) {
 	}
 
 	return value, err
+}
+
+func GetProjectPath() (string, error) {
+	return projectPathState.GetValue()
 }
 
 func GetProjectPathOrExit() string {
