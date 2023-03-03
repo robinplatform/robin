@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"robinplatform.dev/internal/static"
 )
 
 var (
@@ -66,7 +68,7 @@ func SetProjectPath(givenProjectPath string) (string, error) {
 	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
 }
 
-func GetProjectPath() (string, error) {
+var GetProjectPath = static.CreateOnce(func() (string, error) {
 	if projectPath == "" {
 		// First try to load it from the env. We don't use this as a hint, but rather as an
 		// exact path to the project. We just perform a quick check to make sure it is a valid
@@ -89,7 +91,7 @@ func GetProjectPath() (string, error) {
 		return SetProjectPath(discoveredProjectPath)
 	}
 	return projectPath, nil
-}
+})
 
 func GetProjectPathOrExit() string {
 	projectPath, err := GetProjectPath()
