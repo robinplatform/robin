@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type RobinAppConfig struct {
@@ -173,7 +174,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 }
 
 func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := project.LoadProjectConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -181,13 +182,13 @@ func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
 }
 
 func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := project.LoadProjectConfig()
 	if err != nil {
 		return err
 	}
 
 	projectConfig.AppSettings[appConfig.Id] = settings
-	return config.UpdateProjectConfig(projectConfig)
+	return project.UpdateProjectConfig(projectConfig)
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
