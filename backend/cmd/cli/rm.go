@@ -40,7 +40,6 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 
 func (cmd *RemoveCommand) Run() error {
 	projectPath := config.GetProjectPathOrExit()
-	projectConfig := config.RobinProjectConfig{}
 
 	apps, err := compile.GetAllProjectApps()
 	if err != nil {
@@ -78,6 +77,7 @@ func (cmd *RemoveCommand) Run() error {
 		}
 	}
 
+	projectConfig := config.RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
 	}
