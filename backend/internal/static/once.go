@@ -1,17 +1,42 @@
 package static
 
-import "sync"
+import (
+	"sync"
+)
 
-func CreateOnce[T any](creator func() (T, error)) func() (T, error) {
-	var value T
-	var err error
-	var once sync.Once
+type OnceInit[T any] struct {
+	value T
+	err   error
+	once  sync.Once
 
-	return func() (T, error) {
-		once.Do(func() {
-			value, err = creator()
+	Init     func(func() (T, error)) (bool, T, error)
+	GetValue func() (T, error)
+}
+
+func CreateOnce[T any](creator func() (T, error)) OnceInit[T] {
+	var out OnceInit[T]
+
+	out.GetValue = func() (T, error) {
+		out.once.Do(func() {
+			out.value, out.err = creator()
 		})
 
-		return value, err
+		return out.value, out.err
 	}
+
+	out.Init = func(creator func() (T, error)) (bool, T, error) {
+		didInit := false
+		out.once.Do(func() {
+			out.value, out.err = creator()
+			didInit = true
+		})
+
+		if !didInit {
+			return false, out.value, out.err
+		}
+
+		return true, out.value, out.err
+	}
+
+	return out
 }
