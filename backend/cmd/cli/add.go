@@ -85,7 +85,7 @@ func (cmd *AddCommand) Run() error {
 		// makes changes, we don't force the user to pick between their changes and ours. Unlike
 		// certain programs. *cough* *cough* *npm* *cough* *cough*
 		projectConfig := config.RobinProjectConfig{}
-		if err := projectConfig.LoadRobinProjectConfig(); err != nil {
+		if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 			return fmt.Errorf("failed to load project config: %w", err)
 		}
 
