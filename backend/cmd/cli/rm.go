@@ -41,13 +41,10 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 func (cmd *RemoveCommand) Run() error {
 	projectPath := config.GetProjectPathOrExit()
 	projectConfig := config.RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-		return err
-	}
 
 	apps, err := compile.GetAllProjectApps()
 	if err != nil {
-		return fmt.Errorf("failed to load project config: %w", err)
+		return fmt.Errorf("failed to load project apps: %w", err)
 	}
 
 	existingApps := make(map[string]compile.RobinAppConfig, len(apps)*3)
@@ -79,6 +76,10 @@ func (cmd *RemoveCommand) Run() error {
 				fmt.Printf("Not installed: %s\n", appConfig.Name)
 			}
 		}
+	}
+
+	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
+		return fmt.Errorf("failed to load project config: %w", err)
 	}
 
 	newApps := make([]string, 0, len(projectConfig.Apps))

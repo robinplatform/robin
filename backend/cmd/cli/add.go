@@ -44,11 +44,6 @@ var eraseEndLine = "\u001B[K"
 func (cmd *AddCommand) Run() error {
 	projectPath := config.GetProjectPathOrExit()
 
-	projectConfig := config.RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-		return err
-	}
-
 	existingApps, err := compile.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to get existing apps: %w", err)
