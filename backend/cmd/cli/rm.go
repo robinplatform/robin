@@ -78,7 +78,7 @@ func (cmd *RemoveCommand) Run() error {
 	}
 
 	projectConfig := config.RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(); err != nil {
+	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
 	}
 

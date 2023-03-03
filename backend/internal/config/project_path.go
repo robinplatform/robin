@@ -5,10 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-var (
-	projectPath string
+	"robinplatform.dev/internal/static"
 )
 
 func fileExists(filename string) bool {
@@ -47,7 +45,7 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 	return currentDir, nil
 }
 
-func SetProjectPath(givenProjectPath string) (string, error) {
+func checkProjectPath(givenProjectPath string) (string, error) {
 	if !filepath.IsAbs(givenProjectPath) {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -59,36 +57,48 @@ func SetProjectPath(givenProjectPath string) (string, error) {
 
 	givenProjectPath = filepath.Clean(givenProjectPath)
 	if fileExists(filepath.Join(givenProjectPath, "robin.json")) {
-		projectPath = givenProjectPath
-		return projectPath, nil
+		return givenProjectPath, nil
 	}
 
 	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
 }
 
-func GetProjectPath() (string, error) {
-	if projectPath == "" {
-		// First try to load it from the env. We don't use this as a hint, but rather as an
-		// exact path to the project. We just perform a quick check to make sure it is a valid
-		// robin project.
-		envProjectPath := os.Getenv("ROBIN_PROJECT_PATH")
-		if envProjectPath != "" {
-			return SetProjectPath(envProjectPath)
-		}
-
-		// Otherwise perform a recursive check from the cwd to find the closest robin project.
-		cwd, err := os.Getwd()
-		if err != nil {
-			panic(fmt.Errorf("failed to get cwd: %s", err))
-		}
-
-		discoveredProjectPath, err := findProjectPath(cwd, nil)
-		if err != nil {
-			return "", err
-		}
-		return SetProjectPath(discoveredProjectPath)
+var projectPathState = static.CreateOnce(func() (string, error) {
+	// First try to load it from the env. We don't use this as a hint, but rather as an
+	// exact path to the project. We just perform a quick check to make sure it is a valid
+	// robin project.
+	envProjectPath := os.Getenv("ROBIN_PROJECT_PATH")
+	if envProjectPath != "" {
+		return checkProjectPath(envProjectPath)
 	}
-	return projectPath, nil
+
+	// Otherwise perform a recursive check from the cwd to find the closest robin project.
+	cwd, err := os.Getwd()
+	if err != nil {
+		panic(fmt.Errorf("failed to get cwd: %s", err))
+	}
+
+	discoveredProjectPath, err := findProjectPath(cwd, nil)
+	if err != nil {
+		return "", err
+	}
+	return checkProjectPath(discoveredProjectPath)
+})
+
+func SetProjectPath(givenProjectPath string) (string, error) {
+	didSet, value, err := projectPathState.Init(func() (string, error) {
+		return checkProjectPath(givenProjectPath)
+	})
+
+	if !didSet {
+		return "", fmt.Errorf("error: failed to set project path: %s", err)
+	}
+
+	return value, err
+}
+
+func GetProjectPath() (string, error) {
+	return projectPathState.GetValue()
 }
 
 func GetProjectPathOrExit() string {
