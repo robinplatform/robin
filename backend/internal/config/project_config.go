@@ -8,19 +8,23 @@ import (
 )
 
 type RobinProjectConfig struct {
+	// Path to the project folder
+	ProjectPath string `json:"-"`
 	// Name of the app
 	Name string `json:"name,omitempty"`
 	// Apps to load for this project
 	Apps []string `json:"apps,omitempty"`
 }
 
-func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig() error {
-	projectPath, err := GetProjectPath()
+func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig(projectPath string) error {
+	var err error
+
+	projectConfig.ProjectPath, err = filepath.Abs(projectPath)
 	if err != nil {
 		return err
 	}
 
-	configPath := filepath.Join(projectPath, "robin.json")
+	configPath := filepath.Join(projectConfig.ProjectPath, "robin.json")
 
 	buf, err := os.ReadFile(configPath)
 	if err != nil {
@@ -36,12 +40,7 @@ func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig() error {
 }
 
 func (projectConfig *RobinProjectConfig) SaveRobinProjectConfig() error {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return err
-	}
-
-	configPath := filepath.Join(projectPath, "robin.json")
+	configPath := filepath.Join(projectConfig.ProjectPath, "robin.json")
 
 	// Let's indent the config so it is easily readable
 	buf, err := json.MarshalIndent(projectConfig, "", "\t")
