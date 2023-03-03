@@ -3,14 +3,16 @@ package server
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
+	"net/http/pprof"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/health"
+	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/project"
 )
@@ -18,10 +20,12 @@ import (
 type Server struct {
 	BindAddress string
 	Port        int
+	EnablePprof bool
 
-	router    *httprouter.Router
-	webRouter http.Handler
-	compiler  compile.Compiler
+	router      *httprouter.Router
+	pprofRouter http.Handler
+	webRouter   http.Handler
+	compiler    compile.Compiler
 }
 
 var logger log.Logger = log.New("server")
@@ -72,23 +76,18 @@ func (server *Server) loadRpcMethods() {
 }
 
 func createErrorJs(errMessage string) string {
-	errJson, err := json.Marshal(errMessage)
-	if err != nil {
-		errMessage = "Unknown error occurred"
-	} else {
-		errMessage = string(errJson)
-	}
-
 	return fmt.Sprintf(`
 		window.parent.postMessage({
 			type: 'appError',
-			error: %s,
+			error: %q,
 		}, '*')
 	`, errMessage)
 }
 
 func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
-	if strings.HasPrefix(req.URL.Path, "/api") {
+	if server.EnablePprof && strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
+		server.pprofRouter.ServeHTTP(res, req)
+	} else if strings.HasPrefix(req.URL.Path, "/api") {
 		server.router.ServeHTTP(res, req)
 	} else {
 		server.webRouter.ServeHTTP(res, req)
@@ -107,16 +106,29 @@ func (server *Server) Run() error {
 	}
 	server.compiler.ServerPort = server.Port
 
+	if server.EnablePprof {
+		logger.Print("Running with pprof enabled", log.Ctx{})
+		mux := http.NewServeMux()
+		mux.Handle("/debug/pprof/", http.HandlerFunc(pprof.Index))
+		mux.Handle("/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+		mux.Handle("/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+		mux.Handle("/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
+		server.pprofRouter = mux
+	}
+
 	// Start precompiling apps, and ignore the errors for now
 	// The errors will get handled when the app is requested
 	go func() {
-		apps, err := compile.GetAllProjectApps()
-		if err != nil {
-			return
-		}
+		if compile.CacheEnabled {
+			apps, err := compile.GetAllProjectApps()
+			if err != nil {
+				return
+			}
 
-		for _, app := range apps {
-			go server.compiler.GetApp(app.Id)
+			for _, app := range apps {
+				go server.compiler.GetApp(app.Id)
+			}
 		}
 	}()
 
@@ -179,14 +191,9 @@ func (server *Server) Run() error {
 
 		app, err := server.compiler.GetApp(id)
 		if err != nil {
-			serializedErr, err := json.Marshal(err.Error())
-			if err != nil {
-				serializedErr = []byte(`Unknown error occurred`)
-			}
-
 			res.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			res.WriteHeader(http.StatusInternalServerError)
-			res.Write([]byte(createErrorJs(string(serializedErr))))
+			res.Write([]byte(createErrorJs(err.Error())))
 			return
 		}
 
@@ -203,22 +210,17 @@ func (server *Server) Run() error {
 	server.loadRpcMethods()
 	portBinding := fmt.Sprintf("%s:%d", server.BindAddress, server.Port)
 
-	// TODO: Simplify this
-
 	fmt.Printf("Starting server ...\r")
-	go func() {
-		healthCheck := health.HttpHealthCheck{
-			Method: "GET",
-			Url:    fmt.Sprintf("http://%s", portBinding),
-		}
-		for !health.CheckHttp(healthCheck) {
-			time.Sleep(1 * time.Second)
-		}
-		logger.Print(fmt.Sprintf("Started robin server on http://%s", portBinding), log.Ctx{})
-	}()
 
-	if err := http.ListenAndServe(portBinding, server); err != nil {
+	listener, err := net.Listen("tcp", portBinding)
+	if err != nil {
 		return fmt.Errorf("failed to start server: %s", err)
 	}
+	logger.Print(fmt.Sprintf("Started robin server on http://%s", portBinding), log.Ctx{})
+
+	httpServer := http.Server{
+		Handler: server,
+	}
+	httpServer.Serve(listener)
 	return nil
 }
