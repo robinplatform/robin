@@ -11,8 +11,6 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/health"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/project"
 )
