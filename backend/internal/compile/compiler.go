@@ -15,8 +15,8 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/project"
 )
 
 var (
@@ -166,8 +166,8 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 						return es.OnResolveResult{}, err
 					}
 
-					var packageJson config.PackageJson
-					if err := config.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
+					var packageJson project.PackageJson
+					if err := project.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
 						return es.OnResolveResult{}, err
 					}
 
