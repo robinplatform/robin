@@ -7,17 +7,17 @@ import (
 type OnceInit[T any] struct {
 	value T
 	err   error
-	once  sync.Once
 
 	Init     func(func() (T, error)) (bool, T, error)
 	GetValue func() (T, error)
 }
 
 func CreateOnce[T any](creator func() (T, error)) OnceInit[T] {
+	var once sync.Once
 	var out OnceInit[T]
 
 	out.GetValue = func() (T, error) {
-		out.once.Do(func() {
+		once.Do(func() {
 			out.value, out.err = creator()
 		})
 
@@ -26,7 +26,7 @@ func CreateOnce[T any](creator func() (T, error)) OnceInit[T] {
 
 	out.Init = func(creator func() (T, error)) (bool, T, error) {
 		didInit := false
-		out.once.Do(func() {
+		once.Do(func() {
 			out.value, out.err = creator()
 			didInit = true
 		})
