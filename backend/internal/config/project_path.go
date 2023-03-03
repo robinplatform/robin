@@ -45,10 +45,6 @@ func findProjectPath(currentDir string, visited []string) (string, error) {
 	return currentDir, nil
 }
 
-func GetProjectPath() (string, error) {
-	return projectPathState.GetValue()
-}
-
 func checkProjectPath(givenProjectPath string) (string, error) {
 	if !filepath.IsAbs(givenProjectPath) {
 		cwd, err := os.Getwd()
@@ -66,18 +62,6 @@ func checkProjectPath(givenProjectPath string) (string, error) {
 
 	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
 
-}
-
-func SetProjectPath(givenProjectPath string) (string, error) {
-	didSet, value, err := projectPathState.Init(func() (string, error) {
-		return checkProjectPath(givenProjectPath)
-	})
-
-	if !didSet {
-		return "", fmt.Errorf("error: failed to set project path: %s", err)
-	}
-
-	return value, err
 }
 
 var projectPathState = static.CreateOnce(func() (string, error) {
@@ -101,6 +85,22 @@ var projectPathState = static.CreateOnce(func() (string, error) {
 	}
 	return checkProjectPath(discoveredProjectPath)
 })
+
+func GetProjectPath() (string, error) {
+	return projectPathState.GetValue()
+}
+
+func SetProjectPath(givenProjectPath string) (string, error) {
+	didSet, value, err := projectPathState.Init(func() (string, error) {
+		return checkProjectPath(givenProjectPath)
+	})
+
+	if !didSet {
+		return "", fmt.Errorf("error: failed to set project path: %s", err)
+	}
+
+	return value, err
+}
 
 func GetProjectPathOrExit() string {
 	projectPath, err := GetProjectPath()
