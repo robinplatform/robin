@@ -21,7 +21,7 @@ func TestOnce(t *testing.T) {
 	})
 
 	if didInit {
-		t.Errorf("Shoul not have initialized twice")
+		t.Errorf("Should not have initialized twice")
 	}
 	if err != nil {
 		t.Error(err)
