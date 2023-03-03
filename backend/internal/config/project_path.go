@@ -61,7 +61,10 @@ func checkProjectPath(givenProjectPath string) (string, error) {
 	}
 
 	return "", ProjectPathNotFoundError{visited: []string{givenProjectPath}}
+}
 
+func GetProjectPath() (string, error) {
+	return projectPathState.GetValue()
 }
 
 var projectPathState = static.CreateOnce(func() (string, error) {
@@ -85,10 +88,6 @@ var projectPathState = static.CreateOnce(func() (string, error) {
 	}
 	return checkProjectPath(discoveredProjectPath)
 })
-
-func GetProjectPath() (string, error) {
-	return projectPathState.GetValue()
-}
 
 func SetProjectPath(givenProjectPath string) (string, error) {
 	didSet, value, err := projectPathState.Init(func() (string, error) {
