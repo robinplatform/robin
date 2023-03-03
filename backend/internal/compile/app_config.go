@@ -197,7 +197,7 @@ func GetAllProjectApps() ([]RobinAppConfig, error) {
 		return nil, err
 	}
 
-	projectConfig := config.RobinProjectConfig{}
+	projectConfig := project.RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type RemoveCommand struct {
@@ -77,7 +78,7 @@ func (cmd *RemoveCommand) Run() error {
 		}
 	}
 
-	projectConfig := config.RobinProjectConfig{}
+	projectConfig := project.RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
 	}

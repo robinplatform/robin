@@ -8,6 +8,7 @@ import (
 
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type AddCommand struct {
@@ -84,7 +85,7 @@ func (cmd *AddCommand) Run() error {
 		// Reload and resave the project config each time, so that if we are slow and the user
 		// makes changes, we don't force the user to pick between their changes and ours. Unlike
 		// certain programs. *cough* *cough* *npm* *cough* *cough*
-		projectConfig := config.RobinProjectConfig{}
+		projectConfig := project.RobinProjectConfig{}
 		if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 			return fmt.Errorf("failed to load project config: %w", err)
 		}
