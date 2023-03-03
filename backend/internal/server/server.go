@@ -10,9 +10,9 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/health"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/project"
 )
 
 type Server struct {
@@ -97,7 +97,7 @@ func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 func (server *Server) Run() error {
 	logger.Print("Starting robin", log.Ctx{
-		"projectPath": config.GetProjectPathOrExit(),
+		"projectPath": project.GetProjectPathOrExit(),
 		"pid":         os.Getpid(),
 	})
 

@@ -10,7 +10,6 @@ import (
 	"path"
 	"path/filepath"
 
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/project"
 )
 
@@ -88,7 +87,7 @@ func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, 
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := project.GetProjectPath()
 	if err != nil {
 		return fmt.Errorf("failed to get project path: %s", err)
 	}
@@ -192,7 +191,7 @@ func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := project.GetProjectPath()
 	if err != nil {
 		return nil, err
 	}

@@ -21,6 +21,7 @@ import (
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
+	"robinplatform.dev/internal/project"
 
 	es "github.com/evanw/esbuild/pkg/api"
 )
@@ -173,7 +174,7 @@ func (app *CompiledApp) StartServer() error {
 	}
 
 	// Start the app server process
-	projectPath := config.GetProjectPathOrExit()
+	projectPath := project.GetProjectPathOrExit()
 	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
 		Id: process.ProcessId{
 			Namespace:    process.NamespaceExtensionDaemon,

@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/project"
 )
 
@@ -40,7 +39,7 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 }
 
 func (cmd *RemoveCommand) Run() error {
-	projectPath := config.GetProjectPathOrExit()
+	projectPath := project.GetProjectPathOrExit()
 
 	apps, err := compile.GetAllProjectApps()
 	if err != nil {

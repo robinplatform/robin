@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/project"
 )
 
@@ -43,7 +42,7 @@ func (cmd *AddCommand) Parse(flags *flag.FlagSet, args []string) error {
 var eraseEndLine = "\u001B[K"
 
 func (cmd *AddCommand) Run() error {
-	projectPath := config.GetProjectPathOrExit()
+	projectPath := project.GetProjectPathOrExit()
 
 	existingApps, err := compile.GetAllProjectApps()
 	if err != nil {
