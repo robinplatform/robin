@@ -191,8 +191,13 @@ func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
+	projectPath, err := config.GetProjectPath()
+	if err != nil {
+		return nil, err
+	}
+
 	projectConfig := config.RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(); err != nil {
+	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return nil, err
 	}
 
