@@ -12,13 +12,19 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+
+	"robinplatform.dev/internal/compile"
 )
 
 //go:embed all:app-template
 var appTemplate embed.FS
 
 type CreateCommand struct {
-	targetPath string
+	targetPath     string
+	appId          string
+	appName        string
+	skipInstall    bool
+	packageManager string
 }
 
 func (cmd *CreateCommand) Name() string {
@@ -34,6 +40,11 @@ func (*CreateCommand) ShortUsage() string {
 }
 
 func (cmd *CreateCommand) Parse(flags *flag.FlagSet, args []string) error {
+	flags.StringVar(&cmd.appId, "id", "", "the id of your app (defaults to the name of the directory)")
+	flags.StringVar(&cmd.appName, "name", "", "the name of your app (defaults to the same as ID)")
+	flags.BoolVar(&cmd.skipInstall, "skip-install", false, "skip installing dependencies")
+	flags.StringVar(&cmd.packageManager, "package-manager", "", "the package manager to use (defaults to yarn if available, otherwise npm)")
+
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -42,6 +53,13 @@ func (cmd *CreateCommand) Parse(flags *flag.FlagSet, args []string) error {
 		return fmt.Errorf("you must specify an app path")
 	}
 	cmd.targetPath = flags.Arg(0)
+
+	if cmd.appId == "" {
+		cmd.appId = filepath.Base(cmd.targetPath)
+	}
+	if cmd.appName == "" {
+		cmd.appName = cmd.appId
+	}
 
 	return nil
 }
@@ -59,10 +77,11 @@ func (cmd *CreateCommand) Run() error {
 	var excitingEmojis = []string{"👋", "🎉", "🎊", "🎈", "🎁", "🎀", "🚀"}
 	var randomEmoji = excitingEmojis[rand.Intn(len(excitingEmojis))]
 
-	templateData := map[string]string{
-		"Id":       "test",
-		"Name":     "Testing",
-		"PageIcon": randomEmoji,
+	templateData := compile.RobinAppConfig{
+		Id:       cmd.appId,
+		Name:     cmd.appName,
+		PageIcon: randomEmoji,
+		Page:     "./src/app.tsx",
 	}
 
 	// Make sure that the target path doesn't already exist
@@ -122,18 +141,22 @@ func (cmd *CreateCommand) Run() error {
 		return err
 	}
 
-	packageMgr := "yarn"
-	if _, err := exec.LookPath("yarn"); err != nil {
-		packageMgr = "npm"
-	}
+	if !cmd.skipInstall {
+		if cmd.packageManager == "" {
+			cmd.packageManager = "yarn"
+			if _, err := exec.LookPath("yarn"); err != nil {
+				cmd.packageManager = "npm"
+			}
+		}
 
-	// install dependencies
-	cmdInstall := exec.Command(packageMgr, "install")
-	cmdInstall.Dir = cmd.targetPath
-	cmdInstall.Stdout = os.Stdout
-	cmdInstall.Stderr = os.Stderr
-	if err := cmdInstall.Run(); err != nil {
-		return fmt.Errorf("failed to install dependencies: %w", err)
+		// install dependencies
+		cmdInstall := exec.Command(cmd.packageManager, "install")
+		cmdInstall.Dir = cmd.targetPath
+		cmdInstall.Stdout = os.Stdout
+		cmdInstall.Stderr = os.Stderr
+		if err := cmdInstall.Run(); err != nil {
+			return fmt.Errorf("failed to install dependencies: %w", err)
+		}
 	}
 
 	fmt.Printf("Created new app in: %s\n", cmd.targetPath)
