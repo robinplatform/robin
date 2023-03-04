@@ -27,6 +27,7 @@ var (
 		&StartCommand{},
 		&AddCommand{},
 		&RemoveCommand{},
+		&CreateCommand{},
 		&VersionCommand{},
 	}
 )
