@@ -13,5 +13,8 @@
 	"devDependencies": {
 		"@types/react": "^18",
 		"rome": "^11"
-	}
+	},
+	"keywords": [
+		"robin-app"
+	]
 }
