@@ -119,7 +119,7 @@ func (server *Server) Run() error {
 	// The errors will get handled when the app is requested
 	go func() {
 		if compile.CacheEnabled {
-			apps, err := compile.GetAllProjectApps()
+			apps, err := project.GetAllProjectApps()
 			if err != nil {
 				return
 			}

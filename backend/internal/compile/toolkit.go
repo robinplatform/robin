@@ -9,6 +9,7 @@ import (
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/project"
 )
 
 var toolkitInit = sync.Once{}
@@ -18,7 +19,7 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func (appConfig RobinAppConfig) getToolkitPlugins() []es.Plugin {
+func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 	toolkitInit.Do(initToolkit)
 
 	if toolkitFS == nil {

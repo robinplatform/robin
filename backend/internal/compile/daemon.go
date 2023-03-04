@@ -51,7 +51,7 @@ func init() {
 	}
 }
 
-func (appConfig RobinAppConfig) getExtractServerPlugins(app *CompiledApp) []es.Plugin {
+func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp) []es.Plugin {
 	return []es.Plugin{
 		{
 			Name: "extract-server-ts",
@@ -63,7 +63,7 @@ func (appConfig RobinAppConfig) getExtractServerPlugins(app *CompiledApp) []es.P
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, source, err = appConfig.ReadFile(args.Path)
+						_, source, err = appConfig.ReadFile(&httpClient, args.Path)
 					} else {
 						source, err = os.ReadFile(args.Path)
 					}

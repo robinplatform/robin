@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/project"
 )
 
@@ -44,7 +43,7 @@ var eraseEndLine = "\u001B[K"
 func (cmd *AddCommand) Run() error {
 	projectPath := project.GetProjectPathOrExit()
 
-	existingApps, err := compile.GetAllProjectApps()
+	existingApps, err := project.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to get existing apps: %w", err)
 	}
@@ -76,7 +75,7 @@ func (cmd *AddCommand) Run() error {
 		}
 
 		// Load and verify the app config
-		appConfig, err := compile.LoadRobinAppByPath(resolvedAppPath)
+		appConfig, err := project.LoadRobinAppByPath(resolvedAppPath)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}

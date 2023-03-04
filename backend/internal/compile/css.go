@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
+	"robinplatform.dev/internal/project"
 )
 
 func wrapWithCssLoader(path string, css string) string {
@@ -19,7 +20,7 @@ func wrapWithCssLoader(path string, css string) string {
 	}()`, path, css)
 }
 
-func (appConfig *RobinAppConfig) getCssLoaderPlugins() []es.Plugin {
+func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 	return []es.Plugin{
 		{
 			Name: "load-css",
@@ -42,7 +43,7 @@ func (appConfig *RobinAppConfig) getCssLoaderPlugins() []es.Plugin {
 					var css []byte
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, css, err = appConfig.ReadFile(args.Path)
+						_, css, err = appConfig.ReadFile(&httpClient, args.Path)
 					} else {
 						css, err = os.ReadFile(args.Path)
 					}
@@ -72,7 +73,7 @@ func (appConfig *RobinAppConfig) getCssLoaderPlugins() []es.Plugin {
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, sass, err = appConfig.ReadFile(args.Path)
+						_, sass, err = appConfig.ReadFile(&httpClient, args.Path)
 					} else {
 						sass, err = os.ReadFile(args.Path)
 					}
