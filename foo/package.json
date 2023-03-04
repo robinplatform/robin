@@ -1,0 +1,17 @@
+{
+	"name": "test",
+	"version": "0.0.0",
+	"license": "MIT",
+	"scripts": {
+		"lint": "rome check .",
+		"format": "rome format --write ."
+	},
+	"dependencies": {
+		"react": "^18",
+		"@robinplatform/toolkit": "^0"
+	},
+	"devDependencies": {
+		"@types/react": "^18",
+		"rome": "^11"
+	}
+}

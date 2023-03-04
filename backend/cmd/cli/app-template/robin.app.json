@@ -1,0 +1,6 @@
+{
+	"id": "{{.Id}}",
+	"name": "{{.Name}}",
+	"page": "./src/app.tsx",
+	"pageIcon": "{{.PageIcon}}"
+}
