@@ -221,7 +221,7 @@ func (client *CacheClient) Get(targetUrl string) (CacheClientResponse, error) {
 		}
 	}
 	return CacheClientResponse{
-		RequestUrl: resp.Request.RequestURI,
+		RequestUrl: resp.Request.URL.String(),
 		Body:       string(buf),
 		FromCache:  false,
 	}, nil
