@@ -5,6 +5,7 @@ import (
 	"runtime"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type GetVersionResponse struct {
@@ -25,11 +26,11 @@ var GetVersion = InternalRpcMethod[struct{}, GetVersionResponse]{
 	},
 }
 
-var GetConfig = InternalRpcMethod[struct{}, config.RobinConfig]{
+var GetConfig = InternalRpcMethod[struct{}, project.RobinConfig]{
 	Name:             "GetConfig",
 	SkipInputParsing: true,
-	Run: func(_ RpcRequest[struct{}]) (config.RobinConfig, *HttpError) {
-		robinConfig, err := config.LoadProjectConfig()
+	Run: func(_ RpcRequest[struct{}]) (project.RobinConfig, *HttpError) {
+		robinConfig, err := project.LoadProjectConfig()
 		if err != nil {
 			return robinConfig, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -40,11 +41,11 @@ var GetConfig = InternalRpcMethod[struct{}, config.RobinConfig]{
 	},
 }
 
-var UpdateConfig = InternalRpcMethod[config.RobinConfig, struct{}]{
+var UpdateConfig = InternalRpcMethod[project.RobinConfig, struct{}]{
 	Name: "UpdateConfig",
-	Run: func(c RpcRequest[config.RobinConfig]) (struct{}, *HttpError) {
+	Run: func(c RpcRequest[project.RobinConfig]) (struct{}, *HttpError) {
 		var empty struct{}
-		if err := config.UpdateProjectConfig(c.Data); err != nil {
+		if err := project.UpdateProjectConfig(c.Data); err != nil {
 			return empty, &HttpError{
 				StatusCode: http.StatusInternalServerError,
 				Message:    err.Error(),

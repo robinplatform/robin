@@ -22,6 +22,7 @@ import (
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
+	"robinplatform.dev/internal/project"
 
 	es "github.com/evanw/esbuild/pkg/api"
 )
@@ -51,7 +52,7 @@ func init() {
 	}
 }
 
-func (appConfig RobinAppConfig) getExtractServerPlugins(app *CompiledApp) []es.Plugin {
+func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp) []es.Plugin {
 	return []es.Plugin{
 		{
 			Name: "extract-server-ts",
@@ -63,7 +64,7 @@ func (appConfig RobinAppConfig) getExtractServerPlugins(app *CompiledApp) []es.P
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, source, err = appConfig.ReadFile(args.Path)
+						_, source, err = appConfig.ReadFile(&httpClient, args.Path)
 					} else {
 						source, err = os.ReadFile(args.Path)
 					}
@@ -213,7 +214,7 @@ func (app *CompiledApp) StartServer() error {
 	}
 
 	// Start the app server process
-	projectPath := config.GetProjectPathOrExit()
+	projectPath := project.GetProjectPathOrExit()
 	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
 		Id: process.ProcessId{
 			Namespace:    process.NamespaceExtensionDaemon,

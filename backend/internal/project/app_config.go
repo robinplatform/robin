@@ -1,4 +1,4 @@
-package compile
+package project
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
 )
 
 type RobinAppConfig struct {
@@ -41,53 +41,28 @@ func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
 	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filepath.ToSlash(targetPath)})
 }
 
-func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, error) {
-	var buf []byte
-	var err error
+func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, targetPath string) (*url.URL, []byte, error) {
 	fileUrl := appConfig.resolvePath(targetPath)
 
 	if fileUrl.Scheme == "file" {
-		buf, err = os.ReadFile(fileUrl.Path)
+		buf, err := os.ReadFile(fileUrl.Path)
 		if err != nil {
-			return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
+			return nil, nil, fmt.Errorf("failed to read file '%s': %w", targetPath, err)
 		}
 		return fileUrl, buf, nil
 	}
 
-	req := &http.Request{
-		Method: "GET",
-		URL:    fileUrl,
-	}
-	lastReq := req
-	client := &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 10 {
-				return fmt.Errorf("stopped after 10 redirects")
-			}
-			lastReq = req
-			return nil
-		},
-	}
-
-	resp, err := client.Do(req)
+	res, err := httpClient.Get(fileUrl.String())
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
+		return nil, nil, fmt.Errorf("failed to read file '%s': %w", targetPath, err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, resp.Status)
-	}
-
-	buf, err = io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to read file '%s': %s", targetPath, err)
-	}
-
-	return lastReq.URL, buf, nil
+	lastUrl, _ := url.Parse(res.RequestUrl)
+	return lastUrl, []byte(res.Body), nil
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := GetProjectPath()
 	if err != nil {
 		return fmt.Errorf("failed to get project path: %s", err)
 	}
@@ -108,9 +83,6 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 
 	if appConfig.ConfigPath.Scheme != "file" && appConfig.ConfigPath.Scheme != "https" {
 		return fmt.Errorf("invalid config path scheme '%s' (only file and https are supported)", appConfig.ConfigPath.Scheme)
-	}
-	if appConfig.ConfigPath.Scheme == "https" && appConfig.ConfigPath.Host != "esm.sh" {
-		return fmt.Errorf("cannot load file from host '%s' (only esm.sh is supported)", appConfig.ConfigPath.Host)
 	}
 
 	// All paths must end with `robin.app.json`
@@ -173,7 +145,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 }
 
 func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := LoadProjectConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -181,22 +153,22 @@ func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
 }
 
 func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := LoadProjectConfig()
 	if err != nil {
 		return err
 	}
 
 	projectConfig.AppSettings[appConfig.Id] = settings
-	return config.UpdateProjectConfig(projectConfig)
+	return UpdateProjectConfig(projectConfig)
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := GetProjectPath()
 	if err != nil {
 		return nil, err
 	}
 
-	projectConfig := config.RobinProjectConfig{}
+	projectConfig := RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return nil, err
 	}

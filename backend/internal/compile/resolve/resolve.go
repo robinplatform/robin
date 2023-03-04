@@ -87,6 +87,10 @@ func (resolver *Resolver) resolveModule(source, target string) (string, error) {
 	return "", fmt.Errorf("could not resolve: %s", target)
 }
 
+func (resolver *Resolver) ResetCache() {
+	resolver.resolveCache = nil
+}
+
 // ReadFile returns the contents of the file at the given path, if the file exists
 // at that exact filepath. If the file does not exist, it returns nil and false.
 // This is preferable to reading the file directly from the given FS, because during

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type Command interface {
@@ -27,6 +28,7 @@ var (
 		&StartCommand{},
 		&AddCommand{},
 		&RemoveCommand{},
+		&CreateCommand{},
 		&VersionCommand{},
 	}
 )
@@ -121,7 +123,7 @@ func main() {
 			projectPath = cwd + "/" + projectPath
 		}
 
-		config.SetProjectPath(projectPath)
+		project.SetProjectPath(projectPath)
 		args = args[2:]
 	}
 
