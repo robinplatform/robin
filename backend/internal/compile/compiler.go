@@ -15,8 +15,8 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/project"
 )
 
 var (
@@ -80,7 +80,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
-	appConfig, err := LoadRobinAppById(id)
+	appConfig, err := project.LoadRobinAppById(id)
 	if err != nil {
 		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
 	}
@@ -115,7 +115,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	return app, nil
 }
 
-func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.Plugin {
+func getResolverPlugins(appConfig project.RobinAppConfig, pageSourceUrl *url.URL) []es.Plugin {
 	if appConfig.ConfigPath.Scheme == "file" {
 		return nil
 	}
@@ -167,13 +167,13 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 					//
 					// However, `esm.sh` takes care of most of this anyways, so we really just need to perform lookups for modules that
 					// are immediately imported by the app. So we'll just look in the package.json of the immediate importer.
-					packageJsonPath, rawPackageJson, err := appConfig.ReadFile("package.json")
+					packageJsonPath, rawPackageJson, err := appConfig.ReadFile(&httpClient, "package.json")
 					if err != nil {
 						return es.OnResolveResult{}, err
 					}
 
-					var packageJson config.PackageJson
-					if err := config.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
+					var packageJson project.PackageJson
+					if err := project.ParsePackageJson(rawPackageJson, &packageJson); err != nil {
 						return es.OnResolveResult{}, err
 					}
 
@@ -187,7 +187,7 @@ func (appConfig RobinAppConfig) getResolverPlugins(pageSourceUrl *url.URL) []es.
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
-					reqPath, _, err := appConfig.ReadFile(fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
+					reqPath, _, err := appConfig.ReadFile(&httpClient, fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
 					if err != nil {
 						return es.OnResolveResult{}, fmt.Errorf("failed to get module %s@%s/%s: %w", moduleName, moduleVersion, moduleSourceFilePath, err)
 					}
@@ -253,12 +253,12 @@ func (app *CompiledApp) getEnvConstants() map[string]string {
 }
 
 func (app *CompiledApp) buildClientJs() error {
-	appConfig, err := LoadRobinAppById(app.Id)
+	appConfig, err := project.LoadRobinAppById(app.Id)
 	if err != nil {
 		return err
 	}
 
-	pagePath, content, err := appConfig.ReadFile(appConfig.Page)
+	pagePath, content, err := appConfig.ReadFile(&httpClient, appConfig.Page)
 	if err != nil {
 		return err
 	}
@@ -287,11 +287,11 @@ func (app *CompiledApp) buildClientJs() error {
 		Metafile: true,
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
-			appConfig.getExtractServerPlugins(app),
-			appConfig.getToolkitPlugins(),
+			getExtractServerPlugins(appConfig, app),
+			getToolkitPlugins(appConfig),
 			[]es.Plugin{esbuildPluginLoadHttp},
-			appConfig.getResolverPlugins(pagePath),
-			appConfig.getCssLoaderPlugins(),
+			getResolverPlugins(appConfig, pagePath),
+			getCssLoaderPlugins(appConfig),
 
 			[]es.Plugin{
 				{
@@ -326,12 +326,12 @@ func (app *CompiledApp) buildClientJs() error {
 }
 
 func (app *CompiledApp) buildServerBundle() error {
-	appConfig, err := LoadRobinAppById(app.Id)
+	appConfig, err := project.LoadRobinAppById(app.Id)
 	if err != nil {
 		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
 	}
 
-	pagePath, _, err := appConfig.ReadFile(appConfig.Page)
+	pagePath, _, err := appConfig.ReadFile(&httpClient, appConfig.Page)
 	if err != nil {
 		return err
 	}
@@ -395,8 +395,8 @@ func (app *CompiledApp) buildServerBundle() error {
 					},
 				},
 			},
-			appConfig.getToolkitPlugins(),
-			appConfig.getResolverPlugins(pagePath),
+			getToolkitPlugins(appConfig),
+			getResolverPlugins(appConfig, pagePath),
 		),
 	})
 	if len(result.Errors) != 0 {

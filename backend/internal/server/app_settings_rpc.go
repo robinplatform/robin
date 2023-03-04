@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"robinplatform.dev/internal/compile"
+	"robinplatform.dev/internal/project"
 )
 
 type GetAppSettingsByIdInput struct {
@@ -14,7 +14,7 @@ type GetAppSettingsByIdInput struct {
 var GetAppSettingsById = AppsRpcMethod[GetAppSettingsByIdInput, map[string]any]{
 	Name: "GetAppSettingsById",
 	Run: func(req RpcRequest[GetAppSettingsByIdInput]) (map[string]any, *HttpError) {
-		app, err := compile.LoadRobinAppById(req.Data.AppId)
+		app, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -45,7 +45,7 @@ type UpdateAppSettingsInput struct {
 var UpdateAppSettings = AppsRpcMethod[UpdateAppSettingsInput, struct{}]{
 	Name: "UpdateAppSettings",
 	Run: func(req RpcRequest[UpdateAppSettingsInput]) (struct{}, *HttpError) {
-		app, err := compile.LoadRobinAppById(req.Data.AppId)
+		app, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return struct{}{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,

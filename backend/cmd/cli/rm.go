@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 )
 
 type RemoveCommand struct {
@@ -39,14 +38,14 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 }
 
 func (cmd *RemoveCommand) Run() error {
-	projectPath := config.GetProjectPathOrExit()
+	projectPath := project.GetProjectPathOrExit()
 
-	apps, err := compile.GetAllProjectApps()
+	apps, err := project.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to load project apps: %w", err)
 	}
 
-	existingApps := make(map[string]compile.RobinAppConfig, len(apps)*3)
+	existingApps := make(map[string]project.RobinAppConfig, len(apps)*3)
 	for _, app := range apps {
 		existingApps[app.Id] = app
 		existingApps[app.Name] = app
@@ -63,7 +62,7 @@ func (cmd *RemoveCommand) Run() error {
 				appPattern = fmt.Sprintf("https://esm.sh/%s", appPattern)
 			}
 
-			appConfig, err := compile.LoadRobinAppByPath(appPattern)
+			appConfig, err := project.LoadRobinAppByPath(appPattern)
 			if err != nil {
 				return fmt.Errorf("unrecognized app: %s", appPattern)
 			}
@@ -77,14 +76,14 @@ func (cmd *RemoveCommand) Run() error {
 		}
 	}
 
-	projectConfig := config.RobinProjectConfig{}
+	projectConfig := project.RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
 	}
 
 	newApps := make([]string, 0, len(projectConfig.Apps))
 	for _, app := range projectConfig.Apps {
-		appConfig, err := compile.LoadRobinAppByPath(app)
+		appConfig, err := project.LoadRobinAppByPath(app)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}

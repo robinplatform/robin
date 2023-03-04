@@ -11,8 +11,8 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 	"robinplatform.dev/internal/compile"
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/project"
 )
 
 type Server struct {
@@ -94,7 +94,7 @@ func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 
 func (server *Server) Run() error {
 	logger.Print("Starting robin", log.Ctx{
-		"projectPath": config.GetProjectPathOrExit(),
+		"projectPath": project.GetProjectPathOrExit(),
 		"pid":         os.Getpid(),
 	})
 
@@ -119,7 +119,7 @@ func (server *Server) Run() error {
 	// The errors will get handled when the app is requested
 	go func() {
 		if compile.CacheEnabled {
-			apps, err := compile.GetAllProjectApps()
+			apps, err := project.GetAllProjectApps()
 			if err != nil {
 				return
 			}

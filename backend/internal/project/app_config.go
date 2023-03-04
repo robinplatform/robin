@@ -1,4 +1,4 @@
-package compile
+package project
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
 )
 
 type RobinAppConfig struct {
@@ -41,7 +41,7 @@ func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
 	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filepath.ToSlash(targetPath)})
 }
 
-func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, error) {
+func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, targetPath string) (*url.URL, []byte, error) {
 	fileUrl := appConfig.resolvePath(targetPath)
 
 	if fileUrl.Scheme == "file" {
@@ -62,7 +62,7 @@ func (appConfig *RobinAppConfig) ReadFile(targetPath string) (*url.URL, []byte, 
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := GetProjectPath()
 	if err != nil {
 		return fmt.Errorf("failed to get project path: %s", err)
 	}
@@ -145,7 +145,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
 }
 
 func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := LoadProjectConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -153,22 +153,22 @@ func (appConfig *RobinAppConfig) GetSettings() (map[string]any, error) {
 }
 
 func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
-	projectConfig, err := config.LoadProjectConfig()
+	projectConfig, err := LoadProjectConfig()
 	if err != nil {
 		return err
 	}
 
 	projectConfig.AppSettings[appConfig.Id] = settings
-	return config.UpdateProjectConfig(projectConfig)
+	return UpdateProjectConfig(projectConfig)
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
-	projectPath, err := config.GetProjectPath()
+	projectPath, err := GetProjectPath()
 	if err != nil {
 		return nil, err
 	}
 
-	projectConfig := config.RobinProjectConfig{}
+	projectConfig := RobinProjectConfig{}
 	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 		return nil, err
 	}
