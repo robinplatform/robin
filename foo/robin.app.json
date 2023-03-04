@@ -1,6 +1,0 @@
-{
-	"id": "test",
-	"name": "Testing",
-	"page": "./src/app.tsx",
-	"pageIcon": "🎁"
-}
