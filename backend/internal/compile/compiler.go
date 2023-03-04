@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
@@ -38,8 +39,9 @@ type Compiler struct {
 }
 
 type CompiledApp struct {
-	httpClient *http.Client
-	compiler   *Compiler
+	httpClient       *http.Client
+	compiler         *Compiler
+	keepAliveRunning *int64
 
 	Id string
 
@@ -86,11 +88,17 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	}
 
 	app := CompiledApp{
-		compiler: compiler,
+		compiler:         compiler,
+		keepAliveRunning: new(int64),
 
 		Id:     id,
 		Cached: true,
 	}
+
+	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
+		go app.keepAlive()
+	}
+
 	if err := app.buildClientJs(); err != nil {
 		return CompiledApp{}, err
 	}

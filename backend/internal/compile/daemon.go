@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"robinplatform.dev/internal/config"
@@ -108,6 +109,45 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 		Namespace:    process.NamespaceExtensionDaemon,
 		NamespaceKey: "app-daemon",
 		Key:          app.Id,
+	}
+}
+
+func (app *CompiledApp) IsAlive() bool {
+	process, err := processManager.FindById(app.getProcessId())
+	if err != nil {
+		return false
+	}
+
+	if !process.IsAlive() {
+		return false
+	}
+
+	// Send a ping to the process
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", process.Meta.Port))
+	if resp != nil {
+		resp.Body.Close()
+	}
+	return err == nil && resp.StatusCode == http.StatusOK
+}
+
+func (app *CompiledApp) keepAlive() {
+	defer func() { atomic.StoreInt64(app.keepAliveRunning, 0) }()
+
+	numErrs := 0
+	for {
+		if app.IsAlive() {
+			numErrs = 0
+		} else {
+			numErrs++
+			if numErrs >= 3 {
+				logger.Warn("App server shutdown", log.Ctx{
+					"appId": app.Id,
+				})
+				return
+			}
+		}
+
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -207,6 +247,10 @@ func (app *CompiledApp) StartServer() error {
 		// Send a ping to the process
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
 		if err == nil && resp.StatusCode == http.StatusOK {
+			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
+				go app.keepAlive()
+			}
+
 			return nil
 		}
 		if resp == nil {
