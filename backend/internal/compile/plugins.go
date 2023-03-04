@@ -22,7 +22,7 @@ func init() {
 
 	var err error
 	cacheFilename := filepath.Join(robinPath, "http-cache.json")
-	httpClient, err = httpcache.NewClient(cacheFilename, 1024*1024*1024)
+	httpClient, err = httpcache.NewClient(cacheFilename, 100*1024*1024)
 	if err != nil {
 		httpLogger := log.New("http")
 		httpLogger.Debug("Failed to load HTTP cache, will recreate", log.Ctx{

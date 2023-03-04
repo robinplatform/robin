@@ -105,17 +105,43 @@ func parseAge(age string) time.Duration {
 
 // Head will perform a HEAD request to the given URL, and return a bool indicating whether
 // the resource exists. If a copy of the resource is cached, the HEAD request will not be
-// performed. The HEAD request will never be cached.
+// performed.
 func (client *CacheClient) Head(targetUrl string) (bool, error) {
-	if _, ok := client.cache.Get(targetUrl); ok {
-		return true, nil
+	if entry, ok := client.cache.Get(targetUrl); ok {
+		return entry.StatusCode == http.StatusOK, nil
 	}
 
+	requestStartTime := time.Now()
 	resp, err := client.client.Head(targetUrl)
 	if err != nil {
 		return false, err
 	}
 	resp.Body.Close()
+
+	duration := time.Since(requestStartTime)
+	if duration >= 50*time.Millisecond {
+		logger.Debug("HTTP HEAD request took a long time", log.Ctx{
+			"targetUrl": targetUrl,
+			"duration":  duration.String(),
+		})
+	}
+
+	// Make a content-less cache entry
+	if maxAge, shouldCache := parseCacheControl(resp.Header.Get("Cache-Control")); shouldCache {
+		entry := CacheEntry{
+			StatusCode:    resp.StatusCode,
+			ContentCached: false,
+		}
+		if maxAge != nil {
+			age := parseAge(resp.Header.Get("Age"))
+			ttlLocal := *maxAge - age
+
+			deadline := time.Now().Add(ttlLocal).UnixNano()
+			entry.Deadline = &deadline
+		}
+
+		client.cache.Set(targetUrl, entry)
+	}
 
 	if resp.StatusCode == http.StatusNotFound {
 		return false, nil
@@ -151,7 +177,7 @@ type CacheClientResponse struct {
 // of the resource is cached, the GET request will not be performed. The GET request will
 // be cached if the `Cache-Control` header contains a `max-age` or `immutable` directive.
 func (client *CacheClient) Get(targetUrl string) (CacheClientResponse, error) {
-	if entry, ok := client.cache.Get(targetUrl); ok {
+	if entry, ok := client.cache.Get(targetUrl); ok && entry.ContentCached {
 		if entry.StatusCode != http.StatusOK {
 			return CacheClientResponse{}, HttpError{
 				URL:        targetUrl,
@@ -194,8 +220,9 @@ func (client *CacheClient) Get(targetUrl string) (CacheClientResponse, error) {
 	maxAge, shouldCache := parseCacheControl(cacheControl)
 	if shouldCache {
 		entry := CacheEntry{
-			Value:      string(buf),
-			StatusCode: resp.StatusCode,
+			Value:         string(buf),
+			StatusCode:    resp.StatusCode,
+			ContentCached: true,
 		}
 		if maxAge != nil {
 			age := parseAge(resp.Header.Get("Age"))

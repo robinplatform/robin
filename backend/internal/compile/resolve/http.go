@@ -113,9 +113,12 @@ func (hfs *HttpResolverFs) Open(filename string) (fs.File, error) {
 	// However, we will skip node builtin polyfills, which are hosted on `esm.sh`, but don't exist
 	// on `unpkg.com`.
 	if fileUrl.Scheme == "https" && fileUrl.Host == "esm.sh" && !isNodeBuiltinPath(fileUrl.Path) {
-		_, err := hfs.client.Get(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
+		exists, err := hfs.client.Head(fmt.Sprintf("https://unpkg.com%s", fileUrl.Path))
 		if err != nil {
 			return nil, err
+		}
+		if !exists {
+			return nil, fs.ErrNotExist
 		}
 	}
 

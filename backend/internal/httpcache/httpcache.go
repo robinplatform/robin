@@ -15,10 +15,11 @@ import (
 var logger = log.New("http")
 
 type CacheEntry struct {
-	StatusCode int
-	Value      string
-	Deadline   *int64
-	LastUsed   *int64
+	StatusCode    int
+	Value         string
+	ContentCached bool
+	Deadline      *int64
+	LastUsed      *int64
 }
 
 type httpCache struct {
