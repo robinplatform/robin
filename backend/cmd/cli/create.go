@@ -13,7 +13,7 @@ import (
 	"strings"
 	"text/template"
 
-	"robinplatform.dev/internal/compile"
+	"robinplatform.dev/internal/project"
 )
 
 //go:embed all:app-template
@@ -77,7 +77,7 @@ func (cmd *CreateCommand) Run() error {
 	var excitingEmojis = []string{"👋", "🎉", "🎊", "🎈", "🎁", "🎀", "🚀"}
 	var randomEmoji = excitingEmojis[rand.Intn(len(excitingEmojis))]
 
-	templateData := compile.RobinAppConfig{
+	templateData := project.RobinAppConfig{
 		Id:       cmd.appId,
 		Name:     cmd.appName,
 		PageIcon: randomEmoji,
