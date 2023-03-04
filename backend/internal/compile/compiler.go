@@ -88,7 +88,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	}
 
 	app := CompiledApp{
-		compiler: compiler,
+		compiler:         compiler,
+		keepAliveRunning: new(int64),
 
 		Id:     id,
 		Cached: true,
