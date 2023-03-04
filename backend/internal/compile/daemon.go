@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"robinplatform.dev/internal/config"
@@ -129,7 +130,7 @@ func (app *CompiledApp) IsAlive() bool {
 }
 
 func (app *CompiledApp) keepAlive() {
-	defer func() { app.keepAliveRunning = false }()
+	defer func() { atomic.StoreInt64(app.keepAliveRunning, 0) }()
 
 	numErrs := 0
 	for {
@@ -245,8 +246,9 @@ func (app *CompiledApp) StartServer() error {
 		// Send a ping to the process
 		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
 		if err == nil && resp.StatusCode == http.StatusOK {
-			app.keepAliveRunning = true
-			go app.keepAlive()
+			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
+				go app.keepAlive()
+			}
 
 			return nil
 		}
@@ -337,11 +339,6 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 
 	if respBody.Type == "error" {
 		return nil, fmt.Errorf("failed to make app request: %s", respBody.Error)
-	}
-
-	if !app.keepAliveRunning {
-		app.keepAliveRunning = true
-		go app.keepAlive()
 	}
 
 	return respBody.Result, nil
