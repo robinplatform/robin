@@ -11,5 +11,8 @@ export async function getSelfSource({ filename }: { filename: string }) {
 	// Random lodash code to test modules
 	_.each([1, 2, 3], () => {});
 
-	return fs.promises.readFile(path.resolve(filename), 'utf8');
+	return fs.promises.readFile(
+		path.resolve(process.env.ROBIN_PROJECT_PATH, filename),
+		'utf8',
+	);
 }

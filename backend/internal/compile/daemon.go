@@ -213,8 +213,9 @@ func (app *CompiledApp) StartServer() error {
 		Id:      app.getProcessId(),
 		Command: "node",
 		Args:    []string{daemonRunnerFilePath},
-		WorkDir: projectPath,
+		WorkDir: appDir,
 		Env: map[string]string{
+			"ROBIN_PROJECT_PATH":  projectPath,
 			"ROBIN_PROCESS_TYPE":  "daemon",
 			"ROBIN_DAEMON_TARGET": serverBundleFilePath,
 			"PORT":                strPortAvailable,
