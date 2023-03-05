@@ -273,7 +273,7 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Wait a bit
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	if err := app.StopServer(); err != nil {
