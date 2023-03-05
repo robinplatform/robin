@@ -273,6 +273,9 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		Meta:      procConfig.Meta,
 	}
 
+	// Reap zombies
+	go entry.waitForExit(entry.Pid)
+
 	logger.Debug("Process created", log.Ctx{
 		"process": entry,
 	})
@@ -293,9 +296,6 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 
 		return nil, err
 	}
-
-	// Reap zombies
-	go entry.waitForExit(entry.Pid)
 
 	// Release the process so that it doesn't die on exit
 	if err = proc.Release(); err != nil {
