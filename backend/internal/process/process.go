@@ -232,15 +232,14 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	defer empty.Close()
 
 	robinPath := config.GetRobinPath()
-	procFolderPath := filepath.Join(robinPath, "processes")
+	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
 
-	if err := os.MkdirAll(procFolderPath, 0755); err != nil {
+	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
-	procPath := filepath.Join(procFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
-
-	output, err := os.OpenFile(procPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	processLogsPath := filepath.Join(processLogsFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
+	output, err := os.OpenFile(processLogsPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return nil, err
 	}
