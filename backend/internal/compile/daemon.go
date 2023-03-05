@@ -45,6 +45,7 @@ func init() {
 	var err error
 	processManager, err = process.NewProcessManager[processMeta](filepath.Join(
 		robinPath,
+		"data",
 		"app-processes.db",
 	))
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 )
 
@@ -26,6 +27,10 @@ type RHandle[Model any] struct {
 func (store *Store[Model]) open() error {
 	store.rwMux.Lock()
 	defer store.rwMux.Unlock()
+
+	if err := os.MkdirAll(filepath.Dir(store.FilePath), 0755); err != nil {
+		return fmt.Errorf("failed to create datastore directory: %w", err)
+	}
 
 	buf, err := os.ReadFile(store.FilePath)
 	if os.IsNotExist(err) {
