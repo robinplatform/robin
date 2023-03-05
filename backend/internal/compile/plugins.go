@@ -21,7 +21,7 @@ func init() {
 	robinPath := config.GetRobinPath()
 
 	var err error
-	cacheFilename := filepath.Join(robinPath, "http-cache.json")
+	cacheFilename := filepath.Join(robinPath, "data", "http-cache.json")
 	httpClient, err = httpcache.NewClient(cacheFilename, 100*1024*1024)
 	if err != nil {
 		httpLogger := log.New("http")

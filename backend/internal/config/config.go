@@ -16,11 +16,8 @@ func init() {
 
 	robinPath = filepath.Join(home, ".robin")
 
-	// If it doesn't exist, create it
-	if _, err := os.Stat(robinPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(robinPath, 0777); err != nil {
-			panic(fmt.Errorf("failed to create robin directory: %w", err))
-		}
+	if err := os.MkdirAll(robinPath, 0777); err != nil {
+		panic(fmt.Errorf("failed to create robin directory: %w", err))
 	}
 }
 

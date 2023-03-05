@@ -18,13 +18,19 @@ func main() {
 	flag.StringVar(&channel, "channel", "", "The release channel to use")
 	flag.Parse()
 
+	if channel == "" {
+		fmt.Fprintf(os.Stderr, "No channel specified\n")
+		fmt.Fprintf(os.Stderr, "Usage: robin-upgrade -channel <channel>\n")
+		os.Exit(1)
+	}
+
 	var releaseChannel config.ReleaseChannel
 	if err := releaseChannel.Parse(channel); err != nil {
 		panic(err)
 	}
 
 	action := "Upgrading"
-	if _, err := os.Stat(releaseChannel.GetPath()); os.IsNotExist(err) {
+	if _, err := os.Stat(releaseChannel.GetInstallationPath()); os.IsNotExist(err) {
 		action = "Installing"
 	}
 

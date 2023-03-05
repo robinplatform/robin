@@ -45,6 +45,7 @@ func init() {
 	var err error
 	processManager, err = process.NewProcessManager[processMeta](filepath.Join(
 		robinPath,
+		"data",
 		"app-processes.db",
 	))
 	if err != nil {
@@ -234,6 +235,10 @@ func (app *CompiledApp) StartServer() error {
 		},
 	})
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
+		logger.Err("Failed to start app server", log.Ctx{
+			"appId": app.Id,
+			"err":   err,
+		})
 		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
@@ -269,7 +274,7 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Wait a bit
-		time.Sleep(1 * time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	if err := app.StopServer(); err != nil {
