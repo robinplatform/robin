@@ -53,6 +53,13 @@ type ProcessConfig[Meta any] struct {
 	Meta    Meta
 }
 
+func (processConfig *ProcessConfig[_]) getLogFilePath() string {
+	robinPath := config.GetRobinPath()
+	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
+	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Namespace)+"-"+processConfig.Id.NamespaceKey+"-"+processConfig.Id.Key+".log")
+	return processLogsPath
+}
+
 type Process[Meta any] struct {
 	Id        ProcessId
 	Pid       int
@@ -216,7 +223,7 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		logger.Debug("Found previous dead process entry, deleting it", log.Ctx{
 			"processId": procConfig.Id,
 		})
-		if err := w.Delete(findById[Meta](procConfig.Id)); err != nil {
+		if err := m.remove(w, prev.Id); err != nil {
 			return nil, fmt.Errorf("failed to delete previous process: %w", err)
 		}
 	}
@@ -231,14 +238,13 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	}
 	defer empty.Close()
 
-	robinPath := config.GetRobinPath()
-	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
+	processLogsPath := procConfig.getLogFilePath()
+	processLogsFolderPath := filepath.Dir(processLogsPath)
 
 	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
-	processLogsPath := filepath.Join(processLogsFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
 	output, err := os.Create(processLogsPath)
 	if err != nil {
 		return nil, err
@@ -302,4 +308,31 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	}
 
 	return &entry, nil
+}
+
+// Remove will kill the process if it is alive, and then remove it from the database
+func (manager *ProcessManager[Meta]) remove(db model.WHandle[Process[Meta]], id ProcessId) error {
+	procEntry, found := db.Find(findById[Meta](id))
+	if !found {
+		return nil
+	}
+
+	if procEntry.IsAlive() {
+		if err := manager.Kill(id); err != nil {
+			return fmt.Errorf("failed to kill process: %w", err)
+		}
+	}
+
+	if err := db.Delete(findById[Meta](id)); err != nil {
+		return fmt.Errorf("failed to delete process: %w", err)
+	}
+
+	return nil
+}
+
+// Remove will kill the process if it is alive, and then remove it from the database
+func (manager *ProcessManager[Meta]) Remove(id ProcessId) error {
+	db := manager.db.WriteHandle()
+	defer db.Close()
+	return manager.remove(db, id)
 }
