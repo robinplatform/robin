@@ -69,6 +69,12 @@ func sendJson(req *http.Request, res http.ResponseWriter, statusCode int, data i
 
 func (method *RpcMethod[Input, Output]) Register(server *Server, router RouterGroup) {
 	router.Handle("POST", "/"+method.Name, func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
+		defer func() {
+			if err := recover(); err != nil {
+				sendJson(req, res, http.StatusInternalServerError, map[string]any{"type": "error", "error": fmt.Sprintf("%s", err)})
+			}
+		}()
+
 		var input Input
 
 		if !method.SkipInputParsing {
