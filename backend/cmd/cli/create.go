@@ -24,6 +24,7 @@ type CreateCommand struct {
 	appId          string
 	appName        string
 	skipInstall    bool
+	minimalOnly    bool
 	packageManager string
 }
 
@@ -43,6 +44,7 @@ func (cmd *CreateCommand) Parse(flags *flag.FlagSet, args []string) error {
 	flags.StringVar(&cmd.appId, "id", "", "the id of your app (defaults to the name of the directory)")
 	flags.StringVar(&cmd.appName, "name", "", "the name of your app (defaults to the same as ID)")
 	flags.BoolVar(&cmd.skipInstall, "skip-install", false, "skip installing dependencies")
+	flags.BoolVar(&cmd.minimalOnly, "minimal", false, "perform minimal setup required to run the app")
 	flags.StringVar(&cmd.packageManager, "package-manager", "", "the package manager to use (defaults to yarn if available, otherwise npm)")
 
 	if err := flags.Parse(args); err != nil {
@@ -81,6 +83,10 @@ func (cmd *CreateCommand) installDeps(args ...string) error {
 	return nil
 }
 
+var optionalFiles = map[string]bool{
+	"rome.json": true,
+}
+
 func (cmd *CreateCommand) Run() error {
 	if !filepath.IsAbs(cmd.targetPath) {
 		cwd, err := os.Getwd()
@@ -116,7 +122,8 @@ func (cmd *CreateCommand) Run() error {
 	}
 
 	err := fs.WalkDir(appTemplate, "app-template", func(templateFilePath string, dirEntry fs.DirEntry, err error) error {
-		outputFilePath := filepath.Join(cmd.targetPath, filepath.FromSlash(strings.TrimPrefix(templateFilePath, "app-template/")))
+		templateRelFilePath := strings.TrimPrefix(templateFilePath, "app-template/")
+		outputFilePath := filepath.Join(cmd.targetPath, filepath.FromSlash(templateRelFilePath))
 
 		if err != nil {
 			return fmt.Errorf("failed to walk template directory: %w", err)
@@ -126,6 +133,11 @@ func (cmd *CreateCommand) Run() error {
 		}
 		if dirEntry.IsDir() {
 			return os.MkdirAll(outputFilePath, 0755)
+		}
+
+		// Skip optional files if minimalOnly is set
+		if cmd.minimalOnly && optionalFiles[templateRelFilePath] {
+			return nil
 		}
 
 		fd, err := appTemplate.Open(templateFilePath)
@@ -167,10 +179,19 @@ func (cmd *CreateCommand) Run() error {
 		}
 
 		// install dependencies live, so we get pinned versions
-		if err := cmd.installDeps("react", "react-dom", "@robinplatform/toolkit"); err != nil {
+		dependencies := []string{"react", "react-dom", "@robinplatform/toolkit"}
+		if !cmd.minimalOnly {
+			dependencies = append(dependencies, "@tanstack/react-query")
+		}
+		if err := cmd.installDeps(dependencies...); err != nil {
 			return err
 		}
-		if err := cmd.installDeps("-D", "@types/node", "@types/react", "rome", "typescript"); err != nil {
+
+		devDependencies := []string{"-D", "@types/react", "typescript"}
+		if !cmd.minimalOnly {
+			devDependencies = append(devDependencies, "@types/node", "rome")
+		}
+		if err := cmd.installDeps(devDependencies...); err != nil {
 			return err
 		}
 	}
