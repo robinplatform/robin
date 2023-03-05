@@ -18,11 +18,12 @@ var (
 )
 
 func init() {
+	robinPath := config.GetRobinPath()
 	channel := config.GetReleaseChannel()
 
 	// Lumberjack implements log file rotation
 	writer := &lumberjack.Logger{
-		Filename:   filepath.Join(channel.GetPath(), "logs.db"),
+		Filename:   filepath.Join(robinPath, "logs", string(channel)+".log"),
 		MaxSize:    512, // Megabytes
 		MaxBackups: 1,
 	}

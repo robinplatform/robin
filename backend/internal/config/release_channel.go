@@ -37,8 +37,8 @@ func (channel *ReleaseChannel) UnmarshalJSON(buf []byte) error {
 	return channel.Parse(value)
 }
 
-func (channel ReleaseChannel) GetPath() string {
-	return filepath.Join(robinPath, string(channel))
+func (channel ReleaseChannel) GetInstallationPath() string {
+	return filepath.Join(robinPath, "channels", string(channel))
 }
 
 func (channel ReleaseChannel) String() string {

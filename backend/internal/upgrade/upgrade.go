@@ -146,22 +146,27 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 		}
 	}
 
-	channelDir := releaseChannel.GetPath()
+	channelDir := releaseChannel.GetInstallationPath()
+
+	// Make sure the `.robin/channels` directory exists
+	if err := os.MkdirAll(filepath.Dir(channelDir), 0755); err != nil {
+		return "", "", err
+	}
 
 	// Delete the old channel directory
 	if err := os.RemoveAll(channelDir); err != nil && !os.IsNotExist(err) {
-		panic(err)
+		return "", "", err
 	}
 
 	// Move the new dir
 	// TODO: this is apparently not atomic on windows
 	if err := os.Rename(tmp, channelDir); err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	// Make sure the general `bin` directory exists
 	if err := os.MkdirAll(filepath.Join(config.GetRobinPath(), "bin"), 0755); err != nil {
-		panic(err)
+		return "", "", err
 	}
 
 	// Make sure symlink exists for the new version
@@ -178,12 +183,20 @@ func UpgradeChannel(releaseChannel config.ReleaseChannel) (string, string, error
 		upgradeExecName += ".exe"
 	}
 
-	if err := os.Symlink(filepath.Join(channelDir, "bin", "robin"), filepath.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsExist(err) {
+	// delete and recreate symlink
+	if err := os.Remove(filepath.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil && !os.IsNotExist(err) {
+		return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while deleting symlink: %w", releaseChannel, err)
+	}
+	if err := os.Symlink(filepath.Join(channelDir, "bin", "robin"), filepath.Join(config.GetRobinPath(), "bin", linkExecName)); err != nil {
 		return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 	}
 
 	if releaseChannel == config.ReleaseChannelStable {
-		if err := os.Symlink(filepath.Join(channelDir, "bin", upgradeExecName), filepath.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsExist(err) {
+		// delete and recreate upgrade symlink
+		if err := os.Remove(filepath.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil && !os.IsNotExist(err) {
+			return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while deleting symlink: %w", releaseChannel, err)
+		}
+		if err := os.Symlink(filepath.Join(channelDir, "bin", upgradeExecName), filepath.Join(config.GetRobinPath(), "bin", upgradeExecName)); err != nil {
 			return robinVersion, "", fmt.Errorf("failed to upgrade %s: error while creating symlink: %w", releaseChannel, err)
 		}
 	}
