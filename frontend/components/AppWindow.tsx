@@ -144,7 +144,7 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 					<iframe
 						ref={iframeRef}
 						src={`http://localhost:9010/api/app-resources/${id}/base.html`}
-						style={{ border: '0', flexGrow: 1 }}
+						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>
 			)}

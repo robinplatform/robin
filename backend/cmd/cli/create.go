@@ -64,6 +64,23 @@ func (cmd *CreateCommand) Parse(flags *flag.FlagSet, args []string) error {
 	return nil
 }
 
+func (cmd *CreateCommand) installDeps(args ...string) error {
+	cmdArgs := []string{"add", "--exact"}
+	if cmd.packageManager == "npm" {
+		cmdArgs = []string{"install", "--save", "--exact"}
+	}
+	cmdArgs = append(cmdArgs, args...)
+
+	cmdInstall := exec.Command(cmd.packageManager, cmdArgs...)
+	cmdInstall.Dir = cmd.targetPath
+	cmdInstall.Stdout = os.Stdout
+	cmdInstall.Stderr = os.Stderr
+	if err := cmdInstall.Run(); err != nil {
+		return fmt.Errorf("failed to install dependencies: %w", err)
+	}
+	return nil
+}
+
 func (cmd *CreateCommand) Run() error {
 	if !filepath.IsAbs(cmd.targetPath) {
 		cwd, err := os.Getwd()
@@ -149,16 +166,15 @@ func (cmd *CreateCommand) Run() error {
 			}
 		}
 
-		// install dependencies
-		cmdInstall := exec.Command(cmd.packageManager, "install")
-		cmdInstall.Dir = cmd.targetPath
-		cmdInstall.Stdout = os.Stdout
-		cmdInstall.Stderr = os.Stderr
-		if err := cmdInstall.Run(); err != nil {
-			return fmt.Errorf("failed to install dependencies: %w", err)
+		// install dependencies live, so we get pinned versions
+		if err := cmd.installDeps("react", "react-dom", "@robinplatform/toolkit"); err != nil {
+			return err
+		}
+		if err := cmd.installDeps("-D", "@types/node", "@types/react", "rome", "typescript"); err != nil {
+			return err
 		}
 	}
 
-	fmt.Printf("Created new app in: %s\n", cmd.targetPath)
+	fmt.Printf("\nCreated new app in: %s\n", cmd.targetPath)
 	return nil
 }
