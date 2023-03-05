@@ -6,14 +6,13 @@ import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
-import { useQuery } from '@tanstack/react-query';
 
 function Page() {
-	const { data: settings } = useRpcQuery(
+	const { data: settings, error: errFetchingSettings } = useRpcQuery(
 		getAppSettings,
-		z.object({ filename: z.string() }),
+		z.object({ filename: z.string().optional() }),
 	);
-	const { data, error } = useRpcQuery(
+	const { data, error: errFetchingFile } = useRpcQuery(
 		getSelfSource,
 		{
 			filename: String(settings?.filename ?? './package.json'),
@@ -22,6 +21,8 @@ function Page() {
 			enabled: !!settings,
 		},
 	);
+
+	const error = errFetchingSettings || errFetchingFile;
 
 	return (
 		<pre
