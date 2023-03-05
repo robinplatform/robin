@@ -2,6 +2,10 @@
 
 // Some resets missing from normalize
 
+* {
+	box-sizing: border-box;
+}
+
 button {
 	border: none;
 	cursor: pointer;
@@ -10,6 +14,10 @@ button {
 code {
 	display: block;
 	overflow: auto;
+}
+
+p {
+	margin: 0;
 }
 
 // Some variables from robin to keep things consistent

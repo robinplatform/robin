@@ -8,6 +8,9 @@
 		"access": "public"
 	},
 	"scripts": {
+		"dev": "npm-run-all -p dev:*",
+		"dev:css": "yarn build:css --watch",
+		"dev:daemon": "yarn build:daemon --watch",
 		"build": "npm-run-all -p build:*",
 		"build:css": "sass --no-source-map styles.scss:styles.css",
 		"build:daemon": "esbuild --platform=node --target=node16 --bundle --format=cjs --outfile=internal/app-daemon.js internal/app-daemon.ts",
