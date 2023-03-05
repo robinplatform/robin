@@ -206,8 +206,16 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	prev, found := w.Find(findById[Meta](procConfig.Id))
 	if found {
 		if prev.IsAlive() {
+			logger.Debug("Found previous process", log.Ctx{
+				"processId": procConfig.Id,
+				"pid":       prev.Pid,
+			})
 			return &prev, processExists(procConfig.Id)
 		}
+
+		logger.Debug("Found previous dead process entry, deleting it", log.Ctx{
+			"processId": procConfig.Id,
+		})
 		if err := w.Delete(findById[Meta](procConfig.Id)); err != nil {
 			return nil, fmt.Errorf("failed to delete previous process: %w", err)
 		}
@@ -270,6 +278,10 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	})
 
 	if err := w.Insert(entry); err != nil {
+		logger.Debug("Failed to insert process into database", log.Ctx{
+			"error": err.Error(),
+		})
+
 		// If we failed to insert the process into the database, kill it
 		// so we don't end up with an unmanaged process
 		if err := proc.Kill(); err != nil {

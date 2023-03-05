@@ -234,6 +234,10 @@ func (app *CompiledApp) StartServer() error {
 		},
 	})
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
+		logger.Err("Failed to start app server", log.Ctx{
+			"appId": app.Id,
+			"err":   err,
+		})
 		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
