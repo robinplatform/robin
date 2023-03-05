@@ -239,7 +239,7 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	}
 
 	processLogsPath := filepath.Join(processLogsFolderPath, string(procConfig.Id.Namespace)+"-"+procConfig.Id.NamespaceKey+"-"+procConfig.Id.Key+".log")
-	output, err := os.OpenFile(processLogsPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	output, err := os.Create(processLogsPath)
 	if err != nil {
 		return nil, err
 	}
