@@ -3,7 +3,6 @@ package compile
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +11,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -106,9 +104,14 @@ func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp)
 }
 
 func (app *CompiledApp) getProcessId() process.ProcessId {
+	projectAlias, err := project.GetProjectAlias()
+	if err != nil {
+		panic(fmt.Errorf("failed to get project alias: %w", err))
+	}
+
 	return process.ProcessId{
 		Namespace:    process.NamespaceExtensionDaemon,
-		NamespaceKey: "app-daemon",
+		NamespaceKey: fmt.Sprintf("%s-app-daemon", projectAlias),
 		Key:          app.Id,
 	}
 }
@@ -156,30 +159,20 @@ func (app *CompiledApp) StartServer() error {
 	daemonProcessMux.Lock()
 	defer daemonProcessMux.Unlock()
 
-	// Figure out a temporary file name to write the entrypoint to
-	tmpFileName := ""
-	for {
-		tmpDir := os.TempDir()
-		ext := ""
-		if runtime.GOOS == "windows" {
-			ext = ".exe"
-		}
+	projectAlias, err := project.GetProjectAlias()
+	if err != nil {
+		return fmt.Errorf("failed to get project alias: %w", err)
+	}
 
-		buf := make([]byte, 4)
-		if _, err := rand.Read(buf); err != nil {
-			return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
-		}
-		tmpFileName = filepath.Join(tmpDir, fmt.Sprintf("robin-app-server-%s-%x%s", app.Id, buf, ext))
-
-		if _, err := os.Stat(tmpFileName); os.IsNotExist(err) {
-			break
-		} else if !os.IsExist(err) {
-			return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
-		}
+	// Make sure the app's directory exists
+	appDir := filepath.Join(config.GetRobinPath(), "projects", projectAlias, "apps", app.Id)
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
 	// Write the entrypoint to the temporary file
-	if err := os.WriteFile(tmpFileName, []byte(app.ServerJs), 0755); err != nil {
+	serverBundleFilePath := filepath.Join(appDir, "daemon.bundle.js")
+	if err := os.WriteFile(serverBundleFilePath, []byte(app.ServerJs), 0755); err != nil {
 		return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
 	}
 
@@ -202,7 +195,7 @@ func (app *CompiledApp) StartServer() error {
 		return fmt.Errorf("failed to start app server: could not find daemon runner: %w", err)
 	}
 
-	daemonRunnerFilePath := filepath.Join(os.TempDir(), "robin-daemon-runner.js")
+	daemonRunnerFilePath := filepath.Join(appDir, "robin-daemon-runner.js")
 	daemonRunnerFile, err := os.Create(daemonRunnerFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
@@ -217,17 +210,13 @@ func (app *CompiledApp) StartServer() error {
 	// Start the app server process
 	projectPath := project.GetProjectPathOrExit()
 	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
-		Id: process.ProcessId{
-			Namespace:    process.NamespaceExtensionDaemon,
-			NamespaceKey: "app-daemon",
-			Key:          app.Id,
-		},
+		Id:      app.getProcessId(),
 		Command: "node",
 		Args:    []string{daemonRunnerFilePath},
 		WorkDir: projectPath,
 		Env: map[string]string{
 			"ROBIN_PROCESS_TYPE":  "daemon",
-			"ROBIN_DAEMON_TARGET": tmpFileName,
+			"ROBIN_DAEMON_TARGET": serverBundleFilePath,
 			"PORT":                strPortAvailable,
 		},
 		Meta: processMeta{
