@@ -133,14 +133,22 @@ func (cfg *ProcessConfig[Meta]) fillEmptyValues() error {
 		cfg.Id.Namespace = NamespaceInternal
 	}
 
-	if cfg.Env == nil {
-		env := os.Environ()
-		cfg.Env = make(map[string]string, len(env))
-		for _, envVar := range env {
-			parts := strings.SplitN(envVar, "=", 2)
-			cfg.Env[parts[0]] = parts[1]
-		}
+	parentEnv := os.Environ()
+	env := make(map[string]string, len(parentEnv)+len(cfg.Env))
+
+	// copy over parent env first
+	for _, envVar := range parentEnv {
+		parts := strings.SplitN(envVar, "=", 2)
+		env[parts[0]] = parts[1]
 	}
+
+	// then override with any custom env vars
+	for k, v := range cfg.Env {
+		env[k] = v
+	}
+
+	// and replace the config's env with the new one
+	cfg.Env = env
 
 	if cfg.WorkDir == "" {
 		dir, err := os.Getwd()

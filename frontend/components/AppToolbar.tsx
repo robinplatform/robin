@@ -21,7 +21,9 @@ export const AppToolbar: React.FC<{
 		<div className={styles.toolbar}>
 			<>
 				{!errLoadingAppConfig && <p>{appConfig?.name ?? 'Loading ...'}</p>}
-				{errLoadingAppConfig && <p>App failed to load</p>}
+				{errLoadingAppConfig && (
+					<p>App failed to load: {String(errLoadingAppConfig)}</p>
+				)}
 
 				<div className={styles.toolbarIcons}>{actions}</div>
 			</>

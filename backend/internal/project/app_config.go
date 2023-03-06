@@ -69,7 +69,7 @@ type RobinAppConfig struct {
 	Daemon []string
 }
 
-func (appConfig *RobinAppConfig) MarshalJSON() ([]byte, error) {
+func (appConfig RobinAppConfig) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&serializableRobinAppConfig{
 		Id:       appConfig.Id,
 		Name:     appConfig.Name,

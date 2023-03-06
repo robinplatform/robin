@@ -404,6 +404,12 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 		return nil, fmt.Errorf("failed to serialize app request body: %w", err)
 	}
 
+	logger.Debug("Making app request", log.Ctx{
+		"appId":  app.Id,
+		"pid":    serverProcess.Pid,
+		"method": method,
+		"path":   reqPath,
+	})
 	req, err := http.NewRequestWithContext(
 		ctx,
 		method,

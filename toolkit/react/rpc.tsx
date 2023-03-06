@@ -5,6 +5,9 @@ import {
 	UseQueryOptions,
 } from '@tanstack/react-query';
 import React from 'react';
+import { z } from 'zod';
+
+import { runAppMethod } from '../';
 
 const globalQueryClient = new QueryClient({
 	defaultOptions: {
@@ -28,7 +31,7 @@ export function ReactQueryProvider({
 }
 
 interface RpcMethod<Input, Output> {
-	queryKeyPrefix: string[];
+	getQueryKey: (data: Input) => string[];
 	(data: Input): Promise<Output>;
 }
 
@@ -41,15 +44,29 @@ export function useRpcQuery<Input, Output>(
 	>,
 ) {
 	const rpcMethod = method as RpcMethod<Input, Output>;
-	if (!Array.isArray(rpcMethod.queryKeyPrefix)) {
+	if (typeof rpcMethod.getQueryKey !== 'function') {
 		throw new Error(
 			`Invalid RPC method passed to useRpcQuery. Make sure you are importing from a '.server.ts' file.`,
 		);
 	}
 
 	return useQuery({
-		queryKey: [...rpcMethod.queryKeyPrefix, data] as unknown[],
+		queryKey: rpcMethod.getQueryKey(data) as unknown[],
 		queryFn: () => method(data),
 		...overrides,
 	});
+}
+
+export function useRemoteAppMethod<Output extends Record<string, unknown>>(
+	methodName: string,
+	data: object,
+	{
+		resultType,
+		...overrides
+	}: Omit<
+		UseQueryOptions<Output, unknown, Output, unknown[]>,
+		'queryKey' | 'queryFn'
+	> & { resultType: z.Schema<Output> },
+) {
+	return useRpcQuery(runAppMethod, { methodName, data, resultType }, overrides);
 }
