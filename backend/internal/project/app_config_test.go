@@ -13,8 +13,10 @@ func TestAppConfigLoad(t *testing.T) {
 		// maybe it's best to fix it later though.
 		"robin.json": `{
 			"name": "robin",
-			"apps": ["./app1/robin.app.json", "app2/robin.app.json"]
-		}`,
+			"apps": ["` +
+			filepath.FromSlash("./app1/robin.app.json") + `","` +
+			filepath.FromSlash("app2/robin.app.json") +
+			`"]}`,
 
 		"app1/robin.app.json": `{
 			"id": "bad-ext",
