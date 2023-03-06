@@ -82,12 +82,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadFromEnv(); err != nil {
-		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
-	}
-
-	appConfig, err := projectConfig.LoadRobinAppById(id)
+	appConfig, err := project.LoadRobinAppById(id)
 	if err != nil {
 		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
 	}
@@ -266,12 +261,7 @@ func (app *CompiledApp) getEnvConstants() map[string]string {
 }
 
 func (app *CompiledApp) buildClientJs() error {
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadFromEnv(); err != nil {
-		return err
-	}
-
-	appConfig, err := projectConfig.LoadRobinAppById(app.Id)
+	appConfig, err := project.LoadRobinAppById(app.Id)
 	if err != nil {
 		return err
 	}
@@ -344,12 +334,7 @@ func (app *CompiledApp) buildClientJs() error {
 }
 
 func (app *CompiledApp) buildServerBundle() error {
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadFromEnv(); err != nil {
-		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
-	}
-
-	appConfig, err := projectConfig.LoadRobinAppById(app.Id)
+	appConfig, err := project.LoadRobinAppById(app.Id)
 	if err != nil {
 		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
 	}
