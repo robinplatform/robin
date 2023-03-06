@@ -16,6 +16,15 @@ type RobinProjectConfig struct {
 	Apps []string `json:"apps,omitempty"`
 }
 
+func (projectConfig *RobinProjectConfig) LoadFromEnv() error {
+	projectPath, err := GetProjectPath()
+	if err != nil {
+		return err
+	}
+
+	return projectConfig.LoadRobinProjectConfig(projectPath)
+}
+
 func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig(projectPath string) error {
 	var err error
 

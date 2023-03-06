@@ -162,17 +162,7 @@ func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
 	return UpdateProjectConfig(projectConfig)
 }
 
-func GetAllProjectApps() ([]RobinAppConfig, error) {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return nil, err
-	}
-
-	projectConfig := RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-		return nil, err
-	}
-
+func (projectConfig *RobinProjectConfig) GetAllProjectApps() ([]RobinAppConfig, error) {
 	apps := make([]RobinAppConfig, len(projectConfig.Apps))
 	for idx, configPath := range projectConfig.Apps {
 		if err := apps[idx].readRobinAppConfig(configPath); err != nil {
@@ -191,8 +181,8 @@ func LoadRobinAppByPath(appPath string) (RobinAppConfig, error) {
 	return appConfig, nil
 }
 
-func LoadRobinAppById(appId string) (RobinAppConfig, error) {
-	apps, err := GetAllProjectApps()
+func (projectConfig *RobinProjectConfig) LoadRobinAppById(appId string) (RobinAppConfig, error) {
+	apps, err := projectConfig.GetAllProjectApps()
 	if err != nil {
 		return RobinAppConfig{}, err
 	}
