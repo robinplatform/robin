@@ -73,7 +73,7 @@ export const getAppSettings = Object.assign(
 );
 
 export const runAppMethod = Object.assign(
-	async function <T extends Record<string, unknown>>({
+	async function <T>({
 		methodName,
 		data,
 		resultType,

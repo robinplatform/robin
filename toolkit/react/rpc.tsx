@@ -57,7 +57,7 @@ export function useRpcQuery<Input, Output>(
 	});
 }
 
-export function useRemoteAppMethod<Output extends Record<string, unknown>>(
+export function useRemoteAppMethod<Output>(
 	methodName: string,
 	data: object,
 	{
