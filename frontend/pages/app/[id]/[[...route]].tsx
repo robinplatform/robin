@@ -6,8 +6,12 @@ import { AppWindow } from '../../../components/AppWindow';
 export default function Page() {
 	const router = useRouter();
 
-	const id = typeof router.query.id === 'string' ? router.query.id : null;
+	const id = typeof router.query.id === 'string' ? router.query.id : '';
 	const [title, setTitle] = React.useState<string>(id ?? 'Loading');
+
+	const { route } = router.query;
+
+	const path = router.asPath.substring('/app/'.length + (id ?? '').length);
 
 	return (
 		<div className={'full col'}>

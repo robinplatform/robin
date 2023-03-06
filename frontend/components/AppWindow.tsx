@@ -154,7 +154,7 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 								<RestartAppButton />
 
 								<Link
-									href={`/app/${id}/settings`}
+									href={`/app-settings/${id}/settings`}
 									className={cx(
 										styles.toolbarButton,
 										'robin-rounded robin-bg-dark-purple',
