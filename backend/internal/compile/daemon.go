@@ -389,19 +389,25 @@ func (app *CompiledApp) StopServer() error {
 	return nil
 }
 
-func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) (any, error) {
+type AppResponse struct {
+	StatusCode int
+	Err        string
+	Body       []byte
+}
+
+func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) AppResponse {
 	if app.httpClient == nil {
 		app.httpClient = &http.Client{}
 	}
 
 	serverProcess, err := processManager.FindById(app.getProcessId())
 	if err != nil {
-		return nil, fmt.Errorf("failed to make app request: %w", err)
+		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
 	}
 
 	serializedBody, err := json.Marshal(body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to serialize app request body: %w", err)
+		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to serialize app request body: %s", err)}
 	}
 
 	logger.Debug("Making app request", log.Ctx{
@@ -418,31 +424,22 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 	)
 	req.Header.Set("Content-Type", "application/json")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create app request: %w", err)
+		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to create app request: %s", err)}
 	}
 
 	resp, err := app.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("failed to make app request: %w", err)
+		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
 	}
 
 	buf, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read app response: %w (http status %d)", err, resp.StatusCode)
+		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to read app response: %s (http status %d)", err, resp.StatusCode)}
 	}
 
-	var respBody struct {
-		Type   string
-		Error  string
-		Result any
-	}
-	if err := json.Unmarshal(buf, &respBody); err != nil {
-		return nil, fmt.Errorf("failed to deserialize app response: %w (http status %d)", err, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return AppResponse{StatusCode: resp.StatusCode, Err: string(buf)}
 	}
 
-	if respBody.Type == "error" {
-		return nil, fmt.Errorf("failed to make app request: %s", respBody.Error)
-	}
-
-	return respBody.Result, nil
+	return AppResponse{StatusCode: http.StatusOK, Body: buf}
 }

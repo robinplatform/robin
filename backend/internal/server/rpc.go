@@ -15,6 +15,8 @@ type HttpError struct {
 	Message    string
 }
 
+var ErrSkipResponse = HttpError{StatusCode: 0, Message: "skip response"}
+
 func Errorf(statusCode int, format string, args ...interface{}) *HttpError {
 	return &HttpError{
 		StatusCode: statusCode,
@@ -25,6 +27,12 @@ func Errorf(statusCode int, format string, args ...interface{}) *HttpError {
 type RpcRequest[Input any] struct {
 	// Data is the input sent by the client
 	Data Input
+
+	// Request is the raw HTTP request
+	Request *http.Request
+
+	// Response is the raw HTTP response
+	Response http.ResponseWriter
 
 	// Server is the instance serving the request
 	Server *Server
@@ -91,10 +99,14 @@ func (method *RpcMethod[Input, Output]) Register(server *Server, router RouterGr
 		}
 
 		result, httpError := method.Run(RpcRequest[Input]{
-			Data:   input,
-			Server: server,
+			Data:     input,
+			Request:  req,
+			Response: res,
+			Server:   server,
 		})
-		if httpError != nil {
+		if httpError != nil && *httpError == ErrSkipResponse {
+			// do nothing
+		} else if httpError != nil {
 			sendJson(req, res, httpError.StatusCode, map[string]any{"type": "error", "error": httpError.Message})
 		} else {
 			sendJson(req, res, 200, result)

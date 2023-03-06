@@ -92,15 +92,16 @@ var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 			requestBody = req.Data.Data
 		}
 
-		result, err := app.Request(context.TODO(), "POST", targetApiPath, requestBody)
-		if err != nil {
+		result := app.Request(context.TODO(), "POST", targetApiPath, requestBody)
+		if result.StatusCode != http.StatusOK {
 			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    err.Error(),
+				StatusCode: result.StatusCode,
+				Message:    result.Err,
 			}
 		}
 
-		return result, nil
+		req.Response.Write(result.Body)
+		return nil, &ErrSkipResponse
 	},
 }
 
