@@ -253,6 +253,10 @@ func getFileExports(input *es.StdinOptions) ([]string, error) {
 	panic(fmt.Errorf("unreachable code"))
 }
 
+func (app *CompiledApp) GetConfig() (project.RobinAppConfig, error) {
+	return project.LoadRobinAppById(app.Id)
+}
+
 func (app *CompiledApp) getEnvConstants() map[string]string {
 	return map[string]string{
 		"process.env.ROBIN_SERVER_PORT": strconv.FormatInt(int64(app.compiler.ServerPort), 10),

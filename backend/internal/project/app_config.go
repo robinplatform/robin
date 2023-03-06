@@ -9,22 +9,91 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 
 	"robinplatform.dev/internal/httpcache"
 )
+
+type serializableDaemonEntrypoint []string
+
+func (entrypoint *serializableDaemonEntrypoint) UnmarshalJSON(data []byte) error {
+	// first try to unmarshal as a []string
+	var entrypointArray []string
+	if err := json.Unmarshal(data, &entrypointArray); err == nil {
+		*entrypoint = entrypointArray
+		return nil
+	}
+
+	platform := fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+
+	// then try to unmarshal as a map[string]string
+	var entrypointMap map[string][]string
+	if err := json.Unmarshal(data, &entrypointMap); err == nil {
+		// verify that the map has an entry for the current platform
+		if entrypointMap[platform] == nil {
+			return fmt.Errorf("daemon map does not contain an entry for the current platform '%s'", platform)
+		}
+
+		*entrypoint = entrypointMap[platform]
+		return nil
+	}
+
+	return fmt.Errorf("failed to unmarshal daemon entrypoint (expected either a string array or a map)")
+}
+
+type serializableRobinAppConfig struct {
+	Id       string                       `json:"id"`
+	Name     string                       `json:"name"`
+	PageIcon string                       `json:"pageIcon"`
+	Page     string                       `json:"page"`
+	Files    []string                     `json:"files"`
+	Daemon   serializableDaemonEntrypoint `json:"daemon"`
+}
 
 type RobinAppConfig struct {
 	// ConfigPath is a URL pointing to the location of the config file
 	ConfigPath *url.URL `json:"-"`
 
 	// Id of the app
-	Id string `json:"id"`
+	Id string
 	// Name of the app
-	Name string `json:"name"`
+	Name string
 	// PageIcon refers to the path to the icon to use for this app
-	PageIcon string `json:"pageIcon"`
+	PageIcon string
 	// Page refers to the path to the page to load for this app
-	Page string `json:"page"`
+	Page string
+	// Files refers to the paths to the files that are necessary for this app
+	// These files will be copied to the app's working directory
+	Files []string
+	// Daemon represents the command that should be run to start the app's daemon
+	Daemon []string
+}
+
+func (appConfig *RobinAppConfig) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&serializableRobinAppConfig{
+		Id:       appConfig.Id,
+		Name:     appConfig.Name,
+		PageIcon: appConfig.PageIcon,
+		Page:     appConfig.Page,
+		Files:    appConfig.Files,
+		Daemon:   appConfig.Daemon,
+	})
+}
+
+func (appConfig *RobinAppConfig) UnmarshalJSON(data []byte) error {
+	var serializableConfig serializableRobinAppConfig
+	if err := json.Unmarshal(data, &serializableConfig); err != nil {
+		return err
+	}
+
+	appConfig.Id = serializableConfig.Id
+	appConfig.Name = serializableConfig.Name
+	appConfig.PageIcon = serializableConfig.PageIcon
+	appConfig.Page = serializableConfig.Page
+	appConfig.Files = serializableConfig.Files
+	appConfig.Daemon = serializableConfig.Daemon
+
+	return nil
 }
 
 func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
