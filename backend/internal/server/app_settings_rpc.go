@@ -14,15 +14,7 @@ type GetAppSettingsByIdInput struct {
 var GetAppSettingsById = AppsRpcMethod[GetAppSettingsByIdInput, map[string]any]{
 	Name: "GetAppSettingsById",
 	Run: func(req RpcRequest[GetAppSettingsByIdInput]) (map[string]any, *HttpError) {
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
-			}
-		}
-
-		app, err := projectConfig.LoadRobinAppById(req.Data.AppId)
+		app, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -53,15 +45,7 @@ type UpdateAppSettingsInput struct {
 var UpdateAppSettings = AppsRpcMethod[UpdateAppSettingsInput, struct{}]{
 	Name: "UpdateAppSettings",
 	Run: func(req RpcRequest[UpdateAppSettingsInput]) (struct{}, *HttpError) {
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return struct{}{}, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
-			}
-		}
-
-		app, err := projectConfig.LoadRobinAppById(req.Data.AppId)
+		app, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return struct{}{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,

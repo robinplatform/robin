@@ -182,6 +182,15 @@ func (projectConfig *RobinProjectConfig) LoadRobinAppByPath(appPath string) (Rob
 	return appConfig, nil
 }
 
+func LoadRobinAppById(appId string) (RobinAppConfig, error) {
+	var projectConfig RobinProjectConfig
+	if err := projectConfig.LoadFromEnv(); err != nil {
+		return RobinAppConfig{}, err
+	}
+
+	return projectConfig.LoadRobinAppById(appId)
+}
+
 func (projectConfig *RobinProjectConfig) LoadRobinAppById(appId string) (RobinAppConfig, error) {
 	apps, err := projectConfig.GetAllProjectApps()
 	if err != nil {

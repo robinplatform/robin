@@ -15,18 +15,7 @@ type GetAppByIdInput struct {
 var GetAppById = InternalRpcMethod[GetAppByIdInput, project.RobinAppConfig]{
 	Name: "GetAppById",
 	Run: func(req RpcRequest[GetAppByIdInput]) (project.RobinAppConfig, *HttpError) {
-		var app project.RobinAppConfig
-		var err error
-
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return project.RobinAppConfig{}, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
-			}
-		}
-
-		app, err = projectConfig.LoadRobinAppById(req.Data.AppId)
+		app, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return project.RobinAppConfig{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -71,15 +60,7 @@ type RunAppMethodInput struct {
 var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 	Name: "RunAppMethod",
 	Run: func(req RpcRequest[RunAppMethodInput]) (any, *HttpError) {
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
-			}
-		}
-
-		_, err := projectConfig.LoadRobinAppById(req.Data.AppId)
+		_, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -128,15 +109,7 @@ type RestartAppInput struct {
 var RestartApp = InternalRpcMethod[RestartAppInput, struct{}]{
 	Name: "RestartApp",
 	Run: func(req RpcRequest[RestartAppInput]) (struct{}, *HttpError) {
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return struct{}{}, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
-			}
-		}
-
-		_, err := projectConfig.LoadRobinAppById(req.Data.AppId)
+		_, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return struct{}{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,
