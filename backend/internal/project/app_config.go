@@ -63,7 +63,7 @@ func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, tar
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectConfig, configPath string) error {
 	// TODO: this sorta works, but there's some messiness that we probably need to sort out with
-	// Windows paths, since the configPath gets checked into version control
+	// Windows paths, since the configPath comes from robin.json, which gets checked into version control
 	configPath = filepath.ToSlash(configPath)
 
 	var err error
@@ -175,8 +175,8 @@ func (projectConfig *RobinProjectConfig) GetAllProjectApps() ([]RobinAppConfig, 
 }
 
 func GetAllProjectApps() ([]RobinAppConfig, error) {
-	var projectConfig RobinProjectConfig
-	if err := projectConfig.LoadFromEnv(); err != nil {
+	projectConfig, err := LoadFromEnv()
+	if err != nil {
 		return nil, err
 	}
 
@@ -192,8 +192,8 @@ func (projectConfig *RobinProjectConfig) LoadRobinAppByPath(appPath string) (Rob
 }
 
 func LoadRobinAppById(appId string) (RobinAppConfig, error) {
-	var projectConfig RobinProjectConfig
-	if err := projectConfig.LoadFromEnv(); err != nil {
+	projectConfig, err := LoadFromEnv()
+	if err != nil {
 		return RobinAppConfig{}, err
 	}
 

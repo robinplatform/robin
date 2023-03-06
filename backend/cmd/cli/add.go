@@ -41,8 +41,8 @@ func (cmd *AddCommand) Parse(flags *flag.FlagSet, args []string) error {
 var eraseEndLine = "\u001B[K"
 
 func (cmd *AddCommand) Run() error {
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadFromEnv(); err != nil {
+	projectConfig, err := project.LoadFromEnv()
+	if err != nil {
 		return err
 	}
 

@@ -38,8 +38,8 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 }
 
 func (cmd *RemoveCommand) Run() error {
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadFromEnv(); err != nil {
+	projectConfig, err := project.LoadFromEnv()
+	if err != nil {
 		return err
 	}
 
