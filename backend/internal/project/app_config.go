@@ -62,9 +62,9 @@ func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, tar
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectConfig, configPath string) error {
-	// TODO: this be borked on windows
+	// TODO: this sorta works, but there's some messiness that we probably need to sort out with
+	// Windows paths, since the configPath gets checked into version control
 	configPath = filepath.ToSlash(configPath)
-	fmt.Print("CONFIG PATH:", configPath, "\n")
 
 	var err error
 	appConfig.ConfigPath, err = url.Parse(configPath)
