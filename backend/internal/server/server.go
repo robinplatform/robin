@@ -119,24 +119,7 @@ func (server *Server) Run() error {
 	// The errors will get handled when the app is requested
 	go func() {
 		if compile.CacheEnabled {
-			projectPath, err := project.GetProjectPath()
-			if err != nil {
-				logger.Warn("Failed to get project path", log.Ctx{
-					"error": err,
-				})
-				return
-			}
-
-			projectConfig := project.RobinProjectConfig{}
-			if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-				logger.Warn("Failed to load robin project config", log.Ctx{
-					"projectPath": projectPath,
-					"error":       err,
-				})
-				return
-			}
-
-			apps, err := projectConfig.GetAllProjectApps()
+			apps, err := project.GetAllProjectApps()
 			if err != nil {
 				return
 			}

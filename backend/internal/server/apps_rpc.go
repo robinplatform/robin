@@ -31,15 +31,7 @@ var GetApps = InternalRpcMethod[struct{}, []project.RobinAppConfig]{
 	Name:             "GetApps",
 	SkipInputParsing: true,
 	Run: func(_ RpcRequest[struct{}]) ([]project.RobinAppConfig, *HttpError) {
-		projectConfig := project.RobinProjectConfig{}
-		if err := projectConfig.LoadFromEnv(); err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("failed to get apps: %s", err),
-			}
-		}
-
-		apps, err := projectConfig.GetAllProjectApps()
+		apps, err := project.GetAllProjectApps()
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
