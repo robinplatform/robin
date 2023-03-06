@@ -8,31 +8,15 @@ import (
 	"regexp"
 
 	"robinplatform.dev/internal/config"
-	"robinplatform.dev/internal/static"
 )
 
 var (
 	pathRegex *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9]+")
 )
 
-var projectNameState = static.CreateOnce(func() (string, error) {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return "", err
-	}
-
-	packageJsonPath := filepath.Join(projectPath, "package.json")
-	var packageJson PackageJson
-	if err := LoadPackageJson(packageJsonPath, &packageJson); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to load %s: %v", packageJsonPath, err)
-		os.Exit(1)
-	}
-
-	return packageJson.Name, nil
-})
-
 func GetProjectName() (string, error) {
-	return projectNameState.GetValue()
+	projectConfig, err := LoadFromEnv()
+	return projectConfig.Name, err
 }
 
 func GetProjectAlias() (string, error) {
