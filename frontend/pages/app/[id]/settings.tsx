@@ -70,10 +70,7 @@ export default function AppSettings() {
 					}
 				/>
 
-				<div
-					className={'full'}
-					style={{ padding: '0 .5rem', paddingBottom: '.5rem' }}
-				>
+				<div className={'full robin-pad'}>
 					<>
 						{isLoading && (
 							<div
