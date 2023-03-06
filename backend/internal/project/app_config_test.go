@@ -3,6 +3,7 @@ package project
 import (
 	"net/url"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -85,7 +86,7 @@ func TestAppConfigLoad(t *testing.T) {
 
 		expectedApp.ConfigPath = app.ConfigPath
 
-		if app != expectedApp {
+		if !reflect.DeepEqual(app, expectedApp) {
 			t.Fatalf("expected %#v, got %#v", expectedApp, app)
 		}
 	}
