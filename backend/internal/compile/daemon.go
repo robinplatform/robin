@@ -3,6 +3,7 @@ package compile
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -57,7 +58,7 @@ func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp)
 			Name: "extract-server-ts",
 			Setup: func(build es.PluginBuild) {
 				build.OnLoad(es.OnLoadOptions{
-					Filter: "\\.server\\.ts$",
+					Filter: "\\.server\\.[jt]s$",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
 					var source []byte
 					var err error
@@ -155,35 +156,54 @@ func (app *CompiledApp) keepAlive() {
 	}
 }
 
-func (app *CompiledApp) StartServer() error {
-	daemonProcessMux.Lock()
-	defer daemonProcessMux.Unlock()
+func (app *CompiledApp) GetAppDir() (string, error) {
+	appConfig, err := app.GetConfig()
+	if err != nil {
+		return "", fmt.Errorf("failed to get app config: %w", err)
+	}
+
+	if appConfig.ConfigPath.Scheme == "file" {
+		return filepath.Dir(appConfig.ConfigPath.Path), nil
+	}
 
 	projectAlias, err := project.GetProjectAlias()
 	if err != nil {
-		return fmt.Errorf("failed to get project alias: %w", err)
+		return "", fmt.Errorf("failed to get project alias: %w", err)
 	}
+	return filepath.Join(config.GetRobinPath(), "projects", projectAlias, "apps", app.Id), nil
+}
 
-	// Make sure the app's directory exists
-	appDir := filepath.Join(config.GetRobinPath(), "projects", projectAlias, "apps", app.Id)
-	if err := os.MkdirAll(appDir, 0755); err != nil {
+func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[processMeta]) error {
+	appDir, err := app.GetAppDir()
+	if err != nil {
 		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
-	// Write the entrypoint to the temporary file
+	appConfig, err := app.GetConfig()
+	if err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+
+	// Figure out asset paths
+	daemonRunnerFilePath := filepath.Join(appDir, "robin-daemon-runner.js")
 	serverBundleFilePath := filepath.Join(appDir, "daemon.bundle.js")
+	if appConfig.ConfigPath.Scheme == "file" {
+		buf := make([]byte, 4)
+		rand.Read(buf)
+
+		tmpDir := filepath.Join(os.TempDir(), fmt.Sprintf("robin-app-%s-%x", app.Id, buf))
+		if err := os.MkdirAll(tmpDir, 0755); err != nil {
+			return fmt.Errorf("failed to start app server: %w", err)
+		}
+
+		daemonRunnerFilePath = filepath.Join(tmpDir, "robin-daemon-runner.js")
+		serverBundleFilePath = filepath.Join(tmpDir, "daemon.bundle.js")
+	}
+
+	// Write the entrypoint to the temporary file
 	if err := os.WriteFile(serverBundleFilePath, []byte(app.ServerJs), 0755); err != nil {
 		return fmt.Errorf("failed to start app server: could not create entrypoint: %w", err)
 	}
-
-	// Find a free port to listen on
-	listener, err := net.Listen("tcp", ":0")
-	if err != nil {
-		return fmt.Errorf("failed to start app server: could not find free port: %w", err)
-	}
-	portAvailable := listener.Addr().(*net.TCPAddr).Port
-	strPortAvailable := strconv.FormatInt(int64(portAvailable), 10)
-	listener.Close()
 
 	// Extract the daemon runner onto disk
 	daemonRunnerSourceFile, err := toolkitFS.Open("internal/app-daemon.js")
@@ -195,7 +215,6 @@ func (app *CompiledApp) StartServer() error {
 		return fmt.Errorf("failed to start app server: could not find daemon runner: %w", err)
 	}
 
-	daemonRunnerFilePath := filepath.Join(appDir, "robin-daemon-runner.js")
 	daemonRunnerFile, err := os.Create(daemonRunnerFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
@@ -207,23 +226,105 @@ func (app *CompiledApp) StartServer() error {
 		return fmt.Errorf("failed to start app server: could not create daemon runner: %w", err)
 	}
 
-	// Start the app server process
+	processConfig.Command = "node"
+	processConfig.Args = []string{daemonRunnerFilePath}
+
+	processConfig.Env["ROBIN_DAEMON_TARGET"] = serverBundleFilePath
+
+	return nil
+}
+
+func (app *CompiledApp) setupCustomDaemon(appConfig project.RobinAppConfig, processConfig *process.ProcessConfig[processMeta]) error {
+	processConfig.Command = appConfig.Daemon[0]
+	processConfig.Args = appConfig.Daemon[1:]
+
+	return nil
+}
+
+func (app *CompiledApp) copyAppFiles(appConfig project.RobinAppConfig, appDir string) error {
+	if appConfig.ConfigPath.Scheme == "file" {
+		return nil
+	}
+
+	for _, appFilePath := range appConfig.Files {
+		_, buf, err := appConfig.ReadFile(&httpClient, appFilePath)
+		if err != nil {
+			return fmt.Errorf("failed to setup app files: failed to read %s: %w", appFilePath, err)
+		}
+
+		fd, err := os.Create(filepath.Join(appDir, appFilePath))
+		if err != nil {
+			return fmt.Errorf("failed to setup app files: failed to create %s: %w", appFilePath, err)
+		}
+
+		if _, err := fd.Write(buf); err != nil {
+			return fmt.Errorf("failed to setup app files: failed to write %s: %w", appFilePath, err)
+		}
+	}
+
+	return nil
+}
+
+func (app *CompiledApp) StartServer() error {
+	daemonProcessMux.Lock()
+	defer daemonProcessMux.Unlock()
+
+	appDir, err := app.GetAppDir()
+	if err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+
+	appConfig, err := app.GetConfig()
+	if err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+
+	// Setup the app's dependencies
+	if err := app.copyAppFiles(appConfig, appDir); err != nil {
+		return fmt.Errorf("failed to start app server: %w", err)
+	}
+
 	projectPath := project.GetProjectPathOrExit()
-	serverProcess, err := processManager.SpawnPath(process.ProcessConfig[processMeta]{
+	processConfig := process.ProcessConfig[processMeta]{
 		Id:      app.getProcessId(),
-		Command: "node",
-		Args:    []string{daemonRunnerFilePath},
 		WorkDir: appDir,
 		Env: map[string]string{
-			"ROBIN_PROJECT_PATH":  projectPath,
-			"ROBIN_PROCESS_TYPE":  "daemon",
-			"ROBIN_DAEMON_TARGET": serverBundleFilePath,
-			"PORT":                strPortAvailable,
+			"ROBIN_APP_ID":       app.Id,
+			"ROBIN_PROCESS_TYPE": "daemon",
+			"ROBIN_PROJECT_PATH": projectPath,
 		},
-		Meta: processMeta{
-			Port: portAvailable,
-		},
-	})
+		Meta: processMeta{},
+	}
+
+	// Setup the daemon runner
+	if appConfig.Daemon == nil {
+		if err := app.setupJsDaemon(&processConfig); err != nil {
+			return fmt.Errorf("failed to start app server: %w", err)
+		}
+	} else {
+		if err := app.setupCustomDaemon(appConfig, &processConfig); err != nil {
+			return fmt.Errorf("failed to start app server: %w", err)
+		}
+	}
+
+	// Find a free port to listen on
+	listener, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return fmt.Errorf("failed to start app server: could not find free port: %w", err)
+	}
+	portAvailable := listener.Addr().(*net.TCPAddr).Port
+	strPortAvailable := strconv.FormatInt(int64(portAvailable), 10)
+	listener.Close()
+
+	// Add port info to the process config
+	processConfig.Env["PORT"] = strPortAvailable
+	processConfig.Meta.Port = portAvailable
+
+	// Start the app server process
+	serverProcess, err := processManager.SpawnPath(processConfig)
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
 		logger.Err("Failed to start app server", log.Ctx{
 			"appId": app.Id,
@@ -288,7 +389,7 @@ func (app *CompiledApp) StopServer() error {
 	return nil
 }
 
-func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body map[string]any) (any, error) {
+func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) (any, error) {
 	if app.httpClient == nil {
 		app.httpClient = &http.Client{}
 	}
@@ -303,6 +404,12 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 		return nil, fmt.Errorf("failed to serialize app request body: %w", err)
 	}
 
+	logger.Debug("Making app request", log.Ctx{
+		"appId":  app.Id,
+		"pid":    serverProcess.Pid,
+		"method": method,
+		"path":   reqPath,
+	})
 	req, err := http.NewRequestWithContext(
 		ctx,
 		method,

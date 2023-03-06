@@ -58,18 +58,47 @@ export async function request<T>({
 }
 
 export const getAppSettings = Object.assign(
-	async function <T extends Record<string, unknown>>(
-		settingsShape: z.Schema<T>,
+	async function <SettingsShape extends Record<string, unknown>>(
+		settingsShape: z.Schema<SettingsShape>,
 	) {
 		return request({
-			pathname: `/api/apps/rpc/GetAppSettingsById`,
+			pathname: '/api/apps/rpc/GetAppSettingsById',
 			resultType: settingsShape,
 			body: {
 				appId: ROBIN_APP_ID,
 			},
 		});
 	},
+	{ getQueryKey: () => ['GetAppSettingsById'] },
+);
+
+export const runAppMethod = Object.assign(
+	async function <T extends Record<string, unknown>>({
+		methodName,
+		data,
+		resultType,
+	}: {
+		methodName: string;
+		data: object;
+		resultType: z.Schema<T>;
+	}) {
+		return request({
+			pathname: '/api/internal/rpc/RunAppMethod',
+			resultType,
+			body: {
+				appId: ROBIN_APP_ID,
+				methodName,
+				data,
+			},
+		});
+	},
 	{
-		queryKeyPrefix: ['GetAppSettingsById'],
+		getQueryKey: ({
+			methodName,
+			data,
+		}: {
+			methodName: string;
+			data: unknown;
+		}) => ['RunAppMethod', methodName, data],
 	},
 );

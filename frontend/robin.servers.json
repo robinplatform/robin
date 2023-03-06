@@ -1,0 +1,5 @@
+{
+	"devServers": {
+		"dev": "next dev -p 9001"
+	}
+}

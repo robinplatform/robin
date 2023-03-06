@@ -37,7 +37,7 @@ export function createRpcMethod(
 			return resBody;
 		},
 		{
-			queryKeyPrefix: [serverFile, methodName],
+			getQueryKey: (data: unknown) => [serverFile, methodName, data],
 		},
 	);
 }
