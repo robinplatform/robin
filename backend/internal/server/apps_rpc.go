@@ -22,7 +22,6 @@ var GetAppById = InternalRpcMethod[GetAppByIdInput, project.RobinAppConfig]{
 				Message:    fmt.Sprintf("Failed to load app by id %s: %s", req.Data.AppId, err),
 			}
 		}
-
 		return app, nil
 	},
 }
