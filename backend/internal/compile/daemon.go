@@ -292,11 +292,7 @@ func (app *CompiledApp) StartServer() error {
 
 	projectPath := project.GetProjectPathOrExit()
 	processConfig := process.ProcessConfig[processMeta]{
-		Id: process.ProcessId{
-			Namespace:    process.NamespaceExtensionDaemon,
-			NamespaceKey: "app-daemon",
-			Key:          app.Id,
-		},
+		Id:      app.getProcessId(),
 		WorkDir: appDir,
 		Env: map[string]string{
 			"ROBIN_APP_ID":       app.Id,
