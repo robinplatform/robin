@@ -62,7 +62,9 @@ func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, tar
 }
 
 func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectConfig, configPath string) error {
+	// TODO: this be borked on windows
 	configPath = filepath.ToSlash(configPath)
+	fmt.Print("CONFIG PATH:", configPath, "\n")
 
 	var err error
 	appConfig.ConfigPath, err = url.Parse(configPath)
@@ -70,7 +72,7 @@ func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectC
 		return fmt.Errorf("failed to parse config path '%s': %s", configPath, err)
 	}
 
-	projectPath := projectConfig.ProjectPath
+	projectPath := filepath.ToSlash(projectConfig.ProjectPath)
 
 	// File paths should be absolute paths
 	if appConfig.ConfigPath.Scheme == "" {
