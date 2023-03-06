@@ -59,6 +59,13 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
+	const subRoute = React.useMemo(
+		() =>
+			router.isReady
+				? router.asPath.substring('/app/'.length + id.length)
+				: null,
+		[router.isReady, router.asPath, id],
+	);
 
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
@@ -143,7 +150,7 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
-						src={`http://localhost:9010/api/app-resources/${id}/base.html`}
+						src={`http://localhost:9010/api/app-resources/${id}/base${subRoute}`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>

@@ -132,7 +132,7 @@ func (server *Server) Run() error {
 
 	// TODO: Move the compiler routes to a separate file/into compiler
 	// Apps
-	server.router.GET("/api/app-resources/:id/base.html", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
+	server.router.GET("/api/app-resources/:id/base/*filepath", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		id := params.ByName("id")
 		res.Header().Set("Content-Type", "text/html; charset=utf-8")
 
