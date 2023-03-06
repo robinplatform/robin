@@ -72,23 +72,42 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 			try {
 				switch (message.data.type) {
 					case 'locationUpdate': {
-						const location = {
-							pathname: window.location.pathname,
-							search: new URL(message.data.location).search,
-						};
-						router.push(location, undefined, { shallow: true });
+						if (!message.data.location) {
+							break;
+						}
+
+						// const location: Location = {
+						// 	pathname: window.location.pathname,
+						// 	search: .search,
+						// };
+
+						// router.push(location, undefined, { shallow: true });
 						break;
 					}
 
 					case 'titleUpdate':
-						setTitle((title) => message.data.title || title);
+						setTitle((title) => String(message.data.title || title));
 						break;
 
 					case 'appError':
 						setError(message.data.error);
 						break;
+
+					default:
+						toast.error(`Unknown app message type: ${message.data.type}`, {
+							id: 'unknown-message-type',
+						});
 				}
-			} catch {}
+			} catch (e: any) {
+				toast.error(
+					`Error when receiving app message: ${String(e)}\ndata:\n${
+						message.data
+					}`,
+					{
+						id: 'unknown-message-type',
+					},
+				);
+			}
 		};
 
 		window.addEventListener('message', onMessage);
