@@ -1,0 +1,6 @@
+{
+	"devServers": {
+		"css": "yarn build:css --watch",
+		"daemon": "yarn build:daemon --watch"
+	}
+}
