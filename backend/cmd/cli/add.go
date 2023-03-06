@@ -41,9 +41,13 @@ func (cmd *AddCommand) Parse(flags *flag.FlagSet, args []string) error {
 var eraseEndLine = "\u001B[K"
 
 func (cmd *AddCommand) Run() error {
-	projectPath := project.GetProjectPathOrExit()
+	projectConfig, err := project.LoadFromEnv()
+	if err != nil {
+		return err
+	}
 
-	existingApps, err := project.GetAllProjectApps()
+	projectPath := projectConfig.ProjectPath
+	existingApps, err := projectConfig.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to get existing apps: %w", err)
 	}
@@ -75,7 +79,7 @@ func (cmd *AddCommand) Run() error {
 		}
 
 		// Load and verify the app config
-		appConfig, err := project.LoadRobinAppByPath(resolvedAppPath)
+		appConfig, err := projectConfig.LoadRobinAppByPath(resolvedAppPath)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}
@@ -83,7 +87,6 @@ func (cmd *AddCommand) Run() error {
 		// Reload and resave the project config each time, so that if we are slow and the user
 		// makes changes, we don't force the user to pick between their changes and ours. Unlike
 		// certain programs. *cough* *cough* *npm* *cough* *cough*
-		projectConfig := project.RobinProjectConfig{}
 		if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
 			return fmt.Errorf("failed to load project config: %w", err)
 		}

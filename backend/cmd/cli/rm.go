@@ -38,9 +38,12 @@ func (cmd *RemoveCommand) Parse(flags *flag.FlagSet, args []string) error {
 }
 
 func (cmd *RemoveCommand) Run() error {
-	projectPath := project.GetProjectPathOrExit()
+	projectConfig, err := project.LoadFromEnv()
+	if err != nil {
+		return err
+	}
 
-	apps, err := project.GetAllProjectApps()
+	apps, err := projectConfig.GetAllProjectApps()
 	if err != nil {
 		return fmt.Errorf("failed to load project apps: %w", err)
 	}
@@ -62,7 +65,7 @@ func (cmd *RemoveCommand) Run() error {
 				appPattern = fmt.Sprintf("https://esm.sh/%s", appPattern)
 			}
 
-			appConfig, err := project.LoadRobinAppByPath(appPattern)
+			appConfig, err := projectConfig.LoadRobinAppByPath(appPattern)
 			if err != nil {
 				return fmt.Errorf("unrecognized app: %s", appPattern)
 			}
@@ -76,21 +79,16 @@ func (cmd *RemoveCommand) Run() error {
 		}
 	}
 
-	projectConfig := project.RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-		return fmt.Errorf("failed to load project config: %w", err)
-	}
-
 	newApps := make([]string, 0, len(projectConfig.Apps))
 	for _, app := range projectConfig.Apps {
-		appConfig, err := project.LoadRobinAppByPath(app)
+		appConfig, err := projectConfig.LoadRobinAppByPath(app)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}
 
 		if _, ok := rmTargetIds[appConfig.Id]; !ok {
 			if appConfig.ConfigPath.Scheme == "file" {
-				relpath, err := filepath.Rel(projectPath, appConfig.ConfigPath.Path)
+				relpath, err := filepath.Rel(projectConfig.ProjectPath, appConfig.ConfigPath.Path)
 				if err != nil {
 					return fmt.Errorf("failed to get relative path of %s: %w", appConfig.ConfigPath.Path, err)
 				}

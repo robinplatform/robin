@@ -8,20 +8,14 @@ import (
 	"regexp"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/static"
 )
 
 var (
 	pathRegex *regexp.Regexp = regexp.MustCompile("[^a-zA-Z0-9]+")
-
-	// This should only be loaded once, since robin will start up with a target project
-	projectName string
 )
 
-func GetProjectName() (string, error) {
-	if projectName != "" {
-		return projectName, nil
-	}
-
+var projectNameState = static.CreateOnce(func() (string, error) {
 	projectPath, err := GetProjectPath()
 	if err != nil {
 		return "", err
@@ -33,17 +27,18 @@ func GetProjectName() (string, error) {
 		fmt.Fprintf(os.Stderr, "Failed to load %s: %v", packageJsonPath, err)
 		os.Exit(1)
 	}
-	projectName = packageJson.Name
 
-	return projectName, nil
+	return packageJson.Name, nil
+})
+
+func GetProjectName() (string, error) {
+	return projectNameState.GetValue()
 }
 
 func GetProjectAlias() (string, error) {
-	if projectName == "" {
-		_, err := GetProjectName()
-		if err != nil {
-			return "", err
-		}
+	projectName, err := GetProjectName()
+	if err != nil {
+		return "", err
 	}
 
 	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name

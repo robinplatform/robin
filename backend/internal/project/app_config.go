@@ -130,17 +130,18 @@ func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, tar
 	return lastUrl, []byte(res.Body), nil
 }
 
-func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return fmt.Errorf("failed to get project path: %s", err)
-	}
-
+func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectConfig, configPath string) error {
+	// TODO: this sorta works, but there's some messiness that we probably need to sort out with
+	// Windows paths, since the configPath comes from robin.json, which gets checked into version control
 	configPath = filepath.ToSlash(configPath)
+
+	var err error
 	appConfig.ConfigPath, err = url.Parse(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config path '%s': %s", configPath, err)
 	}
+
+	projectPath := filepath.ToSlash(projectConfig.ProjectPath)
 
 	// File paths should be absolute paths
 	if appConfig.ConfigPath.Scheme == "" {
@@ -231,20 +232,10 @@ func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
 	return UpdateProjectConfig(projectConfig)
 }
 
-func GetAllProjectApps() ([]RobinAppConfig, error) {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return nil, err
-	}
-
-	projectConfig := RobinProjectConfig{}
-	if err := projectConfig.LoadRobinProjectConfig(projectPath); err != nil {
-		return nil, err
-	}
-
+func (projectConfig *RobinProjectConfig) GetAllProjectApps() ([]RobinAppConfig, error) {
 	apps := make([]RobinAppConfig, len(projectConfig.Apps))
 	for idx, configPath := range projectConfig.Apps {
-		if err := apps[idx].readRobinAppConfig(configPath); err != nil {
+		if err := apps[idx].readRobinAppConfig(projectConfig, configPath); err != nil {
 			return nil, err
 		}
 	}
@@ -252,16 +243,34 @@ func GetAllProjectApps() ([]RobinAppConfig, error) {
 	return apps, nil
 }
 
-func LoadRobinAppByPath(appPath string) (RobinAppConfig, error) {
+func GetAllProjectApps() ([]RobinAppConfig, error) {
+	projectConfig, err := LoadFromEnv()
+	if err != nil {
+		return nil, err
+	}
+
+	return projectConfig.GetAllProjectApps()
+}
+
+func (projectConfig *RobinProjectConfig) LoadRobinAppByPath(appPath string) (RobinAppConfig, error) {
 	var appConfig RobinAppConfig
-	if err := appConfig.readRobinAppConfig(appPath); err != nil {
+	if err := appConfig.readRobinAppConfig(projectConfig, appPath); err != nil {
 		return RobinAppConfig{}, err
 	}
 	return appConfig, nil
 }
 
 func LoadRobinAppById(appId string) (RobinAppConfig, error) {
-	apps, err := GetAllProjectApps()
+	projectConfig, err := LoadFromEnv()
+	if err != nil {
+		return RobinAppConfig{}, err
+	}
+
+	return projectConfig.LoadRobinAppById(appId)
+}
+
+func (projectConfig *RobinProjectConfig) LoadRobinAppById(appId string) (RobinAppConfig, error) {
+	apps, err := projectConfig.GetAllProjectApps()
 	if err != nil {
 		return RobinAppConfig{}, err
 	}
