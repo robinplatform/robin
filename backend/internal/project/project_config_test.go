@@ -10,6 +10,11 @@ func createProjectStructure(projectPath string, paths map[string]string) error {
 	projectPath = filepath.FromSlash(projectPath)
 	for path, contents := range paths {
 		path = filepath.FromSlash(filepath.Join(projectPath, path))
+
+		if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
+			return err
+		}
+
 		if err := os.WriteFile(path, []byte(contents), 0755); err != nil {
 			return err
 		}
