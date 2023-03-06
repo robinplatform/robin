@@ -58,7 +58,7 @@ func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp)
 			Name: "extract-server-ts",
 			Setup: func(build es.PluginBuild) {
 				build.OnLoad(es.OnLoadOptions{
-					Filter: "\\.server\\.ts$",
+					Filter: "\\.server\\.[jt]s$",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
 					var source []byte
 					var err error
@@ -174,9 +174,6 @@ func (app *CompiledApp) GetAppDir() (string, error) {
 }
 
 func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[processMeta]) error {
-	daemonProcessMux.Lock()
-	defer daemonProcessMux.Unlock()
-
 	appDir, err := app.GetAppDir()
 	if err != nil {
 		return fmt.Errorf("failed to start app server: %w", err)
@@ -232,7 +229,7 @@ func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[proce
 	processConfig.Command = "node"
 	processConfig.Args = []string{daemonRunnerFilePath}
 
-	processConfig.Env["ROBIN_DAEMON_TARGET"] = daemonRunnerFilePath
+	processConfig.Env["ROBIN_DAEMON_TARGET"] = serverBundleFilePath
 
 	return nil
 }
