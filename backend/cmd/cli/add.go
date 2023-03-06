@@ -79,7 +79,7 @@ func (cmd *AddCommand) Run() error {
 		}
 
 		// Load and verify the app config
-		appConfig, err := project.LoadRobinAppByPath(resolvedAppPath)
+		appConfig, err := projectConfig.LoadRobinAppByPath(resolvedAppPath)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}

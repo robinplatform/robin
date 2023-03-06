@@ -61,17 +61,16 @@ func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, tar
 	return lastUrl, []byte(res.Body), nil
 }
 
-func (appConfig *RobinAppConfig) readRobinAppConfig(configPath string) error {
-	projectPath, err := GetProjectPath()
-	if err != nil {
-		return fmt.Errorf("failed to get project path: %s", err)
-	}
-
+func (appConfig *RobinAppConfig) readRobinAppConfig(projectConfig *RobinProjectConfig, configPath string) error {
 	configPath = filepath.ToSlash(configPath)
+
+	var err error
 	appConfig.ConfigPath, err = url.Parse(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to parse config path '%s': %s", configPath, err)
 	}
+
+	projectPath := projectConfig.ProjectPath
 
 	// File paths should be absolute paths
 	if appConfig.ConfigPath.Scheme == "" {
@@ -165,7 +164,7 @@ func (appConfig *RobinAppConfig) UpdateSettings(settings map[string]any) error {
 func (projectConfig *RobinProjectConfig) GetAllProjectApps() ([]RobinAppConfig, error) {
 	apps := make([]RobinAppConfig, len(projectConfig.Apps))
 	for idx, configPath := range projectConfig.Apps {
-		if err := apps[idx].readRobinAppConfig(configPath); err != nil {
+		if err := apps[idx].readRobinAppConfig(projectConfig, configPath); err != nil {
 			return nil, err
 		}
 	}
@@ -173,9 +172,9 @@ func (projectConfig *RobinProjectConfig) GetAllProjectApps() ([]RobinAppConfig, 
 	return apps, nil
 }
 
-func LoadRobinAppByPath(appPath string) (RobinAppConfig, error) {
+func (projectConfig *RobinProjectConfig) LoadRobinAppByPath(appPath string) (RobinAppConfig, error) {
 	var appConfig RobinAppConfig
-	if err := appConfig.readRobinAppConfig(appPath); err != nil {
+	if err := appConfig.readRobinAppConfig(projectConfig, appPath); err != nil {
 		return RobinAppConfig{}, err
 	}
 	return appConfig, nil

@@ -65,7 +65,7 @@ func (cmd *RemoveCommand) Run() error {
 				appPattern = fmt.Sprintf("https://esm.sh/%s", appPattern)
 			}
 
-			appConfig, err := project.LoadRobinAppByPath(appPattern)
+			appConfig, err := projectConfig.LoadRobinAppByPath(appPattern)
 			if err != nil {
 				return fmt.Errorf("unrecognized app: %s", appPattern)
 			}
@@ -81,7 +81,7 @@ func (cmd *RemoveCommand) Run() error {
 
 	newApps := make([]string, 0, len(projectConfig.Apps))
 	for _, app := range projectConfig.Apps {
-		appConfig, err := project.LoadRobinAppByPath(app)
+		appConfig, err := projectConfig.LoadRobinAppByPath(app)
 		if err != nil {
 			return fmt.Errorf("failed to load app config: %w", err)
 		}
