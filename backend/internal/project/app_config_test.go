@@ -13,10 +13,8 @@ func TestAppConfigLoad(t *testing.T) {
 		// maybe it's best to fix it later though.
 		"robin.json": `{
 			"name": "robin",
-			"apps": ["` +
-			filepath.FromSlash("./app1/robin.app.json") + `","` +
-			filepath.FromSlash("app2/robin.app.json") +
-			`"]}`,
+			"apps": ["./app1/robin.app.json", "app2/robin.app.json"]
+		}`,
 
 		"app1/robin.app.json": `{
 			"id": "bad-ext",
@@ -47,12 +45,12 @@ func TestAppConfigLoad(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	app1Url, err := url.Parse("file://" + filepath.Join(projectPath, "app1/robin.app.json"))
+	app1Url, err := url.Parse("file://" + filepath.ToSlash(filepath.Join(projectPath, "app1", "robin.app.json")))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	app2Url, err := url.Parse("file://" + filepath.Join(projectPath, "app2/robin.app.json"))
+	app2Url, err := url.Parse("file://" + filepath.ToSlash(filepath.Join(projectPath, "app2", "robin.app.json")))
 	if err != nil {
 		t.Fatal(err)
 	}
