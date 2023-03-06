@@ -51,7 +51,7 @@ type RunAppMethodInput struct {
 var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 	Name: "RunAppMethod",
 	Run: func(req RpcRequest[RunAppMethodInput]) (any, *HttpError) {
-		_, err := project.LoadRobinAppById(req.Data.AppId)
+		appConfig, err := project.LoadRobinAppById(req.Data.AppId)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -77,11 +77,22 @@ var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 			}
 		}
 
-		result, err := app.Request(context.TODO(), "POST", "/api/RunAppMethod", map[string]any{
-			"serverFile": req.Data.ServerFile,
-			"methodName": req.Data.MethodName,
-			"data":       req.Data.Data,
-		})
+		var targetApiPath string
+		var requestBody any
+
+		if appConfig.Daemon == nil {
+			targetApiPath = "/api/RunAppMethod"
+			requestBody = map[string]any{
+				"serverFile": req.Data.ServerFile,
+				"methodName": req.Data.MethodName,
+				"data":       req.Data.Data,
+			}
+		} else {
+			targetApiPath = "/api/" + req.Data.MethodName
+			requestBody = req.Data.Data
+		}
+
+		result, err := app.Request(context.TODO(), "POST", targetApiPath, requestBody)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,

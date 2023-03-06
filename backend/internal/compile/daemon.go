@@ -389,7 +389,7 @@ func (app *CompiledApp) StopServer() error {
 	return nil
 }
 
-func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body map[string]any) (any, error) {
+func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) (any, error) {
 	if app.httpClient == nil {
 		app.httpClient = &http.Client{}
 	}
