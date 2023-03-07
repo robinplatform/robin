@@ -1,13 +1,13 @@
 import { useRouter } from 'next/router';
-import { AppToolbar } from '../../../components/AppToolbar';
-import { Settings } from '../../../components/Settings';
+import { AppToolbar } from '../../components/AppToolbar';
+import { Settings } from '../../components/Settings';
 import { z } from 'zod';
-import { useRpcMutation, useRpcQuery } from '../../../hooks/useRpcQuery';
-import { Button } from '../../../components/Button';
+import { useRpcMutation, useRpcQuery } from '../../hooks/useRpcQuery';
+import { Button } from '../../components/Button';
 import { ArrowLeftIcon } from '@primer/octicons-react';
 import { toast } from 'react-hot-toast';
-import { Alert } from '../../../components/Alert';
-import { Spinner } from '../../../components/Spinner';
+import { Alert } from '../../components/Alert';
+import { Spinner } from '../../components/Spinner';
 import { useQueryClient } from '@tanstack/react-query';
 import Head from 'next/head';
 
