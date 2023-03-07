@@ -29,6 +29,8 @@ export default function Page() {
 			return;
 		}
 
+		// TODO: Weird behavior with history on refresh, because the iframe history gets replaced
+		// with the new route, but the iframe history seems to get deleted upon refresh.
 		Router.replace('/app/' + id + route, undefined, { shallow: true });
 	}, [id, route]);
 

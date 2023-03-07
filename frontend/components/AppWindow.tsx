@@ -56,15 +56,6 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
-const Iframe = React.memo(
-	React.forwardRef<HTMLIFrameElement, {}>(({}, ref) => (
-		<iframe
-			ref={ref}
-			style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
-		/>
-	)),
-);
-
 // NOTE: Changes to the route here will create an additional history entry.
 function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
@@ -208,9 +199,9 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 						}
 					/>
 
-					<Iframe
+					<iframe
 						ref={iframeRef}
-						// style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
+						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>
 			)}
