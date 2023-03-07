@@ -47,6 +47,10 @@ func (projectConfig *RobinProjectConfig) LoadRobinProjectConfig(projectPath stri
 		return fmt.Errorf("failed to parse robin.json: %s", err)
 	}
 
+	if projectConfig.Name == "" {
+		return fmt.Errorf("robin.json is missing the 'name' field")
+	}
+
 	return nil
 }
 
