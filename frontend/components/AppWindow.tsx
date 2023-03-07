@@ -56,6 +56,7 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
+// NOTE: Changes to the route here will create an additional history entry.
 function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
@@ -65,26 +66,15 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 		mostCurrentRouteRef.current = route;
 	}, [route]);
 
-	// NOTE: We don't want to re-create the iframe every time the route changes.
-	React.useEffect(() => {
-		if (!iframeRef.current) {
-			return;
-		}
-
-		const target = `http://localhost:9010/api/app-resources/${id}/base${route}`;
-		if (!iframeRef.current.src) {
-			iframeRef.current.src = target;
-		} else if (iframeRef.current.src !== target) {
-			iframeRef.current.contentWindow?.postMessage({
-				type: 'robinRouteChange',
-				route: target,
-			});
-		}
-	}, [route]);
-
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
 			try {
+				if (message.data.source !== 'robin-platform') {
+					// e.g. react-dev-tools uses iframe messages, so we shouldn't
+					// handle them.
+					return;
+				}
+
 				switch (message.data.type) {
 					case 'locationUpdate': {
 						const location = message.data.location;
@@ -92,7 +82,6 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 							break;
 						}
 
-						console.log('locationUpdate', location);
 						const url = new URL(location);
 						const newRoute = url.pathname.substring(
 							`/api/app-resources/${id}/base`.length,
@@ -129,9 +118,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 					`Error when receiving app message: ${String(e)}\ndata:\n${
 						message.data
 					}`,
-					{
-						id: 'unknown-message-type',
-					},
+					{ id: 'unknown-message-type' },
 				);
 			}
 		};
@@ -141,8 +128,6 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	}, [setTitle]);
 
 	React.useEffect(() => {
-		setTitle(id);
-
 		if (!iframeRef.current) return;
 		const iframe = iframeRef.current;
 
@@ -195,6 +180,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
+						src={`http://localhost:9010/api/app-resources/${id}/base${route}`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>
@@ -206,5 +192,11 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 export function AppWindow(props: AppWindowProps) {
 	const numRestarts = useIsMutating({ mutationKey: ['RestartApp'] });
 
-	return <AppWindowContent key={String(props.id) + numRestarts} {...props} />;
+	return (
+		<AppWindowContent
+			key={String(props.id) + numRestarts}
+			{...props}
+			route={!!props.route ? props.route : '/'}
+		/>
+	);
 }

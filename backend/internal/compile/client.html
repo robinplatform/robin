@@ -25,6 +25,7 @@
 			window.addEventListener('error', (event) => {
 				window.parent.postMessage(
 					{
+						source: 'robin-platform',
 						type: 'appError',
 						error: String(event.error?.stack || event.error),
 					},
@@ -40,11 +41,12 @@
 					if (lastLocation !== window.location.href) {
 						console.log(
 							'sending location update',
-							lastLocation,
 							window.location.href,
+							lastLocation,
 						);
 						window.parent.postMessage(
 							{
+								source: 'robin-platform',
 								type: 'locationUpdate',
 								location: window.location.href,
 							},
@@ -56,6 +58,7 @@
 					if (lastTitle !== document.title) {
 						window.parent.postMessage(
 							{
+								source: 'robin-platform',
 								type: 'titleUpdate',
 								title: document.title,
 							},
@@ -63,14 +66,7 @@
 						);
 						lastReportedTitle = document.title;
 					}
-				}, 500);
-
-				window.addEventListener('message', (message) => {
-					if (message.data.type === 'robinRouteChange') {
-						lastLocation = message.data.route;
-						window.history.pushState(null, '', message.data.route);
-					}
-				});
+				}, 250);
 			})();
 		</script>
 		<script>
