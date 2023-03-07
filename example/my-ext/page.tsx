@@ -18,7 +18,12 @@ function Page() {
 		<div>
 			<div>
 				LOCATION: {String(window.location.href)}
-				<a href="./blahblah">My Link</a>
+				<a href="./blahblah">Link</a>
+				<button
+					onClick={() => window.history.pushState(null, '', './blahblah2')}
+				>
+					History Change
+				</button>
 			</div>
 
 			<pre
