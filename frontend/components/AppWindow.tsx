@@ -16,7 +16,7 @@ type AppWindowProps = {
 	id: string;
 	setTitle: React.Dispatch<React.SetStateAction<string>>;
 	route: string;
-	setRoute: React.Dispatch<React.SetStateAction<string>>;
+	setRoute: (route: string) => void;
 };
 
 const RestartAppButton: React.FC = () => {
@@ -96,7 +96,9 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 					}
 
 					case 'titleUpdate':
-						setTitle((title) => String(message.data.title || title));
+						if (message.data.title) {
+							setTitle(message.data.title);
+						}
 						break;
 
 					case 'appError':
@@ -125,7 +127,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 		window.addEventListener('message', onMessage);
 		return () => window.removeEventListener('message', onMessage);
-	}, [setTitle]);
+	}, [setTitle, setRoute]);
 
 	React.useEffect(() => {
 		if (!iframeRef.current) return;

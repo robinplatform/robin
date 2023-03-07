@@ -12,26 +12,34 @@ export default function Page() {
 	// 	: null;
 
 	const [title, setTitle] = React.useState<string>(id ?? 'Loading');
-	const [route, setRoute] = React.useState<string>('/');
+	const [route, setRoute] = React.useState<string>('');
+
+	React.useEffect(() => {
+		if (!Router.isReady) {
+			return;
+		}
+
+		const route = Router.asPath.substring('/app/'.length + (id ?? '').length);
+		if (route === '') {
+			setRoute('/');
+		} else {
+			setRoute(route);
+		}
+	}, [router.isReady]);
 
 	// const urlRoute = router.isReady
 	// 	? router.asPath.substring('/app/'.length + (id ?? '').length)
 	// 	: null;
 
 	// const routeValueReady = React.useRef<boolean>(false);
-	/*
-	React.useEffect(() => {
-		if (id === null) {
-			return;
-		}
 
-		if (!routeValueReady.current) {
-			routeValueReady.current = true;
+	React.useEffect(() => {
+		if (id === null || route === '') {
 			return;
 		}
 
 		console.log(
-			'Changing route:',
+			'route changed, changing parent route:',
 			route,
 			Router.asPath.substring('/app/'.length + (id ?? '').length),
 		);
@@ -39,9 +47,8 @@ export default function Page() {
 			return;
 		}
 
-		Router.push('/app/' + id + route, undefined, { shallow: true });
+		Router.replace('/app/' + id + route, undefined, { shallow: true });
 	}, [id, route]);
-	*/
 
 	return (
 		<div className={'full col'}>
@@ -49,7 +56,7 @@ export default function Page() {
 				<title>{`${title || 'Error'} | Robin`}</title>
 			</Head>
 
-			{/* <div>{router.asPath}</div> */}
+			<div>{router.asPath}</div>
 			<input
 				type="text"
 				value={route}
@@ -59,7 +66,7 @@ export default function Page() {
 				}}
 			/>
 
-			{id && (
+			{id && !!route && (
 				<AppWindow
 					id={String(id)}
 					setTitle={setTitle}
