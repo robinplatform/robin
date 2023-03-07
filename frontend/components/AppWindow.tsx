@@ -15,6 +15,8 @@ import styles from './AppToolbar.module.scss';
 type AppWindowProps = {
 	id: string;
 	setTitle: React.Dispatch<React.SetStateAction<string>>;
+	route: string;
+	setRoute: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const RestartAppButton: React.FC = () => {
@@ -54,7 +56,7 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
-function AppWindowContent({ id, setTitle }: AppWindowProps) {
+function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	const router = useRouter();
 
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
@@ -72,16 +74,16 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 			try {
 				switch (message.data.type) {
 					case 'locationUpdate': {
-						if (!message.data.location) {
+						const location = message.data.location;
+						if (!location || typeof location !== 'string') {
 							break;
 						}
 
-						// const location: Location = {
-						// 	pathname: window.location.pathname,
-						// 	search: .search,
-						// };
-
-						// router.push(location, undefined, { shallow: true });
+						console.log('locationUpdate', location);
+						const url = new URL(location);
+						setRoute(
+							url.pathname.substring(`/api/app-resources/${id}/base`.length),
+						);
 						break;
 					}
 
@@ -94,9 +96,14 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 						break;
 
 					default:
-						toast.error(`Unknown app message type: ${message.data.type}`, {
-							id: 'unknown-message-type',
-						});
+						// toast.error(`Unknown app message type: ${message.data.type}`, {
+						// 	id: 'unknown-message-type',
+						// });
+						console.warn(
+							`Unknown app message type on message: ${JSON.stringify(
+								message.data,
+							)}`,
+						);
 				}
 			} catch (e: any) {
 				toast.error(
@@ -169,7 +176,7 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
-						src={`http://localhost:9010/api/app-resources/${id}/base${subRoute}`}
+						src={`http://localhost:9010/api/app-resources/${id}/base${route}`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>

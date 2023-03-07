@@ -23,18 +23,32 @@ function Page() {
 	);
 
 	const error = errFetchingSettings || errFetchingFile;
+	console.log('LOCATION:', window.location);
 
 	return (
-		<pre
-			style={{
-				margin: '1rem',
-				padding: '1rem',
-				background: '#e3e3e3',
-				borderRadius: 'var(--robin-border-radius)',
-			}}
-		>
-			<code>{error ? String(error) : data ? String(data) : 'Loading ...'}</code>
-		</pre>
+		<div>
+			<div>
+				LOCATION: {String(window.location.href)}
+				<a href="./blahblah">My Link</a>
+			</div>
+
+			<pre
+				style={{
+					margin: '1rem',
+					padding: '1rem',
+					background: '#e3e3e3',
+					borderRadius: 'var(--robin-border-radius)',
+				}}
+			>
+				<code>
+					{error
+						? JSON.stringify(error)
+						: data
+						? JSON.stringify(settings, undefined, 2)
+						: 'Loading ...'}
+				</code>
+			</pre>
+		</div>
 	);
 }
 

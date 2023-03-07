@@ -115,7 +115,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 	}
 	app.Html = htmlOutput.String()
 
-	if compiler.appCache != nil {
+	// TODO: add something to invalidate the cache if the app's source is changed, instead of just disabling cache
+	if compiler.appCache != nil && appConfig.ConfigPath.Scheme != "file" {
 		compiler.appCache[id] = app
 	}
 

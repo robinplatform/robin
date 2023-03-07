@@ -31,6 +31,35 @@
 					'*',
 				);
 			});
+
+			(() => {
+				let lastLocation = null;
+				let lastTitle = null;
+
+				setInterval(() => {
+					if (lastLocation !== window.location.href) {
+						window.parent.postMessage(
+							{
+								type: 'locationUpdate',
+								location: window.location.href,
+							},
+							'*',
+						);
+						lastLocation = window.location.href;
+					}
+
+					if (lastTitle !== document.title) {
+						window.parent.postMessage(
+							{
+								type: 'titleUpdate',
+								title: document.title,
+							},
+							'*',
+						);
+						lastReportedTitle = document.title;
+					}
+				}, 500);
+			})();
 		</script>
 		<script>
 			{{.ScriptSource}}
