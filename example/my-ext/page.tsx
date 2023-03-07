@@ -2,7 +2,6 @@ import { getAppSettings } from '@robinplatform/toolkit';
 import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
@@ -12,18 +11,8 @@ function Page() {
 		getAppSettings,
 		z.object({ filename: z.string().optional() }),
 	);
-	const { data, error: errFetchingFile } = useRpcQuery(
-		getSelfSource,
-		{
-			filename: String(settings?.filename ?? './package.json'),
-		},
-		{
-			enabled: !!settings,
-		},
-	);
 
-	const error = errFetchingSettings || errFetchingFile;
-	console.log('LOCATION:', window.location);
+	const error = errFetchingSettings;
 
 	return (
 		<div>
@@ -43,7 +32,7 @@ function Page() {
 				<code>
 					{error
 						? JSON.stringify(error)
-						: data
+						: settings
 						? JSON.stringify(settings, undefined, 2)
 						: 'Loading ...'}
 				</code>

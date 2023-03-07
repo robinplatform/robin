@@ -57,17 +57,13 @@ const RestartAppButton: React.FC = () => {
 };
 
 function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
-	const router = useRouter();
-
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
-	const subRoute = React.useMemo(
-		() =>
-			router.isReady
-				? router.asPath.substring('/app/'.length + id.length)
-				: null,
-		[router.isReady, router.asPath, id],
-	);
+	const mostCurrentRouteRef = React.useRef<string>(route);
+
+	React.useEffect(() => {
+		mostCurrentRouteRef.current = route;
+	}, [route]);
 
 	// NOTE: We don't want to re-create the iframe every time the route changes.
 	React.useEffect(() => {
@@ -76,9 +72,13 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 		}
 
 		const target = `http://localhost:9010/api/app-resources/${id}/base${route}`;
-
-		if (iframeRef.current.src !== target) {
+		if (!iframeRef.current.src) {
 			iframeRef.current.src = target;
+		} else if (iframeRef.current.src !== target) {
+			iframeRef.current.contentWindow?.postMessage({
+				type: 'robinRouteChange',
+				route: target,
+			});
 		}
 	}, [route]);
 
@@ -94,9 +94,15 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 						console.log('locationUpdate', location);
 						const url = new URL(location);
-						setRoute(
-							url.pathname.substring(`/api/app-resources/${id}/base`.length),
+						const newRoute = url.pathname.substring(
+							`/api/app-resources/${id}/base`.length,
 						);
+
+						const currentRoute = mostCurrentRouteRef.current;
+						if (newRoute !== currentRoute) {
+							console.log('calling setRoute', newRoute, currentRoute);
+							setRoute(newRoute);
+						}
 						break;
 					}
 
@@ -132,7 +138,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 		window.addEventListener('message', onMessage);
 		return () => window.removeEventListener('message', onMessage);
-	}, [router, setTitle]);
+	}, [setTitle]);
 
 	React.useEffect(() => {
 		setTitle(id);
@@ -189,7 +195,6 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
-						// src={`http://localhost:9010/api/app-resources/${id}/base`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>

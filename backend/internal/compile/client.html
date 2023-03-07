@@ -38,6 +38,11 @@
 
 				setInterval(() => {
 					if (lastLocation !== window.location.href) {
+						console.log(
+							'sending location update',
+							lastLocation,
+							window.location.href,
+						);
 						window.parent.postMessage(
 							{
 								type: 'locationUpdate',
@@ -59,6 +64,13 @@
 						lastReportedTitle = document.title;
 					}
 				}, 500);
+
+				window.addEventListener('message', (message) => {
+					if (message.data.type === 'robinRouteChange') {
+						lastLocation = message.data.route;
+						window.history.pushState(null, '', message.data.route);
+					}
+				});
 			})();
 		</script>
 		<script>
