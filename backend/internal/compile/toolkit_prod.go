@@ -18,7 +18,7 @@ func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
 }
 
 //go:generate rm -rf toolkit
-//go:generate rsync -rv --exclude=node_modules ../../../toolkit toolkit
+//go:generate rsync -rv --exclude=node_modules --exclude=robin.servers.json ../../../toolkit toolkit
 //go:embed all:toolkit
 var embedToolkitFS embed.FS
 var toolkitFS fs.FS = toolkitFsWrapper(embedToolkitFS)
