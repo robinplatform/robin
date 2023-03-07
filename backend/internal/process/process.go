@@ -290,7 +290,9 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	go entry.waitForExit(entry.Pid)
 
 	logger.Debug("Process created", log.Ctx{
-		"process": entry,
+		"id":       entry.Id,
+		"pid":      entry.Pid,
+		"logsPath": processLogsPath,
 	})
 
 	if err := w.Insert(entry); err != nil {
