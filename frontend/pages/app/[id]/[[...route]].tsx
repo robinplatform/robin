@@ -6,16 +6,13 @@ import { AppWindow } from '../../../components/AppWindow';
 export default function Page() {
 	const router = useRouter();
 
-	const id = 'my-ext';
-	// router.isReady && typeof router.query.id === 'string'
-	// 	? router.query.id
-	// 	: null;
+	const id = typeof router.query.id === 'string' ? router.query.id : null;
 
 	const [title, setTitle] = React.useState<string>(id ?? 'Loading');
 	const [route, setRoute] = React.useState<string>('');
 
 	React.useEffect(() => {
-		if (!Router.isReady) {
+		if (!Router.isReady || id === null) {
 			return;
 		}
 
@@ -25,13 +22,7 @@ export default function Page() {
 		} else {
 			setRoute(route);
 		}
-	}, [router.isReady]);
-
-	// const urlRoute = router.isReady
-	// 	? router.asPath.substring('/app/'.length + (id ?? '').length)
-	// 	: null;
-
-	// const routeValueReady = React.useRef<boolean>(false);
+	}, [id, router.isReady]);
 
 	React.useEffect(() => {
 		if (id === null || route === '') {
