@@ -39,11 +39,6 @@
 
 				setInterval(() => {
 					if (lastLocation !== window.location.href) {
-						console.log(
-							'sending location update',
-							window.location.href,
-							lastLocation,
-						);
 						window.parent.postMessage(
 							{
 								source: 'robin-platform',

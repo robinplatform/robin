@@ -89,7 +89,6 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 						const currentRoute = mostCurrentRouteRef.current;
 						if (newRoute !== currentRoute) {
-							console.log('calling setRoute', newRoute, currentRoute);
 							setRoute(newRoute);
 						}
 						break;

@@ -17,11 +17,7 @@ export default function Page() {
 		}
 
 		const route = Router.asPath.substring('/app/'.length + (id ?? '').length);
-		if (route === '') {
-			setRoute('/');
-		} else {
-			setRoute(route);
-		}
+		setRoute(route === '' ? '/' : route);
 	}, [id, router.isReady]);
 
 	React.useEffect(() => {
@@ -29,11 +25,6 @@ export default function Page() {
 			return;
 		}
 
-		console.log(
-			'route changed, changing parent route:',
-			route,
-			Router.asPath.substring('/app/'.length + (id ?? '').length),
-		);
 		if (Router.asPath.substring('/app/'.length + (id ?? '').length) === route) {
 			return;
 		}
