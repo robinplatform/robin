@@ -7,6 +7,7 @@ import (
 
 	"robinplatform.dev/internal/compile"
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/project"
 	"robinplatform.dev/internal/server"
 	"robinplatform.dev/internal/upgrade"
 )
@@ -46,6 +47,11 @@ func (cmd *StartCommand) Parse(flagSet *flag.FlagSet, args []string) error {
 }
 
 func (cmd *StartCommand) Run() error {
+	_, err := project.LoadFromEnv()
+	if err != nil {
+		return err
+	}
+
 	releaseChannel := config.GetReleaseChannel()
 	if runtime.GOOS != "windows" && releaseChannel != config.ReleaseChannelDev {
 		go upgrade.WatchForUpdates()

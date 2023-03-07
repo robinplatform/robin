@@ -1,3 +1,4 @@
 {
+	"name": "robinplatform",
 	"apps": ["../robin-server-manager", "./example/my-ext"]
 }
