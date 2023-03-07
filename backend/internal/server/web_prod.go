@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+	"robinplatform.dev/internal/log"
 )
 
 //go:generate rm -rf web
@@ -32,13 +33,27 @@ func (server *Server) loadRoutes() {
 			return err
 		}
 		if !entry.IsDir() {
-			route := strings.TrimPrefix(assetPath, "web")
-			if strings.HasSuffix(assetPath, ".html") {
-				route = regexp.MustCompile(`\[([^\]]+)\]`).ReplaceAllString(route, ":$1")
-				route = strings.TrimSuffix(route, ".html")
+			routes := []string{strings.TrimPrefix(assetPath, "web")}
 
-				if strings.HasSuffix(route, "/index") {
-					route = strings.TrimSuffix(route, "index")
+			if strings.HasSuffix(assetPath, ".html") {
+				wildcardStartIndex := strings.Index(routes[0], "[[...")
+				if wildcardStartIndex != -1 {
+					wildcardName := routes[0][wildcardStartIndex+5:]
+					wildcardName = wildcardName[:len(wildcardName)-7]
+
+					routes = []string{
+						routes[0][:wildcardStartIndex-1],
+						routes[0][:wildcardStartIndex] + "*" + wildcardName,
+					}
+				}
+
+				for idx := range routes {
+					routes[idx] = regexp.MustCompile(`\[([^\]]+)\]`).ReplaceAllString(routes[idx], ":$1")
+					routes[idx] = strings.TrimSuffix(routes[idx], ".html")
+
+					if strings.HasSuffix(routes[0], "/index") {
+						routes[idx] = strings.TrimSuffix(routes[idx], "index")
+					}
 				}
 			}
 
@@ -47,20 +62,27 @@ func (server *Server) loadRoutes() {
 				mimetype = "text/html"
 			}
 
-			router.GET(route, func(res http.ResponseWriter, req *http.Request, _ httprouter.Params) {
-				file, err := nextBuild.Open(assetPath)
-				if os.IsNotExist(err) {
-					// TODO: serve 404 page
-					res.WriteHeader(404)
-					res.Write([]byte("404 - Not Found"))
-				} else if err != nil {
-					res.WriteHeader(500)
-					res.Write([]byte(err.Error()))
-				} else {
-					res.Header().Set("Content-Type", mimetype)
-					io.Copy(res, file)
-				}
-			})
+			for _, route := range routes {
+				logger.Debug("Registering route", log.Ctx{
+					"route": route,
+					"path":  assetPath,
+				})
+
+				router.GET(route, func(res http.ResponseWriter, req *http.Request, _ httprouter.Params) {
+					file, err := nextBuild.Open(assetPath)
+					if os.IsNotExist(err) {
+						// TODO: serve 404 page
+						res.WriteHeader(404)
+						res.Write([]byte("404 - Not Found"))
+					} else if err != nil {
+						res.WriteHeader(500)
+						res.Write([]byte(err.Error()))
+					} else {
+						res.Header().Set("Content-Type", mimetype)
+						io.Copy(res, file)
+					}
+				})
+			}
 		}
 		return nil
 	})
