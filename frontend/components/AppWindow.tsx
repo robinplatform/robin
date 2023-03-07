@@ -81,7 +81,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 			console.log('switching to', target, 'from', iframeRef.current.src);
 			iframeRef.current.src = target;
 		}
-	}, [route]);
+	}, [id, route]);
 
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
@@ -146,7 +146,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 		window.addEventListener('message', onMessage);
 		return () => window.removeEventListener('message', onMessage);
-	}, [setTitle, setRoute]);
+	}, [id, setTitle, setRoute]);
 
 	React.useEffect(() => {
 		if (!iframeRef.current) return;
