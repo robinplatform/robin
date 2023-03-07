@@ -25,12 +25,44 @@
 			window.addEventListener('error', (event) => {
 				window.parent.postMessage(
 					{
+						source: 'robin-platform',
 						type: 'appError',
 						error: String(event.error?.stack || event.error),
 					},
 					'*',
 				);
 			});
+
+			(() => {
+				let lastLocation = null;
+				let lastTitle = null;
+
+				setInterval(() => {
+					if (lastLocation !== window.location.href) {
+						window.parent.postMessage(
+							{
+								source: 'robin-platform',
+								type: 'locationUpdate',
+								location: window.location.href,
+							},
+							'*',
+						);
+						lastLocation = window.location.href;
+					}
+
+					if (lastTitle !== document.title) {
+						window.parent.postMessage(
+							{
+								source: 'robin-platform',
+								type: 'titleUpdate',
+								title: document.title,
+							},
+							'*',
+						);
+						lastReportedTitle = document.title;
+					}
+				}, 250);
+			})();
 		</script>
 		<script>
 			{{.ScriptSource}}

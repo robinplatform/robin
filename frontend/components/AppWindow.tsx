@@ -15,6 +15,8 @@ import styles from './AppToolbar.module.scss';
 type AppWindowProps = {
 	id: string;
 	setTitle: React.Dispatch<React.SetStateAction<string>>;
+	route: string;
+	setRoute: (route: string) => void;
 };
 
 const RestartAppButton: React.FC = () => {
@@ -54,50 +56,99 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
-function AppWindowContent({ id, setTitle }: AppWindowProps) {
-	const router = useRouter();
-
+// NOTE: Changes to the route here will create an additional history entry.
+function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
-	const subRoute = React.useMemo(
-		() =>
-			router.isReady
-				? router.asPath.substring('/app/'.length + id.length)
-				: null,
-		[router.isReady, router.asPath, id],
-	);
+	const mostCurrentRouteRef = React.useRef<string>(route);
+	const mostCurrentLocationUpdateRef = React.useRef<string | null>(null);
+
+	React.useEffect(() => {
+		mostCurrentRouteRef.current = route;
+	}, [route]);
+
+	React.useEffect(() => {
+		if (!iframeRef.current) {
+			return;
+		}
+
+		const target = `http://localhost:9010/api/app-resources/${id}/base${route}`;
+		if (target === mostCurrentLocationUpdateRef.current) {
+			return;
+		}
+
+		if (iframeRef.current.src !== target) {
+			console.log('switching to', target, 'from', iframeRef.current.src);
+			iframeRef.current.src = target;
+		}
+	}, [id, route]);
 
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
 			try {
+				if (message.data.source !== 'robin-platform') {
+					// e.g. react-dev-tools uses iframe messages, so we shouldn't
+					// handle them.
+					return;
+				}
+
 				switch (message.data.type) {
 					case 'locationUpdate': {
-						const location = {
-							pathname: window.location.pathname,
-							search: new URL(message.data.location).search,
-						};
-						router.push(location, undefined, { shallow: true });
+						const location = message.data.location;
+						if (!location || typeof location !== 'string') {
+							break;
+						}
+
+						console.log('received location update', location);
+
+						const url = new URL(location);
+						const newRoute = url.pathname.substring(
+							`/api/app-resources/${id}/base`.length,
+						);
+
+						const currentRoute = mostCurrentRouteRef.current;
+						if (newRoute !== currentRoute) {
+							setRoute(newRoute);
+							mostCurrentLocationUpdateRef.current = url.href;
+						}
 						break;
 					}
 
 					case 'titleUpdate':
-						setTitle((title) => message.data.title || title);
+						if (message.data.title) {
+							setTitle(message.data.title);
+						}
 						break;
 
 					case 'appError':
 						setError(message.data.error);
 						break;
+
+					default:
+						// toast.error(`Unknown app message type: ${message.data.type}`, {
+						// 	id: 'unknown-message-type',
+						// });
+						console.warn(
+							`Unknown app message type on message: ${JSON.stringify(
+								message.data,
+							)}`,
+						);
 				}
-			} catch {}
+			} catch (e: any) {
+				toast.error(
+					`Error when receiving app message: ${String(e)}\ndata:\n${
+						message.data
+					}`,
+					{ id: 'unknown-message-type' },
+				);
+			}
 		};
 
 		window.addEventListener('message', onMessage);
 		return () => window.removeEventListener('message', onMessage);
-	}, [router, setTitle]);
+	}, [id, setTitle, setRoute]);
 
 	React.useEffect(() => {
-		setTitle(id);
-
 		if (!iframeRef.current) return;
 		const iframe = iframeRef.current;
 
@@ -150,7 +201,6 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
-						src={`http://localhost:9010/api/app-resources/${id}/base${subRoute}`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>
@@ -162,5 +212,11 @@ function AppWindowContent({ id, setTitle }: AppWindowProps) {
 export function AppWindow(props: AppWindowProps) {
 	const numRestarts = useIsMutating({ mutationKey: ['RestartApp'] });
 
-	return <AppWindowContent key={String(props.id) + numRestarts} {...props} />;
+	return (
+		<AppWindowContent
+			key={String(props.id) + numRestarts}
+			{...props}
+			route={!!props.route ? props.route : '/'}
+		/>
+	);
 }

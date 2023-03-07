@@ -2,7 +2,6 @@ import { getAppSettings } from '@robinplatform/toolkit';
 import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
@@ -12,29 +11,38 @@ function Page() {
 		getAppSettings,
 		z.object({ filename: z.string().optional() }),
 	);
-	const { data, error: errFetchingFile } = useRpcQuery(
-		getSelfSource,
-		{
-			filename: String(settings?.filename ?? './package.json'),
-		},
-		{
-			enabled: !!settings,
-		},
-	);
 
-	const error = errFetchingSettings || errFetchingFile;
+	const error = errFetchingSettings;
 
 	return (
-		<pre
-			style={{
-				margin: '1rem',
-				padding: '1rem',
-				background: '#e3e3e3',
-				borderRadius: 'var(--robin-border-radius)',
-			}}
-		>
-			<code>{error ? String(error) : data ? String(data) : 'Loading ...'}</code>
-		</pre>
+		<div>
+			<div>
+				LOCATION: {String(window.location.href)}
+				<a href="./blahblah">Link</a>
+				<button
+					onClick={() => window.history.pushState(null, '', './blahblah2')}
+				>
+					History Change
+				</button>
+			</div>
+
+			<pre
+				style={{
+					margin: '1rem',
+					padding: '1rem',
+					background: '#e3e3e3',
+					borderRadius: 'var(--robin-border-radius)',
+				}}
+			>
+				<code>
+					{error
+						? JSON.stringify(error)
+						: settings
+						? JSON.stringify(settings, undefined, 2)
+						: 'Loading ...'}
+				</code>
+			</pre>
+		</div>
 	);
 }
 
