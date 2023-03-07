@@ -59,7 +59,7 @@ var RunAppMethod = InternalRpcMethod[RunAppMethodInput, any]{
 			}
 		}
 
-		app, err := req.Server.compiler.GetApp(req.Data.AppId)
+		app, _, err := req.Server.compiler.GetApp(req.Data.AppId)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -123,7 +123,7 @@ var RestartApp = InternalRpcMethod[RestartAppInput, struct{}]{
 		// Reset the app cache, since the user is trying this option likely due to frustration
 		req.Server.compiler.ResetAppCache(req.Data.AppId)
 
-		app, err := req.Server.compiler.GetApp(req.Data.AppId)
+		app, _, err := req.Server.compiler.GetApp(req.Data.AppId)
 		if err != nil {
 			return struct{}{}, &HttpError{
 				StatusCode: http.StatusInternalServerError,
