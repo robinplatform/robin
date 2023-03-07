@@ -69,6 +69,19 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 		[router.isReady, router.asPath, id],
 	);
 
+	// NOTE: We don't want to re-create the iframe every time the route changes.
+	React.useEffect(() => {
+		if (!iframeRef.current) {
+			return;
+		}
+
+		const target = `http://localhost:9010/api/app-resources/${id}/base${route}`;
+
+		if (iframeRef.current.src !== target) {
+			iframeRef.current.src = target;
+		}
+	}, [route]);
+
 	React.useEffect(() => {
 		const onMessage = (message: MessageEvent) => {
 			try {
@@ -176,7 +189,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 
 					<iframe
 						ref={iframeRef}
-						src={`http://localhost:9010/api/app-resources/${id}/base${route}`}
+						// src={`http://localhost:9010/api/app-resources/${id}/base`}
 						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>

@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import { useRouter } from 'next/router';
+import Router, { useRouter } from 'next/router';
 import React from 'react';
 import { AppWindow } from '../../../components/AppWindow';
 
@@ -16,7 +16,7 @@ export default function Page() {
 
 	const urlRoute = router.isReady
 		? router.asPath.substring('/app/'.length + (id ?? '').length)
-		: '';
+		: null;
 
 	console.log('route:', route, router.asPath);
 
@@ -25,8 +25,8 @@ export default function Page() {
 			return;
 		}
 
-		router.push('/app/' + id + route, undefined, { shallow: true });
-	}, [route]);
+		Router.push('/app/' + id + route, undefined, { shallow: true });
+	}, [id, route]);
 
 	return (
 		<div className={'full col'}>
@@ -34,7 +34,7 @@ export default function Page() {
 				<title>{`${title || 'Error'} | Robin`}</title>
 			</Head>
 
-			{id && (
+			{id && urlRoute !== null && (
 				<AppWindow
 					id={String(id)}
 					setTitle={setTitle}
