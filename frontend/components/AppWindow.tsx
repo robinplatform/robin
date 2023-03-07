@@ -56,14 +56,40 @@ const RestartAppButton: React.FC = () => {
 	);
 };
 
+const Iframe = React.memo(
+	React.forwardRef<HTMLIFrameElement, {}>(({}, ref) => (
+		<iframe
+			ref={ref}
+			style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
+		/>
+	)),
+);
+
 // NOTE: Changes to the route here will create an additional history entry.
 function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 	const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
 	const mostCurrentRouteRef = React.useRef<string>(route);
+	const mostCurrentLocationUpdateRef = React.useRef<string | null>(null);
 
 	React.useEffect(() => {
 		mostCurrentRouteRef.current = route;
+	}, [route]);
+
+	React.useEffect(() => {
+		if (!iframeRef.current) {
+			return;
+		}
+
+		const target = `http://localhost:9010/api/app-resources/${id}/base${route}`;
+		if (target === mostCurrentLocationUpdateRef.current) {
+			return;
+		}
+
+		if (iframeRef.current.src !== target) {
+			console.log('switching to', target, 'from', iframeRef.current.src);
+			iframeRef.current.src = target;
+		}
 	}, [route]);
 
 	React.useEffect(() => {
@@ -82,6 +108,8 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 							break;
 						}
 
+						console.log('received location update', location);
+
 						const url = new URL(location);
 						const newRoute = url.pathname.substring(
 							`/api/app-resources/${id}/base`.length,
@@ -90,6 +118,7 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 						const currentRoute = mostCurrentRouteRef.current;
 						if (newRoute !== currentRoute) {
 							setRoute(newRoute);
+							mostCurrentLocationUpdateRef.current = url.href;
 						}
 						break;
 					}
@@ -179,10 +208,9 @@ function AppWindowContent({ id, setTitle, route, setRoute }: AppWindowProps) {
 						}
 					/>
 
-					<iframe
+					<Iframe
 						ref={iframeRef}
-						src={`http://localhost:9010/api/app-resources/${id}/base${route}`}
-						style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
+						// style={{ border: '0', flexGrow: 1, width: '100%', height: '100%' }}
 					/>
 				</>
 			)}
