@@ -57,7 +57,7 @@ export function useRpcQuery<Input, Output>(
 	});
 }
 
-export function useRemoteAppMethod<Output>(
+function useRemoteAppMethod<Output>(
 	methodName: string,
 	data: object,
 	{
@@ -69,4 +69,32 @@ export function useRemoteAppMethod<Output>(
 	> & { resultType: z.Schema<Output> },
 ) {
 	return useRpcQuery(runAppMethod, { methodName, data, resultType }, overrides);
+}
+
+export function createReactRpcBridge<
+	Shape extends Record<
+		string,
+		{ input: z.Schema<unknown>; output: z.Schema<unknown> }
+	>,
+>(bridge: Shape) {
+	return {
+		useRpcQuery: (
+			methodName: string & keyof Shape,
+			data: z.infer<Shape[keyof Shape]['input']>,
+			overrides?: Omit<
+				UseQueryOptions<
+					z.infer<Shape[keyof Shape]['output']>,
+					unknown,
+					z.infer<Shape[keyof Shape]['output']>,
+					unknown[]
+				>,
+				'queryKey' | 'queryFn'
+			>,
+		) => {
+			return useRemoteAppMethod(methodName, data as unknown as object, {
+				resultType: bridge[methodName].output,
+				...overrides,
+			});
+		},
+	};
 }

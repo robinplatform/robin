@@ -34,7 +34,7 @@ var (
 type Compiler struct {
 	ServerPort int
 
-	mux      sync.Mutex
+	mux      sync.RWMutex
 	appCache map[string]CompiledApp
 }
 
@@ -42,6 +42,7 @@ type CompiledApp struct {
 	httpClient       *http.Client
 	compiler         *Compiler
 	keepAliveRunning *int64
+	builderMux       *sync.RWMutex
 
 	Id string
 
@@ -57,9 +58,6 @@ type CompiledApp struct {
 	// ServerJs holds the compiled JS bundle for the server-side app
 	ServerJs string
 
-	// Cached is set to true if the app was loaded from the cache
-	Cached bool
-
 	// serverExports maps absolute paths of server files to the functions they export
 	serverExports map[string][]string
 }
@@ -70,12 +68,12 @@ func (compiler *Compiler) ResetAppCache(id string) {
 	compiler.mux.Unlock()
 }
 
-func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
+func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
 	if app, found := compiler.appCache[id]; found {
-		return app, nil
+		return app, true, nil
 	}
 
 	if compiler.appCache == nil && CacheEnabled {
@@ -84,44 +82,93 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, error) {
 
 	appConfig, err := project.LoadRobinAppById(id)
 	if err != nil {
-		return CompiledApp{}, fmt.Errorf("failed to load app config: %w", err)
+		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
 	}
 
 	app := CompiledApp{
 		compiler:         compiler,
 		keepAliveRunning: new(int64),
+		builderMux:       &sync.RWMutex{},
 
-		Id:     id,
-		Cached: true,
+		Id: id,
 	}
-
-	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
-		go app.keepAlive()
-	}
-
-	if err := app.buildClientJs(); err != nil {
-		return CompiledApp{}, err
-	}
-	if err := app.buildServerBundle(); err != nil {
-		return CompiledApp{}, err
-	}
-
-	htmlOutput := bytes.NewBuffer(nil)
-	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
-		"AppConfig":    appConfig,
-		"ScriptSource": app.ClientJs,
-	}); err != nil {
-		return CompiledApp{}, fmt.Errorf("failed to render client html: %w", err)
-	}
-	app.Html = htmlOutput.String()
 
 	// TODO: add something to invalidate the cache if the app's source is changed, instead of just disabling cache
 	if compiler.appCache != nil && appConfig.ConfigPath.Scheme != "file" {
 		compiler.appCache[id] = app
 	}
 
-	app.Cached = false
-	return app, nil
+	return app, false, nil
+}
+
+func (compiler *Compiler) Precompile(id string) {
+	if !CacheEnabled {
+		return
+	}
+
+	app, _, err := compiler.GetApp(id)
+	if err != nil {
+		return
+	}
+
+	go app.buildClientJs()
+
+	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
+		go app.keepAlive()
+	}
+}
+
+func (compiler *Compiler) RenderClient(id string, res http.ResponseWriter) error {
+	app, cached, err := compiler.GetApp(id)
+	if err != nil {
+		return err
+	}
+
+	if app.ClientJs == "" {
+		app.builderMux.Lock()
+		defer app.builderMux.Unlock()
+	}
+
+	if app.ClientJs == "" {
+		if err := app.buildClientJs(); err != nil {
+			return err
+		}
+
+		appConfig, err := project.LoadRobinAppById(id)
+		if err != nil {
+			return fmt.Errorf("failed to load app config: %w", err)
+		}
+
+		htmlOutput := bytes.NewBuffer(nil)
+		if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
+			"AppConfig":    appConfig,
+			"ScriptSource": app.ClientJs,
+		}); err != nil {
+			return fmt.Errorf("failed to render client html: %w", err)
+		}
+		app.Html = htmlOutput.String()
+	}
+
+	if res != nil {
+		if cached {
+			res.Header().Set("X-Cache", "HIT")
+		} else {
+			res.Header().Set("X-Cache", "MISS")
+		}
+
+		res.Write([]byte(app.Html))
+	}
+
+	return nil
+}
+
+func (compiler *Compiler) GetClientMetaFile(id string) (map[string]any, error) {
+	if err := compiler.RenderClient(id, nil); err != nil {
+		return nil, err
+	}
+
+	app := compiler.appCache[id]
+	return app.ClientMetafile, nil
 }
 
 func getResolverPlugins(appConfig project.RobinAppConfig, pageSourceUrl *url.URL) []es.Plugin {

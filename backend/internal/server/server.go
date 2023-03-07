@@ -125,7 +125,7 @@ func (server *Server) Run() error {
 			}
 
 			for _, app := range apps {
-				go server.compiler.GetApp(app.Id)
+				go server.compiler.Precompile(app.Id)
 			}
 		}
 	}()
@@ -136,73 +136,36 @@ func (server *Server) Run() error {
 		id := params.ByName("id")
 		res.Header().Set("Content-Type", "text/html; charset=utf-8")
 
-		app, err := server.compiler.GetApp(id)
-		if err != nil {
+		if err := server.compiler.RenderClient(id, res); err != nil {
 			res.Header().Set("X-Cache", "MISS")
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte("<script>" + createErrorJs(err.Error()) + "</script>"))
 			return
 		}
-
-		if app.Cached {
-			res.Header().Set("X-Cache", "HIT")
-		} else {
-			res.Header().Set("X-Cache", "MISS")
-		}
-		res.WriteHeader(http.StatusOK)
-		res.Write([]byte(app.Html))
 	})
 
 	server.router.GET("/api/app-resources/:id/client.meta.json", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		id := params.ByName("id")
 
-		app, err := server.compiler.GetApp(id)
+		metafile, err := server.compiler.GetClientMetaFile(id)
 		if err != nil {
-			res.Header().Set("X-Cache", "MISS")
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte(err.Error()))
 			return
 		}
 
-		metafileJson, err := json.MarshalIndent(app.ClientMetafile, "", "\t")
+		metafileJson, err := json.MarshalIndent(metafile, "", "\t")
 		if err != nil {
-			res.Header().Set("X-Cache", "MISS")
 			res.Header().Set("Content-Type", "text/plain; charset=utf-8")
 			res.WriteHeader(http.StatusInternalServerError)
 			res.Write([]byte(err.Error()))
 			return
 		}
 
-		if app.Cached {
-			res.Header().Set("X-Cache", "HIT")
-		} else {
-			res.Header().Set("X-Cache", "MISS")
-		}
 		res.WriteHeader(http.StatusOK)
 		res.Header().Set("Content-Type", "application/json; charset=utf-8")
 		res.Write(metafileJson)
-	})
-
-	server.router.GET("/api/app-resources/:id/bootstrap.js", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		id := params.ByName("id")
-
-		app, err := server.compiler.GetApp(id)
-		if err != nil {
-			res.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-			res.WriteHeader(http.StatusInternalServerError)
-			res.Write([]byte(createErrorJs(err.Error())))
-			return
-		}
-
-		if app.Cached {
-			res.Header().Set("X-Cache", "HIT")
-		} else {
-			res.Header().Set("X-Cache", "MISS")
-		}
-		res.WriteHeader(http.StatusOK)
-		res.Header().Set("Content-Type", "application/javascript; charset=utf-8")
-		res.Write([]byte(app.ClientJs))
 	})
 
 	server.loadRpcMethods()

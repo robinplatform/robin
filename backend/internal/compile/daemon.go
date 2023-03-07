@@ -184,6 +184,13 @@ func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[proce
 		return fmt.Errorf("failed to start app server: %w", err)
 	}
 
+	// Build the server bundle, if not already built
+	if app.ServerJs == "" {
+		if err := app.buildServerBundle(); err != nil {
+			return fmt.Errorf("failed to build app server: %w", err)
+		}
+	}
+
 	// Figure out asset paths
 	daemonRunnerFilePath := filepath.Join(appDir, "robin-daemon-runner.js")
 	serverBundleFilePath := filepath.Join(appDir, "daemon.bundle.js")
