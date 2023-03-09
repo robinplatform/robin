@@ -1,0 +1,13 @@
+{
+	"devServers": {
+		"cli": {
+			"healthChecks": [
+				{
+					"type": "tcp",
+					"port": 1337
+				}
+			],
+			"command": "go run github.com/mitranim/gow -e 'go,tsx,html' run ../backend/cmd/cli start -port 1337"
+		}
+	}
+}
