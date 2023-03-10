@@ -45,7 +45,7 @@ func init() {
 	processManager, err = process.NewProcessManager[processMeta](filepath.Join(
 		robinPath,
 		"data",
-		"app-processes.db",
+		"app-daemons.db",
 	))
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize compiler: %w", err))

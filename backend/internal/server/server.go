@@ -71,6 +71,9 @@ func (server *Server) loadRpcMethods() {
 
 	GetAppSettingsById.Register(server)
 	UpdateAppSettings.Register(server)
+
+	StartProcessForApp.Register(server)
+	CheckProcessHealth.Register(server)
 }
 
 func createErrorJs(errMessage string) string {

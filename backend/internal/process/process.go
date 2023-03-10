@@ -22,17 +22,19 @@ var (
 type ProcessNamespace string
 
 const (
-	NamespaceExtensionDaemon ProcessNamespace = "extension-daemon"
-	NamespaceExtensionLambda ProcessNamespace = "extension-lambda"
-	NamespaceInternal        ProcessNamespace = "internal"
+	NamespaceExtensionDaemon  ProcessNamespace = "extension-daemon"
+	NamespaceExtensionSpawned ProcessNamespace = "extension-spawned"
+	NamespaceInternal         ProcessNamespace = "internal"
 )
 
-// TODO: Rename these three, they don't make sense. Also maybe some
-// doc comments to help explain what they do.
+// TODO: Rename these three, they don't make sense.
 type ProcessId struct {
-	Namespace    ProcessNamespace
+	// The type of process this is
+	Namespace ProcessNamespace
+	// The creator of the process
 	NamespaceKey string
-	Key          string
+	// The name of the process given to it by its creator
+	Key string
 }
 
 func (id ProcessId) String() string {
