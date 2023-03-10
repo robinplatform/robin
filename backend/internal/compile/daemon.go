@@ -152,7 +152,13 @@ func (app *CompiledApp) keepAlive() {
 			}
 		}
 
-		time.Sleep(10 * time.Second)
+		// TODO: This should be less frequent. I've set it to be higher right now
+		// to make development of robin apps easier/faster, but it should be lower.
+		if config.GetReleaseChannel() == "dev" {
+			time.Sleep(time.Second / 4)
+		} else {
+			time.Sleep(10 * time.Second)
+		}
 	}
 }
 
