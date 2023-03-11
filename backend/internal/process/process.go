@@ -283,6 +283,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Args:      procConfig.Args,
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
+		Port:      procConfig.Port,
 	}
 
 	// Reap zombies
