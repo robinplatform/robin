@@ -50,7 +50,12 @@ type ProcessConfig[Meta any] struct {
 	Env     map[string]string
 	Command string
 	Args    []string
-	Meta    Meta
+
+	// Ideally the port should be optional, and be somewhat integrated into
+	// whatever the healthcheck code ends up being, but for now this works decently well.
+	Port int
+
+	Meta Meta
 }
 
 func (processConfig *ProcessConfig[_]) getLogFilePath() string {
@@ -68,6 +73,7 @@ type Process[Meta any] struct {
 	Env       map[string]string
 	Command   string
 	Args      []string
+	Port      int // see above
 	Meta      Meta
 }
 
