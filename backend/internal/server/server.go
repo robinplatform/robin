@@ -66,6 +66,7 @@ func (server *Server) loadRpcMethods() {
 	GetApps.Register(server)
 	RunAppMethod.Register(server)
 	RestartApp.Register(server)
+	ListProcesses.Register(server)
 
 	// Apps RPC methods
 

@@ -26,31 +26,11 @@ import (
 	es "github.com/evanw/esbuild/pkg/api"
 )
 
-type processMeta struct {
-	Port int `json:"port"`
-}
-
 var (
-	processManager *process.ProcessManager[processMeta]
-
 	// TODO: add something like a write handle to processManager so we don't
 	// need to use our own mutex
 	daemonProcessMux = &sync.Mutex{}
 )
-
-func init() {
-	robinPath := config.GetRobinPath()
-
-	var err error
-	processManager, err = process.NewProcessManager[processMeta](filepath.Join(
-		robinPath,
-		"data",
-		"app-daemons.db",
-	))
-	if err != nil {
-		panic(fmt.Errorf("failed to initialize compiler: %w", err))
-	}
-}
 
 func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp) []es.Plugin {
 	return []es.Plugin{
@@ -111,14 +91,14 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 	}
 
 	return process.ProcessId{
-		Namespace:    process.NamespaceExtensionDaemon,
-		NamespaceKey: fmt.Sprintf("%s-app-daemon", projectAlias),
-		Key:          app.Id,
+		Kind:   process.KindAppDaemon,
+		Source: projectAlias,
+		Key:    app.Id,
 	}
 }
 
 func (app *CompiledApp) IsAlive() bool {
-	process, err := processManager.FindById(app.getProcessId())
+	process, err := process.Manager.FindById(app.getProcessId())
 	if err != nil {
 		return false
 	}
@@ -128,7 +108,7 @@ func (app *CompiledApp) IsAlive() bool {
 	}
 
 	// Send a ping to the process
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", process.Meta.Port))
+	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", process.Port))
 	if resp != nil {
 		resp.Body.Close()
 	}
@@ -179,7 +159,7 @@ func (app *CompiledApp) GetAppDir() (string, error) {
 	return filepath.Join(config.GetRobinPath(), "projects", projectAlias, "apps", app.Id), nil
 }
 
-func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[processMeta]) error {
+func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig) error {
 	appDir, err := app.GetAppDir()
 	if err != nil {
 		return fmt.Errorf("failed to start app server: %w", err)
@@ -247,7 +227,7 @@ func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[proce
 	return nil
 }
 
-func (app *CompiledApp) setupCustomDaemon(appConfig project.RobinAppConfig, processConfig *process.ProcessConfig[processMeta]) error {
+func (app *CompiledApp) setupCustomDaemon(appConfig project.RobinAppConfig, processConfig *process.ProcessConfig) error {
 	processConfig.Command = appConfig.Daemon[0]
 	processConfig.Args = appConfig.Daemon[1:]
 
@@ -301,7 +281,7 @@ func (app *CompiledApp) StartServer() error {
 	}
 
 	projectPath := project.GetProjectPathOrExit()
-	processConfig := process.ProcessConfig[processMeta]{
+	processConfig := process.ProcessConfig{
 		Id:      app.getProcessId(),
 		WorkDir: appDir,
 		Env: map[string]string{
@@ -309,7 +289,6 @@ func (app *CompiledApp) StartServer() error {
 			"ROBIN_PROCESS_TYPE": "daemon",
 			"ROBIN_PROJECT_PATH": projectPath,
 		},
-		Meta: processMeta{},
 	}
 
 	// Setup the daemon runner
@@ -334,10 +313,10 @@ func (app *CompiledApp) StartServer() error {
 
 	// Add port info to the process config
 	processConfig.Env["PORT"] = strPortAvailable
-	processConfig.Meta.Port = portAvailable
+	processConfig.Port = portAvailable
 
 	// Start the app server process
-	serverProcess, err := processManager.SpawnPath(processConfig)
+	serverProcess, err := process.Manager.SpawnPath(processConfig)
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
 		logger.Err("Failed to start app server", log.Ctx{
 			"appId": app.Id,
@@ -354,7 +333,7 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Send a ping to the process
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Meta.Port))
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Port))
 		if err == nil && resp.StatusCode == http.StatusOK {
 			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 				go app.keepAlive()
@@ -396,7 +375,7 @@ func (app *CompiledApp) StopServer() error {
 	daemonProcessMux.Lock()
 	defer daemonProcessMux.Unlock()
 
-	if err := processManager.Kill(app.getProcessId()); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
+	if err := process.Manager.Kill(app.getProcessId()); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
 		return fmt.Errorf("failed to stop app server: %w", err)
 	}
 	return nil
@@ -413,7 +392,7 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 		app.httpClient = &http.Client{}
 	}
 
-	serverProcess, err := processManager.FindById(app.getProcessId())
+	serverProcess, err := process.Manager.FindById(app.getProcessId())
 	if err != nil {
 		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
 	}
@@ -432,7 +411,7 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 	req, err := http.NewRequestWithContext(
 		ctx,
 		method,
-		fmt.Sprintf("http://localhost:%d%s", serverProcess.Meta.Port, reqPath),
+		fmt.Sprintf("http://localhost:%d%s", serverProcess.Port, reqPath),
 		bytes.NewReader(serializedBody),
 	)
 	req.Header.Set("Content-Type", "application/json")
