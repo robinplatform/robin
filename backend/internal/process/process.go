@@ -203,25 +203,22 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
 // from a path
 
-func (m *ProcessManager) SpawnPath(config ProcessConfig) (*Process, error) {
+func (w *WHandle) SpawnPath(config ProcessConfig) (*Process, error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
 	}
 
-	return m.Spawn(config)
+	return w.Spawn(config)
 }
 
-func (m *ProcessManager) Spawn(procConfig ProcessConfig) (*Process, error) {
+func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
 		return nil, err
 	}
 
-	w := m.db.WriteHandle()
-	defer w.Close()
-
-	prev, found := w.Find(findById(procConfig.Id))
+	prev, found := w.db.Find(findById(procConfig.Id))
 	if found {
 		if prev.IsAlive() {
 			logger.Debug("Found previous process", log.Ctx{
@@ -234,7 +231,7 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) (*Process, error) {
 		logger.Debug("Found previous dead process entry, deleting it", log.Ctx{
 			"processId": procConfig.Id,
 		})
-		if err := m.remove(w, prev.Id); err != nil {
+		if err := w.Remove(prev.Id); err != nil {
 			return nil, fmt.Errorf("failed to delete previous process: %w", err)
 		}
 	}
@@ -297,7 +294,7 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) (*Process, error) {
 		"logsPath": processLogsPath,
 	})
 
-	if err := w.Insert(entry); err != nil {
+	if err := w.db.Insert(entry); err != nil {
 		logger.Debug("Failed to insert process into database", log.Ctx{
 			"error": err.Error(),
 		})
@@ -323,28 +320,21 @@ func (m *ProcessManager) Spawn(procConfig ProcessConfig) (*Process, error) {
 }
 
 // Remove will kill the process if it is alive, and then remove it from the database
-func (manager *ProcessManager) remove(db model.WHandle[Process], id ProcessId) error {
-	procEntry, found := db.Find(findById(id))
+func (w *WHandle) Remove(id ProcessId) error {
+	procEntry, found := w.db.Find(findById(id))
 	if !found {
 		return nil
 	}
 
 	if procEntry.IsAlive() {
-		if err := manager.Kill(id); err != nil {
+		if err := w.Kill(id); err != nil {
 			return fmt.Errorf("failed to kill process: %w", err)
 		}
 	}
 
-	if err := db.Delete(findById(id)); err != nil {
+	if err := w.db.Delete(findById(id)); err != nil {
 		return fmt.Errorf("failed to delete process: %w", err)
 	}
 
 	return nil
-}
-
-// Remove will kill the process if it is alive, and then remove it from the database
-func (manager *ProcessManager) Remove(id ProcessId) error {
-	db := manager.db.WriteHandle()
-	defer db.Close()
-	return manager.remove(db, id)
 }

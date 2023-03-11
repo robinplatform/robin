@@ -66,6 +66,13 @@ func (store *Store[Model]) ReadHandle() RHandle[Model] {
 	return RHandle[Model]{store}
 }
 
+// Creates a read handle. Closing this will cause a failure in the underlying RWLock,
+// because it's currently locked for writing, but read handles only close for
+// reading.
+func (w *WHandle[Model]) UncloseableReadHandle() RHandle[Model] {
+	return RHandle[Model]{store: w.store}
+}
+
 func (w *WHandle[Model]) Close() {
 	w.store.rwMux.Unlock()
 }

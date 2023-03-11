@@ -15,11 +15,8 @@ func getProcessSysAttrs() *syscall.SysProcAttr {
 
 // Kill will kill the process with the given id (not PID), and remove it from
 // the internal database.
-func (m *ProcessManager) Kill(id ProcessId) error {
-	w := m.db.WriteHandle()
-	defer w.Close()
-
-	procEntry, found := w.Find(findById(id))
+func (w *WHandle) Kill(id ProcessId) error {
+	procEntry, found := w.db.Find(findById(id))
 	if !found {
 		return processNotFound(id)
 	}
@@ -29,7 +26,7 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 		return fmt.Errorf("failed to kill process: %w", err)
 	}
 
-	if err := w.Delete(findById(id)); err != nil {
+	if err := w.db.Delete(findById(id)); err != nil {
 		return err
 	}
 
