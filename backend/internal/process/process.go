@@ -184,19 +184,16 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 	return manager, nil
 }
 
-func (manager *ProcessManager) FindById(id ProcessId) (*Process, error) {
-	r := manager.db.ReadHandle()
-	defer r.Close()
-
-	procEntry, found := r.Find(findById(id))
+func (r *RHandle) FindById(id ProcessId) (*Process, error) {
+	procEntry, found := r.db.Find(findById(id))
 	if !found {
 		return nil, processNotFound(id)
 	}
 	return &procEntry, nil
 }
 
-func (m *ProcessManager) IsAlive(id ProcessId) bool {
-	process, err := m.FindById(id)
+func (r *RHandle) IsAlive(id ProcessId) bool {
+	process, err := r.FindById(id)
 	if err != nil {
 		return false
 	}
