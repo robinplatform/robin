@@ -6,9 +6,6 @@ import (
 	"robinplatform.dev/internal/config"
 )
 
-type DummyMeta struct {
-}
-
 var Manager *ProcessManager
 
 func init() {

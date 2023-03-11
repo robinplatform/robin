@@ -92,7 +92,7 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 
 	return process.ProcessId{
 		Kind:   process.KindAppDaemon,
-		Source: fmt.Sprintf("%s-app-daemon", projectAlias),
+		Source: projectAlias,
 		Key:    app.Id,
 	}
 }
