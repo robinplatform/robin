@@ -53,12 +53,14 @@ function Processes() {
 					}}
 				>
 					{processes?.map((value) => {
+						const key = `${value.id.kind} ${value.id.source} ${value.id.key}`;
 						return (
 							<div
+								key={key}
 								className={'robin-rounded robin-pad'}
 								style={{ backgroundColor: 'Coral' }}
 							>
-								{`${value.id.kind} ${value.id.source} ${value.id.key}`}
+								{key}
 
 								<pre>{JSON.stringify(value, null, 2)}</pre>
 							</div>
