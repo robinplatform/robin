@@ -66,6 +66,13 @@ func (store *Store[Model]) ReadHandle() RHandle[Model] {
 	return RHandle[Model]{store}
 }
 
+// Creates a read handle. Closing this will cause a failure in the underlying RWLock,
+// because it's currently locked for writing, but read handles only close for
+// reading.
+func (w *WHandle[Model]) UncloseableReadHandle() RHandle[Model] {
+	return RHandle[Model]{store: w.store}
+}
+
 func (w *WHandle[Model]) Close() {
 	w.store.rwMux.Unlock()
 }
@@ -113,6 +120,20 @@ func (store *Store[Model]) Find(matcher func(row Model) bool) (Model, bool) {
 	defer r.Close()
 
 	return r.Find(matcher)
+}
+
+func (r *RHandle[Model]) ShallowCopyOutData() []Model {
+	out := make([]Model, 0, len(r.store.data))
+	out = append(out, r.store.data...)
+
+	return out
+}
+
+func (store *Store[Model]) ShallowCopyOutData() []Model {
+	r := store.ReadHandle()
+	defer r.Close()
+
+	return r.ShallowCopyOutData()
 }
 
 func (store *Store[_]) flush() error {
