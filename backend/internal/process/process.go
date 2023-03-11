@@ -44,7 +44,7 @@ func (id ProcessId) String() string {
 	)
 }
 
-type ProcessConfig[Meta any] struct {
+type ProcessConfig struct {
 	Id      ProcessId
 	WorkDir string
 	Env     map[string]string
@@ -54,18 +54,16 @@ type ProcessConfig[Meta any] struct {
 	// Ideally the port should be optional, and be somewhat integrated into
 	// whatever the healthcheck code ends up being, but for now this works decently well.
 	Port int
-
-	Meta Meta
 }
 
-func (processConfig *ProcessConfig[_]) getLogFilePath() string {
+func (processConfig *ProcessConfig) getLogFilePath() string {
 	robinPath := config.GetRobinPath()
 	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
 	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Namespace)+"-"+processConfig.Id.NamespaceKey+"-"+processConfig.Id.Key+".log")
 	return processLogsPath
 }
 
-type Process[Meta any] struct {
+type Process struct {
 	Id        ProcessId
 	Pid       int
 	StartedAt time.Time
@@ -74,12 +72,11 @@ type Process[Meta any] struct {
 	Command   string
 	Args      []string
 	Port      int // see above
-	Meta      Meta
 }
 
 // TODO: Avoid logging entire Env
 
-func (process *Process[_]) waitForExit(pid int) {
+func (process *Process) waitForExit(pid int) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
@@ -102,7 +99,7 @@ func (process *Process[_]) waitForExit(pid int) {
 	}
 }
 
-func (process *Process[_]) IsAlive() bool {
+func (process *Process) IsAlive() bool {
 	// TODO: check the actual error, it might've been a permission error
 	// or something else.
 	osProcess, err := os.FindProcess(process.Pid)
@@ -120,13 +117,13 @@ func (process *Process[_]) IsAlive() bool {
 	return osProcess.Signal(syscall.Signal(0)) == nil
 }
 
-func findById[Meta any](id ProcessId) func(row Process[Meta]) bool {
-	return func(row Process[Meta]) bool {
+func findById(id ProcessId) func(row Process) bool {
+	return func(row Process) bool {
 		return row.Id == id
 	}
 }
 
-func (cfg *ProcessConfig[Meta]) fillEmptyValues() error {
+func (cfg *ProcessConfig) fillEmptyValues() error {
 	if cfg.Id.Key == "" {
 		return fmt.Errorf("cannot create process without a Key")
 	}
@@ -168,15 +165,15 @@ func (cfg *ProcessConfig[Meta]) fillEmptyValues() error {
 	return nil
 }
 
-type ProcessManager[Meta any] struct {
-	db model.Store[Process[Meta]]
+type ProcessManager struct {
+	db model.Store[Process]
 }
 
-func NewProcessManager[Meta any](dbPath string) (*ProcessManager[Meta], error) {
-	manager := &ProcessManager[Meta]{}
+func NewProcessManager(dbPath string) (*ProcessManager, error) {
+	manager := &ProcessManager{}
 
 	var err error
-	manager.db, err = model.NewStore[Process[Meta]](dbPath)
+	manager.db, err = model.NewStore[Process](dbPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
@@ -184,18 +181,18 @@ func NewProcessManager[Meta any](dbPath string) (*ProcessManager[Meta], error) {
 	return manager, nil
 }
 
-func (manager *ProcessManager[Meta]) FindById(id ProcessId) (*Process[Meta], error) {
+func (manager *ProcessManager) FindById(id ProcessId) (*Process, error) {
 	r := manager.db.ReadHandle()
 	defer r.Close()
 
-	procEntry, found := r.Find(findById[Meta](id))
+	procEntry, found := r.Find(findById(id))
 	if !found {
 		return nil, processNotFound(id)
 	}
 	return &procEntry, nil
 }
 
-func (m *ProcessManager[Meta]) IsAlive(id ProcessId) bool {
+func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	process, err := m.FindById(id)
 	if err != nil {
 		return false
@@ -206,7 +203,7 @@ func (m *ProcessManager[Meta]) IsAlive(id ProcessId) bool {
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
 // from a path
 
-func (m *ProcessManager[Meta]) SpawnPath(config ProcessConfig[Meta]) (*Process[Meta], error) {
+func (m *ProcessManager) SpawnPath(config ProcessConfig) (*Process, error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
@@ -216,7 +213,7 @@ func (m *ProcessManager[Meta]) SpawnPath(config ProcessConfig[Meta]) (*Process[M
 	return m.Spawn(config)
 }
 
-func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[Meta], error) {
+func (m *ProcessManager) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
 		return nil, err
 	}
@@ -224,7 +221,7 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 	w := m.db.WriteHandle()
 	defer w.Close()
 
-	prev, found := w.Find(findById[Meta](procConfig.Id))
+	prev, found := w.Find(findById(procConfig.Id))
 	if found {
 		if prev.IsAlive() {
 			logger.Debug("Found previous process", log.Ctx{
@@ -281,7 +278,7 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		return nil, err
 	}
 
-	entry := Process[Meta]{
+	entry := Process{
 		Id:        procConfig.Id,
 		WorkDir:   procConfig.WorkDir,
 		StartedAt: time.Now(),
@@ -289,7 +286,6 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 		Args:      procConfig.Args,
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
-		Meta:      procConfig.Meta,
 	}
 
 	// Reap zombies
@@ -327,8 +323,8 @@ func (m *ProcessManager[Meta]) Spawn(procConfig ProcessConfig[Meta]) (*Process[M
 }
 
 // Remove will kill the process if it is alive, and then remove it from the database
-func (manager *ProcessManager[Meta]) remove(db model.WHandle[Process[Meta]], id ProcessId) error {
-	procEntry, found := db.Find(findById[Meta](id))
+func (manager *ProcessManager) remove(db model.WHandle[Process], id ProcessId) error {
+	procEntry, found := db.Find(findById(id))
 	if !found {
 		return nil
 	}
@@ -339,7 +335,7 @@ func (manager *ProcessManager[Meta]) remove(db model.WHandle[Process[Meta]], id 
 		}
 	}
 
-	if err := db.Delete(findById[Meta](id)); err != nil {
+	if err := db.Delete(findById(id)); err != nil {
 		return fmt.Errorf("failed to delete process: %w", err)
 	}
 
@@ -347,7 +343,7 @@ func (manager *ProcessManager[Meta]) remove(db model.WHandle[Process[Meta]], id 
 }
 
 // Remove will kill the process if it is alive, and then remove it from the database
-func (manager *ProcessManager[Meta]) Remove(id ProcessId) error {
+func (manager *ProcessManager) Remove(id ProcessId) error {
 	db := manager.db.WriteHandle()
 	defer db.Close()
 	return manager.remove(db, id)

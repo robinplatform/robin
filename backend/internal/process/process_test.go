@@ -10,7 +10,7 @@ func TestSpawnProcess(t *testing.T) {
 	dir := t.TempDir()
 	dbFile := filepath.Join(dir, "testing.db")
 
-	manager, err := NewProcessManager[struct{}](dbFile)
+	manager, err := NewProcessManager(dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
@@ -21,7 +21,7 @@ func TestSpawnProcess(t *testing.T) {
 		Key:          "long",
 	}
 
-	_, err = manager.SpawnPath(ProcessConfig[struct{}]{
+	_, err = manager.SpawnPath(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"100"},
@@ -44,7 +44,7 @@ func TestSpawnDead(t *testing.T) {
 	dir := t.TempDir()
 	dbFile := filepath.Join(dir, "testing.db")
 
-	manager, err := NewProcessManager[struct{}](dbFile)
+	manager, err := NewProcessManager(dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
@@ -55,7 +55,7 @@ func TestSpawnDead(t *testing.T) {
 		Key:          "short",
 	}
 
-	_, err = manager.SpawnPath(ProcessConfig[struct{}]{
+	_, err = manager.SpawnPath(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"0"},

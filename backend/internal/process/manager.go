@@ -9,11 +9,11 @@ import (
 type DummyMeta struct {
 }
 
-var Manager *ProcessManager[DummyMeta]
+var Manager *ProcessManager
 
 func init() {
 	robinPath := config.GetRobinPath()
-	manager, err := NewProcessManager[DummyMeta](filepath.Join(
+	manager, err := NewProcessManager(filepath.Join(
 		robinPath,
 		"data",
 		"spawned-processes.db",

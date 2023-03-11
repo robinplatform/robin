@@ -159,7 +159,7 @@ func (app *CompiledApp) GetAppDir() (string, error) {
 	return filepath.Join(config.GetRobinPath(), "projects", projectAlias, "apps", app.Id), nil
 }
 
-func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[process.DummyMeta]) error {
+func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig) error {
 	appDir, err := app.GetAppDir()
 	if err != nil {
 		return fmt.Errorf("failed to start app server: %w", err)
@@ -227,7 +227,7 @@ func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig[proce
 	return nil
 }
 
-func (app *CompiledApp) setupCustomDaemon(appConfig project.RobinAppConfig, processConfig *process.ProcessConfig[process.DummyMeta]) error {
+func (app *CompiledApp) setupCustomDaemon(appConfig project.RobinAppConfig, processConfig *process.ProcessConfig) error {
 	processConfig.Command = appConfig.Daemon[0]
 	processConfig.Args = appConfig.Daemon[1:]
 
@@ -281,7 +281,7 @@ func (app *CompiledApp) StartServer() error {
 	}
 
 	projectPath := project.GetProjectPathOrExit()
-	processConfig := process.ProcessConfig[process.DummyMeta]{
+	processConfig := process.ProcessConfig{
 		Id:      app.getProcessId(),
 		WorkDir: appDir,
 		Env: map[string]string{
@@ -289,7 +289,6 @@ func (app *CompiledApp) StartServer() error {
 			"ROBIN_PROCESS_TYPE": "daemon",
 			"ROBIN_PROJECT_PATH": projectPath,
 		},
-		Meta: process.DummyMeta{},
 	}
 
 	// Setup the daemon runner
