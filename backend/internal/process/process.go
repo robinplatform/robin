@@ -19,27 +19,28 @@ var (
 	logger = log.New("process")
 )
 
-type ProcessNamespace string
+type ProcessKind string
 
 const (
-	NamespaceExtensionDaemon ProcessNamespace = "extension-daemon"
-	NamespaceExtensionLambda ProcessNamespace = "extension-lambda"
-	NamespaceInternal        ProcessNamespace = "internal"
+	KindAppDaemon ProcessKind = "app-daemon"
+	KindInternal  ProcessKind = "internal"
 )
 
-// TODO: Rename these three, they don't make sense. Also maybe some
-// doc comments to help explain what they do.
+// An identifier for a process.
 type ProcessId struct {
-	Namespace    ProcessNamespace
-	NamespaceKey string
-	Key          string
+	// The kind of process this is.
+	Kind ProcessKind
+	// The name of the system/app that spawned this process
+	Source string
+	// The name that this process has been given
+	Key string
 }
 
 func (id ProcessId) String() string {
 	return fmt.Sprintf(
 		"%s-%s-%s",
-		id.Namespace,
-		id.NamespaceKey,
+		id.Kind,
+		id.Source,
 		id.Key,
 	)
 }
@@ -59,7 +60,7 @@ type ProcessConfig struct {
 func (processConfig *ProcessConfig) getLogFilePath() string {
 	robinPath := config.GetRobinPath()
 	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
-	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Namespace)+"-"+processConfig.Id.NamespaceKey+"-"+processConfig.Id.Key+".log")
+	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Kind)+"-"+processConfig.Id.Source+"-"+processConfig.Id.Key+".log")
 	return processLogsPath
 }
 
@@ -128,12 +129,12 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 		return fmt.Errorf("cannot create process without a Key")
 	}
 
-	if cfg.Id.NamespaceKey == "" {
-		return fmt.Errorf("cannot create process without a namespace key")
+	if cfg.Id.Source == "" {
+		return fmt.Errorf("cannot create process without a source")
 	}
 
-	if cfg.Id.Namespace == "" {
-		cfg.Id.Namespace = NamespaceInternal
+	if cfg.Id.Kind == "" {
+		cfg.Id.Kind = KindInternal
 	}
 
 	parentEnv := os.Environ()
@@ -165,6 +166,8 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 	return nil
 }
 
+// This is essentially a global type, but it's set up as an instance for testing purposes.
+// Use `process.Manager` to manage processes.
 type ProcessManager struct {
 	db model.Store[Process]
 }

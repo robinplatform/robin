@@ -91,9 +91,9 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 	}
 
 	return process.ProcessId{
-		Namespace:    process.NamespaceExtensionDaemon,
-		NamespaceKey: fmt.Sprintf("%s-app-daemon", projectAlias),
-		Key:          app.Id,
+		Kind:   process.KindAppDaemon,
+		Source: fmt.Sprintf("%s-app-daemon", projectAlias),
+		Key:    app.Id,
 	}
 }
 

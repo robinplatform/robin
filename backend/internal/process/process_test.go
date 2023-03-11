@@ -16,9 +16,9 @@ func TestSpawnProcess(t *testing.T) {
 	}
 
 	id := ProcessId{
-		Namespace:    NamespaceInternal,
-		NamespaceKey: "default",
-		Key:          "long",
+		Kind:   KindInternal,
+		Source: "default",
+		Key:    "long",
 	}
 
 	_, err = manager.SpawnPath(ProcessConfig{
@@ -50,9 +50,9 @@ func TestSpawnDead(t *testing.T) {
 	}
 
 	id := ProcessId{
-		Namespace:    NamespaceInternal,
-		NamespaceKey: "default",
-		Key:          "short",
+		Kind:   KindInternal,
+		Source: "default",
+		Key:    "short",
 	}
 
 	_, err = manager.SpawnPath(ProcessConfig{
