@@ -50,6 +50,18 @@ func (w *WHandle) IsAlive(id ProcessId) bool {
 	return r.IsAlive(id)
 }
 
+func (m *ProcessManager) CopyOutData() []Process {
+	r := m.ReadHandle()
+	defer r.Close()
+
+	return r.CopyOutData()
+}
+
+func (w *WHandle) CopyOutData() []Process {
+	r := RHandle{db: w.db.UncloseableReadHandle()}
+	return r.CopyOutData()
+}
+
 func (m *ProcessManager) Remove(id ProcessId) error {
 	w := m.WriteHandle()
 	defer w.Close()

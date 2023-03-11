@@ -122,6 +122,20 @@ func (store *Store[Model]) Find(matcher func(row Model) bool) (Model, bool) {
 	return r.Find(matcher)
 }
 
+func (r *RHandle[Model]) ShallowCopyOutData() []Model {
+	out := make([]Model, 0, len(r.store.data))
+	out = append(out, r.store.data...)
+
+	return out
+}
+
+func (store *Store[Model]) ShallowCopyOutData() []Model {
+	r := store.ReadHandle()
+	defer r.Close()
+
+	return r.ShallowCopyOutData()
+}
+
 func (store *Store[_]) flush() error {
 	buf, err := json.Marshal(store.data)
 	if err != nil {

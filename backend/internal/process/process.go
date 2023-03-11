@@ -29,11 +29,11 @@ const (
 // An identifier for a process.
 type ProcessId struct {
 	// The kind of process this is.
-	Kind ProcessKind
+	Kind ProcessKind `json:"kind"`
 	// The name of the system/app that spawned this process
-	Source string
+	Source string `json:"source"`
 	// The name that this process has been given
-	Key string
+	Key string `json:"key"`
 }
 
 func (id ProcessId) String() string {
@@ -65,14 +65,14 @@ func (processConfig *ProcessConfig) getLogFilePath() string {
 }
 
 type Process struct {
-	Id        ProcessId
-	Pid       int
-	StartedAt time.Time
-	WorkDir   string
-	Env       map[string]string
-	Command   string
-	Args      []string
-	Port      int // see above
+	Id        ProcessId         `json:"id"`
+	Pid       int               `json:"pid"`
+	StartedAt time.Time         `json:"startedAt"`
+	WorkDir   string            `json:"workDir"`
+	Env       map[string]string `json:"env"`
+	Command   string            `json:"command"`
+	Args      []string          `json:"args"`
+	Port      int               `json:"port"` // see docs in ProcessConfig
 }
 
 // TODO: Avoid logging entire Env
@@ -338,4 +338,24 @@ func (w *WHandle) Remove(id ProcessId) error {
 	}
 
 	return nil
+}
+
+func (r *RHandle) CopyOutData() []Process {
+	data := r.db.ShallowCopyOutData()
+
+	for i := 0; i < len(data); i += 1 {
+		proc := &data[i]
+
+		env := proc.Env
+		proc.Env = make(map[string]string, len(env))
+		for k, v := range env {
+			proc.Env[k] = v
+		}
+
+		args := proc.Args
+		proc.Args = make([]string, 0, len(args))
+		proc.Args = append(proc.Args, args...)
+	}
+
+	return data
 }
