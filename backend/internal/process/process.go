@@ -340,6 +340,11 @@ func (w *WHandle) Remove(id ProcessId) error {
 	return nil
 }
 
+// TODO:
+//   - Maybe this should take in a function and allow the user
+//     to change the data before its outputted
+//   - Also, since there's no GC right now, old processes
+//     that are dead will still have their entries in the DB
 func (r *RHandle) CopyOutData() []Process {
 	data := r.db.ShallowCopyOutData()
 
