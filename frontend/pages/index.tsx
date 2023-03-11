@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
 
+// This is a temporary bit of code to just display what's in the processes DB
+// to make writing other features easier
 function Processes() {
 	const { data: processes, error } = useRpcQuery({
 		method: 'ListProcesses',
