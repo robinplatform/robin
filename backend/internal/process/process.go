@@ -22,8 +22,9 @@ var (
 type ProcessKind string
 
 const (
-	KindAppDaemon ProcessKind = "app-daemon"
-	KindInternal  ProcessKind = "internal"
+	KindAppDaemon  ProcessKind = "app-daemon"
+	KindAppSpawned ProcessKind = "app-spawned"
+	KindInternal   ProcessKind = "internal"
 )
 
 // An identifier for a process.
