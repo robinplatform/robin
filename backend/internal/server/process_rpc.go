@@ -14,7 +14,7 @@ type StartProcessForAppInput struct {
 }
 
 var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
-	Name: "StartProcessForApp",
+	Name: "StartProcess",
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
 		processConfig := process.ProcessConfig{
 			Command: req.Data.Command,
@@ -37,6 +37,33 @@ var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 			"processKey": proc.Id,
 			"pid":        proc.Pid,
 		}, nil
+	},
+}
+
+type StopProcessForAppInput struct {
+	AppId      string `json:"appId"`
+	ProcessKey string `json:"processKey"`
+	Command    string `json:"command"`
+}
+
+var StopProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
+	Name: "StopProcess",
+	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
+		id := process.ProcessId{
+			Kind:   process.KindAppSpawned,
+			Source: req.Data.AppId,
+			Key:    req.Data.ProcessKey,
+		}
+
+		err := process.Manager.Remove(id)
+		if err != nil {
+			return nil, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("Failed to kill process %s: %s", req.Data.AppId, err),
+			}
+		}
+
+		return map[string]any{}, nil
 	},
 }
 

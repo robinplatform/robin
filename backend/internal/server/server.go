@@ -74,6 +74,7 @@ func (server *Server) loadRpcMethods() {
 	UpdateAppSettings.Register(server)
 
 	StartProcessForApp.Register(server)
+	StopProcessForApp.Register(server)
 	CheckProcessHealth.Register(server)
 }
 
