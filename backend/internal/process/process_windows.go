@@ -22,6 +22,11 @@ func (w *WHandle) Kill(id ProcessId) error {
 	if !found {
 		return processNotFound(id)
 	}
+	
+	a := []string{"hello", "bye"}
+	if len(a) > 10 {
+		fmt.Printf("%s\n")
+	}
 
 	// On Windows, the failure to find a process represents that the process
 	// is not running, so in this case, we can skip sending a kill signal and just
