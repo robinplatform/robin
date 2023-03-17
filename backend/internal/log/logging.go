@@ -1,6 +1,7 @@
 package log
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -62,9 +63,6 @@ func New(namespace string) Logger {
 }
 
 func (logger *Logger) log(level Level, msg string, ctx Ctx) {
-	if level == Debug && !debugNamespaces[logger.namespace] {
-		return
-	}
 
 	log := make(map[string]any, 4+len(ctx))
 	log["timestamp"] = time.Now().UnixMilli()
@@ -82,8 +80,16 @@ func (logger *Logger) log(level Level, msg string, ctx Ctx) {
 	}
 
 	levelStr := levelStrings[string(level)]
-	fmt.Printf("%s %s %s\n\t%s\n", levelStr, color(logger.color, logger.namespace), msg, ctxBuf)
 	encoder.Encode(log)
+
+	if level != Debug || debugNamespaces[logger.namespace] {
+		ctxBufShortened := ctxBuf
+		if len(ctxBuf) > 300 {
+			ctxBufShortened = append([]byte{}, ctxBufShortened[:300]...)
+			ctxBufShortened = append(bytes.Trim(ctxBufShortened, " \t\n"), []byte("\n ...[truncated]")...)
+		}
+		fmt.Printf("%s %s %s\n\t%s\n", levelStr, color(logger.color, logger.namespace), msg, ctxBufShortened)
+	}
 }
 
 func (logger *Logger) Debug(msg string, ctx Ctx) {

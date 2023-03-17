@@ -8,9 +8,10 @@ import (
 )
 
 type StartProcessForAppInput struct {
-	AppId      string `json:"appId"`
-	ProcessKey string `json:"processKey"`
-	Command    string `json:"command"`
+	AppId      string   `json:"appId"`
+	ProcessKey string   `json:"processKey"`
+	Command    string   `json:"command"`
+	Args       []string `json:"args"`
 }
 
 var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
@@ -18,6 +19,7 @@ var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
 		processConfig := process.ProcessConfig{
 			Command: req.Data.Command,
+			Args:    req.Data.Args,
 			Id: process.ProcessId{
 				Kind:   process.KindAppSpawned,
 				Source: req.Data.AppId,
@@ -43,7 +45,6 @@ var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 type StopProcessForAppInput struct {
 	AppId      string `json:"appId"`
 	ProcessKey string `json:"processKey"`
-	Command    string `json:"command"`
 }
 
 var StopProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{

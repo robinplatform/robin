@@ -219,6 +219,10 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		return nil, err
 	}
 
+	logger.Info("Spawning Process", log.Ctx{
+		"config": procConfig,
+	})
+
 	prev, found := w.db.Find(findById(procConfig.Id))
 	if found {
 		if prev.IsAlive() {
@@ -236,10 +240,6 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 			return nil, fmt.Errorf("failed to delete previous process: %w", err)
 		}
 	}
-
-	logger.Info("Spawning Process", log.Ctx{
-		"config": procConfig,
-	})
 
 	empty, err := os.Open(os.DevNull)
 	if err != nil {
