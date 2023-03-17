@@ -92,7 +92,8 @@ jobs:
       - name: Test
         run: |
           cd backend/
-          go test -v -race -timeout 10s ./...
+          # Turning off go vet in testing because we run it separately
+          go test -v -vet=off -race -timeout 10s ./...
 
   check-ts:
     runs-on: ubuntu-22.04
