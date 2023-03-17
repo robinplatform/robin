@@ -52,7 +52,6 @@ jobs:
           GOOS=windows go vet -tags prod ./...
 
   test-go:
-    needs: [check-go]
     strategy:
       matrix:
         runner: [ubuntu-22.04, windows-2022]
