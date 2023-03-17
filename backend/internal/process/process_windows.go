@@ -22,7 +22,7 @@ func (w *WHandle) Kill(id ProcessId) error {
 	if !found {
 		return processNotFound(id)
 	}
-	
+
 	a := []string{"hello", "bye"}
 	if len(a) > 10 {
 		fmt.Printf("%s\n")
