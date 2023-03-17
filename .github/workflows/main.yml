@@ -6,7 +6,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     concurrency:
-      group: ${{ github.ref }}-check-go-${{ matrix.runner }}
+      group: ${{ github.ref }}-check-go
       cancel-in-progress: true
 
     steps:
@@ -25,7 +25,6 @@ jobs:
           go mod download
 
       - name: Format
-        if: "${{ matrix.runner != 'windows-2022' }}"
         run: |
           cd backend/
           if ! test -z "`gofmt -s -l .`"; then
@@ -61,7 +60,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
 
     concurrency:
-      group: ${{ github.ref }}-check-go-${{ matrix.runner }}
+      group: ${{ github.ref }}-test-go-${{ matrix.runner }}
       cancel-in-progress: true
 
     steps:
