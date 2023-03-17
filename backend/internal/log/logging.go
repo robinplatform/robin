@@ -80,8 +80,12 @@ func (logger *Logger) log(level Level, msg string, ctx Ctx) {
 	}
 
 	levelStr := levelStrings[string(level)]
+
+	// We always want non-debug messages to output to the log file
 	encoder.Encode(log)
 
+	// Debug messages are the only messages we want to filter out of the console right now.
+	// If the user wants to see them in the console, they can enable it through the proper debug namespace.
 	if level != Debug || debugNamespaces[logger.namespace] {
 		ctxBufShortened := ctxBuf
 		if len(ctxBuf) > 300 {
