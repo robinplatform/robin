@@ -16,17 +16,17 @@ func getProcessSysAttrs() *syscall.SysProcAttr {
 }
 
 func doSomethingSilly() {
-   var a int32 = 0
+	var a int32 = 0
 
-   var wg sync.WaitGroup
-   for i := 0; i < 500; i++ {
-      wg.Add(1)
-      go func() {
-         a = atomic.AddInt32(&a, 1)
-         wg.Done()
-      }()
-   }
-   wg.Wait()
+	var wg sync.WaitGroup
+	for i := 0; i < 500; i++ {
+		wg.Add(1)
+		go func() {
+			a = atomic.AddInt32(&a, 1)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
 }
 
 // Kill will kill the process with the given id (not PID), and remove it from
@@ -37,7 +37,7 @@ func (w *WHandle) Kill(id ProcessId) error {
 	if !found {
 		return processNotFound(id)
 	}
-	
+
 	doSomethingSilly()
 
 	// On Windows, the failure to find a process represents that the process
