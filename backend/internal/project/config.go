@@ -19,14 +19,18 @@ func GetProjectName() (string, error) {
 	return projectConfig.Name, err
 }
 
+func (projectConfig *RobinProjectConfig) GetProjectAlias() string {
+	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name
+	return pathRegex.ReplaceAllString(projectConfig.Name, "")
+}
+
 func GetProjectAlias() (string, error) {
-	projectName, err := GetProjectName()
+	projectConfig, err := LoadFromEnv()
 	if err != nil {
 		return "", err
 	}
 
-	// Remove all non alphanumeric characters from 'projectName' so it is a safe directory name
-	return pathRegex.ReplaceAllString(projectName, ""), nil
+	return projectConfig.GetProjectAlias(), nil
 }
 
 type RobinConfig struct {

@@ -17,6 +17,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/log"
+	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
 )
 
@@ -44,7 +45,8 @@ type CompiledApp struct {
 	keepAliveRunning *int64
 	builderMux       *sync.RWMutex
 
-	Id string
+	Id        string
+	ProcessId process.ProcessId
 
 	// Html holds the HTML to be rendered on the client
 	Html string
@@ -80,7 +82,17 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
-	appConfig, err := project.LoadRobinAppById(id)
+	projectConfig, err := project.LoadFromEnv()
+	if err != nil {
+		return CompiledApp{}, false, fmt.Errorf("failed to load project config: %w", err)
+	}
+
+	appConfig, err := projectConfig.LoadRobinAppById(id)
+	if err != nil {
+		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
+	}
+
+	processId, err := process.NewId(projectConfig.GetProjectAlias(), appConfig.Id)
 	if err != nil {
 		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
 	}
@@ -90,7 +102,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		keepAliveRunning: new(int64),
 		builderMux:       &sync.RWMutex{},
 
-		Id: id,
+		Id:        id,
+		ProcessId: processId,
 	}
 
 	// TODO: add something to invalidate the cache if the app's source is changed, instead of just disabling cache

@@ -24,7 +24,7 @@ type ProcessId struct {
 	// The name of the system/app that spawned this process
 	// The following names are reserved:
 	// - robin - this is for internal apps
-	// - @robinplatform/* - anything starting with @robin-platform/* is reserved for systems in Robin
+	// - @robin/* - anything starting with @robin-platform/* is reserved for systems in Robin
 	Source string `json:"source"`
 	// The name that this process has been given
 	Key string `json:"key"`
@@ -80,8 +80,8 @@ func NewId(source string, name string) (ProcessId, error) {
 		return ProcessId{}, fmt.Errorf("tried to use internal \"robin\" namespace")
 	}
 
-	if strings.HasPrefix(name, "@robinplatform/") {
-		return ProcessId{}, fmt.Errorf("tried to use internal \"@robinplatform/*\" namespace")
+	if strings.HasPrefix(name, "@robin/") {
+		return ProcessId{}, fmt.Errorf("tried to use internal \"@robin/*\" namespace")
 
 	}
 
