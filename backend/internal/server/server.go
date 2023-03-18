@@ -73,6 +73,13 @@ func (server *Server) loadRpcMethods() {
 	GetAppSettingsById.Register(server)
 	UpdateAppSettings.Register(server)
 	GetTopics.Register(server)
+
+	// Streaming methods
+
+	wsHandler := &RpcWebsocket{}
+	server.router.GET("/api/ws", wsHandler.WebsocketHandler(server))
+
+	SubscribeTopic.Register(wsHandler)
 }
 
 func createErrorJs(errMessage string) string {

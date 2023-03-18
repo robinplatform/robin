@@ -12,3 +12,13 @@ var GetTopics = AppsRpcMethod[GetTopicsInput, []string]{
 		return names, nil
 	},
 }
+
+type SubscribeTopicInput struct {
+}
+
+var SubscribeTopic = Stream[SubscribeTopicInput, string]{
+	Name: "SubscribeTopic",
+	Run: func(req StreamRequest[SubscribeTopicInput], output chan<- string) error {
+		return nil
+	},
+}

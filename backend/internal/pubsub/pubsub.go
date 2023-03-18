@@ -5,7 +5,7 @@ TODO: I'd like to add generics to this, ideally with some kind of API like this:
 
 Impl:
 ```
-func (reg *Registry) Subscribe[T any](name string, sub chan T) error {
+func (reg *Registry) Subscribe[T any](name string, sub chan<- T) error {
   ...
 }
 ```
@@ -71,10 +71,10 @@ type Topic struct {
 	m sync.Mutex
 
 	closed      bool
-	subscribers []chan string
+	subscribers []chan<- string
 }
 
-func (topic *Topic) forEachSubscriber(iterator func(sub chan string)) error {
+func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -89,7 +89,7 @@ func (topic *Topic) forEachSubscriber(iterator func(sub chan string)) error {
 	return nil
 }
 
-func (topic *Topic) addSubscriber(sub chan string) error {
+func (topic *Topic) addSubscriber(sub chan<- string) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -103,7 +103,7 @@ func (topic *Topic) addSubscriber(sub chan string) error {
 }
 
 func (topic *Topic) Publish(message string) {
-	topic.forEachSubscriber(func(sub chan string) {
+	topic.forEachSubscriber(func(sub chan<- string) {
 		sub <- message
 	})
 }
@@ -153,7 +153,7 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	return topic, nil
 }
 
-func (r *Registry) Subscribe(id TopicId, channel chan string) error {
+func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	if channel == nil {
 		return ErrNilSubscriber
 	}

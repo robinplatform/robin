@@ -94,7 +94,7 @@ func NewId(source string, name string) (ProcessId, error) {
 	}, nil
 }
 
-func (process *Process) waitForExit(pid int, exitChan chan struct{}) {
+func (process *Process) waitForExit(pid int, exitChan chan<- struct{}) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
@@ -215,7 +215,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan chan struct{}) {
+func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan struct{}) {
 	defer topic.Close()
 
 	logger.Debug("Starting pipe into topic", log.Ctx{

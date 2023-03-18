@@ -10,7 +10,7 @@ import (
 	"robinplatform.dev/internal/log"
 )
 
-type Stream[Context any, Input any, Output any] struct {
+type Stream[Input any, Output any] struct {
 	// Name of the method, used by the client to call it
 	Name string
 
@@ -21,7 +21,15 @@ type Stream[Context any, Input any, Output any] struct {
 	// Run implements the actual method. It must always return the same shape,
 	// and it must be a struct. The error must be of type *HttpError, and therefore
 	// contain a reasonable HTTP status code.
-	Run func(input Input, output chan<- Output) error
+	Run func(input StreamRequest[Input], output chan<- Output) error
+}
+
+type StreamRequest[Input any] struct {
+	// Server is the instance serving the request
+	Server *Server
+
+	// Initial input to the stream
+	Input Input
 }
 
 type socketMessage struct {
@@ -49,12 +57,12 @@ type socketMessageOut struct {
 }
 
 type RpcWebsocket struct {
-	handlers map[string]func(*websocket.Conn, string, []byte)
+	handlers map[string]func(*Server, *websocket.Conn, string, []byte)
 }
 
 var invalidInputMessage []byte = []byte(`{"kind":"error","error": "invalid input"}`)
 
-func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
+func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 	return func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
 		upgrader := websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -102,7 +110,7 @@ func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
 					continue
 				}
 
-				go method(conn, input.Id, input.Data)
+				go method(server, conn, input.Id, input.Data)
 
 				continue
 
@@ -118,7 +126,7 @@ func (ws *RpcWebsocket) WebsocketHandler() httprouter.Handle {
 	}
 }
 
-func (method *Stream[Context, Input, Output]) handleConn(conn *websocket.Conn, id string, inputBytes []byte) {
+func (method *Stream[Input, Output]) handleConn(server *Server, conn *websocket.Conn, id string, inputBytes []byte) {
 	var input Input
 	if err := json.Unmarshal(inputBytes, &input); err != nil {
 		logger.Debug("RPC stream method failed to parse input", log.Ctx{
@@ -175,7 +183,12 @@ func (method *Stream[Context, Input, Output]) handleConn(conn *websocket.Conn, i
 		}
 	}()
 
-	if err := method.Run(input, outputChannel); err != nil {
+	req := StreamRequest[Input]{
+		Server: server,
+		Input:  input,
+	}
+
+	if err := method.Run(req, outputChannel); err != nil {
 		out := map[string]any{
 			"kind":   "error",
 			"method": method.Name,
@@ -207,14 +220,14 @@ func (method *Stream[Context, Input, Output]) handleConn(conn *websocket.Conn, i
 	}
 }
 
-func (method *Stream[Context, Input, Output]) Register(ctx Context, ws *RpcWebsocket) error {
+func (method *Stream[Input, Output]) Register(ws *RpcWebsocket) error {
 	_, ok := ws.handlers[method.Name]
 	if ok {
 		return fmt.Errorf("multiple streams registered to the same name")
 	}
 
 	if ws.handlers == nil {
-		ws.handlers = map[string]func(*websocket.Conn, string, []byte){}
+		ws.handlers = map[string]func(*Server, *websocket.Conn, string, []byte){}
 	}
 	ws.handlers[method.Name] = method.handleConn
 
