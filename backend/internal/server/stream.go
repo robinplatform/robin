@@ -97,6 +97,8 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 
 		outputChannel := make(chan socketMessageOut)
 
+		// This goroutine does the job of writing to the socket, because the socket
+		// cannot be written to concurrently.
 		go func() {
 			for message := range outputChannel {
 				o := socketMessageOutJSON{
@@ -221,7 +223,7 @@ func (method *Stream[Input, Output]) handleConn(id string, rawReq StreamRequest[
 		rawReq.Output <- socketMessageOut{
 			Id:     id,
 			Method: method.Name,
-			Kind:   "methodStarted",
+			Kind:   "error",
 			Err:    err,
 		}
 
