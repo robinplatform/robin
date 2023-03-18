@@ -89,11 +89,9 @@ function Topics() {
 	});
 
 	React.useEffect(() => {
+		const id = `${Math.random()} adsf`;
 		const runner = async () => {
-			const stream = await Stream.callStreamRpc(
-				'SubscribeTopic',
-				`${Math.random()} adsf`,
-			);
+			const stream = await Stream.callStreamRpc('SubscribeTopic', id);
 			stream.onmessage = (data) => {
 				console.log('subscribe-message', data);
 			};
