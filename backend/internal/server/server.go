@@ -77,7 +77,7 @@ func (server *Server) loadRpcMethods() {
 	// Streaming methods
 
 	wsHandler := &RpcWebsocket{}
-	server.router.GET("/api/ws", wsHandler.WebsocketHandler(server))
+	server.router.GET("/api/websocket", wsHandler.WebsocketHandler(server))
 
 	SubscribeTopic.Register(wsHandler)
 }

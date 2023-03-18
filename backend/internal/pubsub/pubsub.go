@@ -186,8 +186,8 @@ func (r *Registry) GetTopics() []string {
 
 	out := make([]string, 0, len(r.topics))
 
-	for name := range r.topics {
-		out = append(out, name)
+	for _, topic := range r.topics {
+		out = append(out, topic.Id.String())
 	}
 
 	return out

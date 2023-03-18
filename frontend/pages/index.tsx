@@ -3,6 +3,7 @@ import React from 'react';
 import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
+import { Stream } from '@robinplatform/toolkit/stream';
 
 // This is a temporary bit of code to just display what's in the processes DB
 // to make writing other features easier
@@ -81,6 +82,26 @@ function Topics() {
 		result: z.array(z.string()),
 		pathPrefix: '/api/apps/rpc',
 	});
+
+	React.useEffect(() => {
+		const runner = async () => {
+			const stream = await Stream.callStreamRpc(
+				'SubscribeTopic',
+				`${Math.random()} adsf`,
+			);
+			stream.onmessage = (data) => {
+				console.log('subscribe-message', data);
+			};
+			stream.onerror = (err) => {
+				console.log('error', err);
+			};
+			stream.start({
+				category: 'hello',
+				name: 'blahlahs',
+			});
+		};
+		runner();
+	}, []);
 
 	return (
 		<div
