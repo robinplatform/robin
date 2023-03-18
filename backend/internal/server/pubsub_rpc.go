@@ -14,8 +14,7 @@ var GetTopics = AppsRpcMethod[GetTopicsInput, []pubsub.TopicId]{
 }
 
 type SubscribeTopicInput struct {
-	Category string `json:"category"`
-	Name     string `json:"name"`
+	Id pubsub.TopicId `json:"id"`
 }
 
 var SubscribeTopic = Stream[SubscribeTopicInput, string]{
@@ -26,13 +25,8 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 			return err
 		}
 
-		id := pubsub.TopicId{
-			Category: input.Category,
-			Name:     input.Name,
-		}
-
 		subscription := make(chan string)
-		if err := pubsub.Topics.Subscribe(id, subscription); err != nil {
+		if err := pubsub.Topics.Subscribe(input.Id, subscription); err != nil {
 			return err
 		}
 

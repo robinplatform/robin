@@ -101,8 +101,10 @@ function Topics() {
 				console.log('error', err);
 			};
 			stream.start({
-				category: 'hello',
-				name: 'blahlahs',
+				id: {
+					category: 'hello',
+					name: 'blahlahs',
+				},
 			});
 		};
 		runner();
