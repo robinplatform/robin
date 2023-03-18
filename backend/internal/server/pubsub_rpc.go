@@ -21,10 +21,14 @@ type SubscribeTopicInput struct {
 var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 	Name: "SubscribeTopic",
 	Run: func(req StreamRequest[SubscribeTopicInput, string]) error {
+		input, err := req.ParseInput()
+		if err != nil {
+			return err
+		}
 
 		id := pubsub.TopicId{
-			Category: req.Input.Category,
-			Name:     req.Input.Name,
+			Category: input.Category,
+			Name:     input.Name,
 		}
 
 		subscription := make(chan string)

@@ -153,6 +153,7 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	return topic, nil
 }
 
+// TODO: Add ability to unsubscribe
 func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	if channel == nil {
 		return ErrNilSubscriber

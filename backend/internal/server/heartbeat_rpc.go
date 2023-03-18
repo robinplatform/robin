@@ -9,8 +9,7 @@ type Heartbeat struct {
 }
 
 var GetHeartbeat = Stream[struct{}, Heartbeat]{
-	Name:             "GetHeartbeat",
-	SkipInputParsing: true,
+	Name: "GetHeartbeat",
 	Run: func(req StreamRequest[struct{}, Heartbeat]) error {
 		for {
 			req.Send(Heartbeat{Ok: true})

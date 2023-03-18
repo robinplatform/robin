@@ -14,15 +14,12 @@ type Stream[Input any, Output any] struct {
 	// Name of the method, used by the client to call it
 	Name string
 
-	// SkipInputParsing skips parsing the input, and passes the zero value
-	// of the input to the handler.
-	SkipInputParsing bool
-
 	// Run implements the actual method.
 	Run func(req StreamRequest[Input, Output]) error
 }
 
-type StreamRequest[Input any, Output any] struct {
+type StreamRequest[Input any, Output any] streamRequest
+type streamRequest struct {
 	Method string
 	Id     string
 
@@ -30,13 +27,27 @@ type StreamRequest[Input any, Output any] struct {
 	Server *Server
 
 	// Initial input to the stream
-	Input Input
+	RawInput []byte
 
 	// The channel this stream request outputs to
 	output chan<- socketMessageOut
 }
 
-func (s *StreamRequest[Input, Output]) Send(o Output) {
+func (s *StreamRequest[Input, _]) ParseInput() (Input, error) {
+	var input Input
+	err := json.Unmarshal(s.RawInput, &input)
+	if err != nil {
+		logger.Debug("RPC stream method failed to parse input", log.Ctx{
+			"method":     s.Method,
+			"id":         s.Id,
+			"inputBytes": s.RawInput,
+		})
+	}
+
+	return input, err
+}
+
+func (s *StreamRequest[_, Output]) Send(o Output) {
 	s.output <- socketMessageOut{
 		Method: s.Method,
 		Id:     s.Id,
@@ -62,24 +73,16 @@ type socketMessageOut struct {
 	// there's some kind of message-passing system later on,
 	// this ID will probably need some more stringent requirements,
 	// but for now, this works fine.
-	Id string
+	Id string `json:"id,omitempty"`
 
 	// TODO: This should probably be an enum type
-	Kind   string
-	Method string
-	Err    error
-	Data   any
-}
-
-type socketMessageOutJSON struct {
-	Id     string `json:"id,omitempty"`
 	Kind   string `json:"kind"`
 	Method string `json:"method,omitempty"`
 	Err    string `json:"error,omitempty"`
 	Data   any    `json:"data,omitempty"`
 }
 
-type handler func(req StreamRequest[[]byte, any])
+type handler func(req streamRequest) error
 type RpcWebsocket struct {
 	handlers map[string]handler
 }
@@ -109,21 +112,10 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 		// cannot be written to concurrently.
 		go func() {
 			for message := range outputChannel {
-				o := socketMessageOutJSON{
-					Id:     message.Id,
-					Kind:   message.Kind,
-					Method: message.Method,
-					Data:   message.Data,
-				}
-
-				if message.Err != nil {
-					o.Err = message.Err.Error()
-				}
-
-				if err := conn.WriteJSON(o); err != nil {
+				if err := conn.WriteJSON(message); err != nil {
 					logger.Debug("Failed to write JSON to connection", log.Ctx{
-						"method": o.Method,
-						"id":     o.Id,
+						"method": message.Method,
+						"id":     message.Id,
 						"error":  err,
 					})
 				}
@@ -144,9 +136,15 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 				})
 				outputChannel <- socketMessageOut{
 					Kind: "error",
-					Err:  fmt.Errorf("failed to parse JSON"),
+					Err:  "failed to parse JSON",
 				}
 				continue
+			}
+
+			errMessage := socketMessageOut{
+				Method: input.Method,
+				Kind:   "error",
+				Id:     input.Id,
 			}
 
 			switch input.Kind {
@@ -157,23 +155,24 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 						"method":  input.Method,
 						"message": string(message),
 					})
-					outputChannel <- socketMessageOut{
-						Method: input.Method,
-						Kind:   "error",
-						Id:     input.Id,
-						Err:    fmt.Errorf("invalid value for 'method'"),
-					}
+
+					errMessage.Err = "invalid value for 'method'"
+					outputChannel <- errMessage
 					continue
 				}
 
-				req := StreamRequest[[]byte, any]{
-					Method: input.Method,
-					Id:     input.Id,
-					Server: server,
-					Input:  input.Data,
-					output: outputChannel,
+				if input.Id == "" {
+					errMessage.Err = "'id' field was empty"
+					outputChannel <- errMessage
 				}
-				go method(req)
+
+				go runMethod(method, streamRequest{
+					Method:   input.Method,
+					Id:       input.Id,
+					Server:   server,
+					RawInput: input.Data,
+					output:   outputChannel,
+				})
 
 				continue
 
@@ -182,36 +181,16 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 					"kind":    input.Kind,
 					"message": string(message),
 				})
-				outputChannel <- socketMessageOut{
-					Id:     input.Id,
-					Kind:   "error",
-					Method: input.Method,
-					Err:    fmt.Errorf("invalid value for 'kind'"),
-				}
+
+				errMessage.Err = "invalid value for 'kind'"
+				outputChannel <- errMessage
 				continue
 			}
 		}
 	}
 }
 
-func (method *Stream[Input, Output]) handleConn(rawReq StreamRequest[[]byte, any]) {
-	var input Input
-	if err := json.Unmarshal(rawReq.Input, &input); err != nil {
-		logger.Debug("RPC stream method failed to parse input", log.Ctx{
-			"method":     rawReq.Method,
-			"id":         rawReq.Id,
-			"inputBytes": rawReq.Input,
-		})
-
-		rawReq.output <- socketMessageOut{
-			Id:     rawReq.Id,
-			Method: rawReq.Method,
-			Kind:   "error",
-			Err:    err,
-		}
-		return
-	}
-
+func runMethod(method handler, rawReq streamRequest) {
 	logger.Debug("starting up RPC stream", log.Ctx{
 		"method": rawReq.Method,
 		"id":     rawReq.Id,
@@ -223,20 +202,12 @@ func (method *Stream[Input, Output]) handleConn(rawReq StreamRequest[[]byte, any
 		Kind:   "methodStarted",
 	}
 
-	req := StreamRequest[Input, Output]{
-		Id:     rawReq.Id,
-		Method: rawReq.Method,
-		Server: rawReq.Server,
-		Input:  input,
-		output: rawReq.output,
-	}
-
-	if err := method.Run(req); err != nil {
+	if err := method(rawReq); err != nil {
 		rawReq.output <- socketMessageOut{
 			Id:     rawReq.Id,
 			Method: rawReq.Method,
 			Kind:   "error",
-			Err:    err,
+			Err:    err.Error(),
 		}
 
 		return
@@ -249,6 +220,11 @@ func (method *Stream[Input, Output]) handleConn(rawReq StreamRequest[[]byte, any
 	}
 }
 
+func (method *Stream[Input, Output]) handler(rawReq streamRequest) error {
+	req := StreamRequest[Input, Output](rawReq)
+	return method.Run(req)
+}
+
 func (method *Stream[Input, Output]) Register(ws *RpcWebsocket) error {
 	_, ok := ws.handlers[method.Name]
 	if ok {
@@ -258,7 +234,7 @@ func (method *Stream[Input, Output]) Register(ws *RpcWebsocket) error {
 	if ws.handlers == nil {
 		ws.handlers = make(map[string]handler)
 	}
-	ws.handlers[method.Name] = method.handleConn
+	ws.handlers[method.Name] = method.handler
 
 	return nil
 }
