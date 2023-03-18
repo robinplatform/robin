@@ -19,18 +19,12 @@ var (
 	logger = log.New("process")
 )
 
-type ProcessKind string
-
-const (
-	KindAppDaemon ProcessKind = "app-daemon"
-	KindInternal  ProcessKind = "internal"
-)
-
 // An identifier for a process.
 type ProcessId struct {
-	// The kind of process this is.
-	Kind ProcessKind `json:"kind"`
 	// The name of the system/app that spawned this process
+	// The following names are reserved:
+	// - robin - this is for internal apps
+	// - @robin/* - anything starting with @robin-platform/* is reserved for systems in Robin
 	Source string `json:"source"`
 	// The name that this process has been given
 	Key string `json:"key"`
@@ -38,8 +32,7 @@ type ProcessId struct {
 
 func (id ProcessId) String() string {
 	return fmt.Sprintf(
-		"%s-%s-%s",
-		id.Kind,
+		"%s-%s",
 		id.Source,
 		id.Key,
 	)
@@ -60,7 +53,7 @@ type ProcessConfig struct {
 func (processConfig *ProcessConfig) getLogFilePath() string {
 	robinPath := config.GetRobinPath()
 	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
-	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Kind)+"-"+processConfig.Id.Source+"-"+processConfig.Id.Key+".log")
+	processLogsPath := filepath.Join(processLogsFolderPath, processConfig.Id.Source+"-"+processConfig.Id.Key+".log")
 	return processLogsPath
 }
 
@@ -73,6 +66,29 @@ type Process struct {
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
 	Port      int               `json:"port"` // see docs in ProcessConfig
+}
+
+func InternalId(name string) ProcessId {
+	return ProcessId{
+		Source: "robin",
+		Key:    name,
+	}
+}
+
+func NewId(source string, name string) (ProcessId, error) {
+	if name == "robin" {
+		return ProcessId{}, fmt.Errorf("tried to use internal \"robin\" namespace")
+	}
+
+	if strings.HasPrefix(name, "@robin/") {
+		return ProcessId{}, fmt.Errorf("tried to use internal \"@robin/*\" namespace")
+
+	}
+
+	return ProcessId{
+		Source: source,
+		Key:    name,
+	}, nil
 }
 
 // TODO: Avoid logging entire Env
@@ -131,10 +147,6 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 
 	if cfg.Id.Source == "" {
 		return fmt.Errorf("cannot create process without a source")
-	}
-
-	if cfg.Id.Kind == "" {
-		cfg.Id.Kind = KindInternal
 	}
 
 	parentEnv := os.Environ()

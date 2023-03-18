@@ -15,11 +15,7 @@ func TestSpawnProcess(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := ProcessId{
-		Kind:   KindInternal,
-		Source: "default",
-		Key:    "long",
-	}
+	id := InternalId("long")
 
 	_, err = manager.SpawnPath(ProcessConfig{
 		Id:      id,
@@ -49,11 +45,7 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := ProcessId{
-		Kind:   KindInternal,
-		Source: "default",
-		Key:    "short",
-	}
+	id := InternalId("short")
 
 	_, err = manager.SpawnPath(ProcessConfig{
 		Id:      id,

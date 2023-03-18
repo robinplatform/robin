@@ -84,21 +84,8 @@ func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp)
 	}
 }
 
-func (app *CompiledApp) getProcessId() process.ProcessId {
-	projectAlias, err := project.GetProjectAlias()
-	if err != nil {
-		panic(fmt.Errorf("failed to get project alias: %w", err))
-	}
-
-	return process.ProcessId{
-		Kind:   process.KindAppDaemon,
-		Source: projectAlias,
-		Key:    app.Id,
-	}
-}
-
 func (app *CompiledApp) IsAlive() bool {
-	process, err := process.Manager.FindById(app.getProcessId())
+	process, err := process.Manager.FindById(app.ProcessId)
 	if err != nil {
 		return false
 	}
@@ -282,7 +269,7 @@ func (app *CompiledApp) StartServer() error {
 
 	projectPath := project.GetProjectPathOrExit()
 	processConfig := process.ProcessConfig{
-		Id:      app.getProcessId(),
+		Id:      app.ProcessId,
 		WorkDir: appDir,
 		Env: map[string]string{
 			"ROBIN_APP_ID":       app.Id,
@@ -375,7 +362,7 @@ func (app *CompiledApp) StopServer() error {
 	daemonProcessMux.Lock()
 	defer daemonProcessMux.Unlock()
 
-	if err := process.Manager.Kill(app.getProcessId()); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
+	if err := process.Manager.Kill(app.ProcessId); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
 		return fmt.Errorf("failed to stop app server: %w", err)
 	}
 	return nil
@@ -392,7 +379,7 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 		app.httpClient = &http.Client{}
 	}
 
-	serverProcess, err := process.Manager.FindById(app.getProcessId())
+	serverProcess, err := process.Manager.FindById(app.ProcessId)
 	if err != nil {
 		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
 	}
