@@ -33,6 +33,8 @@ import (
 	"sync"
 )
 
+var Topics Registry
+
 var (
 	ErrTopicClosed      error = errors.New("tried to operate on a closed topic")
 	ErrTopicDoesntExist error = errors.New("tried to operate on a topic that doesn't exist")
@@ -62,7 +64,7 @@ func (topic *TopicId) HashKey() string {
 
 type Topic struct {
 	// `id` is only set at creation time and isn't written to afterwards.
-	id TopicId
+	Id TopicId
 
 	// This mutex controls the reading and writing of the
 	// `subscribers` and `closed` fields.
@@ -77,7 +79,7 @@ func (topic *Topic) forEachSubscriber(iterator func(sub chan string)) error {
 	defer topic.m.Unlock()
 
 	if topic.closed {
-		return fmt.Errorf("%w: %s", ErrTopicClosed, topic.id.String())
+		return fmt.Errorf("%w: %s", ErrTopicClosed, topic.Id.String())
 	}
 
 	for _, sub := range topic.subscribers {
@@ -92,7 +94,7 @@ func (topic *Topic) addSubscriber(sub chan string) error {
 	defer topic.m.Unlock()
 
 	if topic.closed {
-		return fmt.Errorf("%w: %s", ErrTopicClosed, topic.id.String())
+		return fmt.Errorf("%w: %s", ErrTopicClosed, topic.Id.String())
 	}
 
 	topic.subscribers = append(topic.subscribers, sub)
@@ -141,11 +143,11 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	}
 
 	key := id.HashKey()
-	if r.topics[key] != nil {
+	if prev := r.topics[key]; prev != nil && !prev.closed {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
-	topic := &Topic{id: id}
+	topic := &Topic{Id: id}
 	r.topics[key] = topic
 
 	return topic, nil
@@ -176,4 +178,17 @@ func (r *Registry) Subscribe(id TopicId, channel chan string) error {
 	}
 
 	return nil
+}
+
+func (r *Registry) GetTopics() []string {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	out := make([]string, 0, len(r.topics))
+
+	for name := range r.topics {
+		out = append(out, name)
+	}
+
+	return out
 }

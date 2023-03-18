@@ -13,7 +13,6 @@ function Processes() {
 		result: z.array(
 			z.object({
 				id: z.object({
-					kind: z.string(),
 					source: z.string(),
 					key: z.string(),
 				}),
@@ -55,7 +54,7 @@ function Processes() {
 					}}
 				>
 					{processes?.map((value) => {
-						const key = `${value.id.kind} ${value.id.source} ${value.id.key}`;
+						const key = `${value.id.source} ${value.id.key}`;
 						return (
 							<div
 								key={key}
@@ -69,6 +68,73 @@ function Processes() {
 						);
 					})}
 				</div>
+			</div>
+		</div>
+	);
+}
+
+function Topics() {
+	const [selectedTopic, setSelectedTopic] = React.useState<string | null>(null);
+	const { data: topics, error } = useRpcQuery({
+		method: 'GetTopics',
+		data: {},
+		result: z.array(z.string()),
+		pathPrefix: '/api/apps/rpc',
+	});
+
+	return (
+		<div
+			className={'full col robin-gap robin-rounded robin-pad'}
+			style={{ backgroundColor: 'Black', maxHeight: '100%' }}
+		>
+			<div>Topics</div>
+
+			{/* The position relative/absolute stuff makes it so that the
+			    inner div doesn't affect layout calculations of the surrounding div.
+				I found this very confusing at first, so here's the SO post that I got it from:
+
+				https://stackoverflow.com/questions/27433183/make-scrollable-div-take-up-remaining-height
+			 */}
+			<div className={'full'} style={{ position: 'relative' }}>
+				<div
+					className={'full col robin-gap'}
+					style={{
+						position: 'absolute',
+						top: 0,
+						left: 0,
+						right: 0,
+						bottom: 0,
+						overflowY: 'scroll',
+					}}
+				>
+					{topics?.map((value) => {
+						return (
+							<button
+								key={value}
+								className={'robin-rounded robin-pad'}
+								onClick={() => {
+									setSelectedTopic(value);
+								}}
+								style={{ backgroundColor: 'Coral' }}
+							>
+								{value}
+							</button>
+						);
+					})}
+				</div>
+			</div>
+
+			<div
+				className={'full robin-rounded robin-pad'}
+				style={{ backgroundColor: 'Brown' }}
+			>
+				{selectedTopic === null ? (
+					<div>No topic is selected</div>
+				) : (
+					<>
+						<div>Selected topic is {selectedTopic}</div>
+					</>
+				)}
 			</div>
 		</div>
 	);
@@ -88,11 +154,14 @@ export default function Home() {
 			>
 				<div>Hello world!</div>
 
-				<div
-					className={'full robin-gap'}
-					style={{ display: 'flex', maxWidth: '30rem', maxHeight: '100%' }}
-				>
-					<Processes />
+				<div className={'full robin-gap'} style={{ display: 'flex' }}>
+					<div className={'full'} style={{ maxWidth: '30rem' }}>
+						<Processes />
+					</div>
+
+					<div className={'full'} style={{ maxWidth: '30rem' }}>
+						<Topics />
+					</div>
 				</div>
 			</div>
 		</div>

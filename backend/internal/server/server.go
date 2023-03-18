@@ -72,6 +72,7 @@ func (server *Server) loadRpcMethods() {
 
 	GetAppSettingsById.Register(server)
 	UpdateAppSettings.Register(server)
+	GetTopics.Register(server)
 }
 
 func createErrorJs(errMessage string) string {
