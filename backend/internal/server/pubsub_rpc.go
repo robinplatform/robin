@@ -20,7 +20,7 @@ type SubscribeTopicInput struct {
 
 var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 	Name: "SubscribeTopic",
-	Run: func(req StreamRequest[SubscribeTopicInput], output chan<- string) error {
+	Run: func(req StreamRequest[SubscribeTopicInput, string]) error {
 
 		id := pubsub.TopicId{
 			Category: req.Input.Category,
@@ -34,7 +34,7 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 
 		// TODO: this is sorta unnecessary, ideally it should be possible to just wait for the topic to close
 		for s := range subscription {
-			output <- s
+			req.Output <- s
 		}
 
 		return nil

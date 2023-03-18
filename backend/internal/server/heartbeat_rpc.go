@@ -11,9 +11,9 @@ type Heartbeat struct {
 var GetHeartbeat = Stream[struct{}, Heartbeat]{
 	Name:             "GetHeartbeat",
 	SkipInputParsing: true,
-	Run: func(req StreamRequest[struct{}], output chan<- Heartbeat) error {
+	Run: func(req StreamRequest[struct{}, Heartbeat]) error {
 		for {
-			output <- Heartbeat{Ok: true}
+			req.Output <- Heartbeat{Ok: true}
 			time.Sleep(1 * time.Second)
 		}
 	},
