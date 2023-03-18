@@ -181,14 +181,14 @@ func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	return nil
 }
 
-func (r *Registry) GetTopics() []string {
+func (r *Registry) GetTopics() []TopicId {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	out := make([]string, 0, len(r.topics))
+	out := make([]TopicId, 0, len(r.topics))
 
 	for _, topic := range r.topics {
-		out = append(out, topic.Id.String())
+		out = append(out, topic.Id)
 	}
 
 	return out

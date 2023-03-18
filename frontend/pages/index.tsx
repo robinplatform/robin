@@ -74,12 +74,17 @@ function Processes() {
 	);
 }
 
+type TopicId = z.infer<typeof TopicId>;
+const TopicId = z.object({
+	category: z.string(),
+	name: z.string(),
+});
 function Topics() {
-	const [selectedTopic, setSelectedTopic] = React.useState<string | null>(null);
+	const [selectedTopic, setSelectedTopic] = React.useState<TopicId>();
 	const { data: topics, error } = useRpcQuery({
 		method: 'GetTopics',
 		data: {},
-		result: z.array(z.string()),
+		result: z.array(TopicId),
 		pathPrefix: '/api/apps/rpc',
 	});
 
@@ -128,17 +133,18 @@ function Topics() {
 						overflowY: 'scroll',
 					}}
 				>
-					{topics?.map((value) => {
+					{topics?.map((id) => {
+						const key = `${id.category}-${id.name}`;
 						return (
 							<button
-								key={value}
+								key={key}
 								className={'robin-rounded robin-pad'}
 								onClick={() => {
-									setSelectedTopic(value);
+									setSelectedTopic(id);
 								}}
 								style={{ backgroundColor: 'Coral' }}
 							>
-								{value}
+								{key}
 							</button>
 						);
 					})}
@@ -149,11 +155,17 @@ function Topics() {
 				className={'full robin-rounded robin-pad'}
 				style={{ backgroundColor: 'Brown' }}
 			>
-				{selectedTopic === null ? (
+				{selectedTopic === undefined ? (
 					<div>No topic is selected</div>
 				) : (
 					<>
-						<div>Selected topic is {selectedTopic}</div>
+						<div>
+							Selected topic is{' '}
+							{`${selectedTopic.category}-${selectedTopic.name}`}
+						</div>
+
+						<div>Category: {selectedTopic.category}</div>
+						<div>Name: {selectedTopic.name}</div>
 					</>
 				)}
 			</div>

@@ -18,6 +18,7 @@ type Stream[Input any, Output any] struct {
 	Run func(req StreamRequest[Input, Output]) error
 }
 
+// TODO: Add context stuffs so that requests can be cancelled
 type StreamRequest[Input any, Output any] streamRequest
 type streamRequest struct {
 	Method string
