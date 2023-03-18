@@ -89,24 +89,27 @@ function Topics() {
 	});
 
 	React.useEffect(() => {
+		if (selectedTopic === undefined) {
+			return;
+		}
+
 		const id = `${Math.random()} adsf`;
-		const runner = async () => {
-			const stream = await Stream.callStreamRpc('SubscribeTopic', id);
-			stream.onmessage = (data) => {
-				console.log('subscribe-message', data);
-			};
-			stream.onerror = (err) => {
-				console.log('error', err);
-			};
-			stream.start({
-				id: {
-					category: 'hello',
-					name: 'blahlahs',
-				},
-			});
+		const stream = Stream.callStreamRpc('SubscribeTopic', id);
+		stream.onmessage = (data) => {
+			console.log('subscribe-message', data);
 		};
-		runner();
-	}, []);
+		stream.onerror = (err) => {
+			console.log('error', err);
+		};
+
+		stream.start({
+			id: selectedTopic,
+		});
+
+		return () => {
+			stream.close();
+		};
+	}, [selectedTopic]);
 
 	return (
 		<div

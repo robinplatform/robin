@@ -29,10 +29,21 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 		if err := pubsub.Topics.Subscribe(input.Id, subscription); err != nil {
 			return err
 		}
+		defer pubsub.Topics.Unsubscribe(input.Id, subscription)
 
-		// TODO: this is sorta unnecessary, ideally it should be possible to just wait for the topic to close
-		for s := range subscription {
-			req.Send(s)
+		for {
+			select {
+			case s, closed := <-subscription:
+				if closed {
+					return nil
+				}
+
+				req.Send(s)
+
+			case <-req.Context.Done():
+				return nil
+			}
+
 		}
 
 		return nil

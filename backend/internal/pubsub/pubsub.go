@@ -102,6 +102,24 @@ func (topic *Topic) addSubscriber(sub chan<- string) error {
 	return nil
 }
 
+func (topic *Topic) removeSubscriber(sub chan<- string) {
+	topic.m.Lock()
+	defer topic.m.Unlock()
+
+	writeIndex := 0
+	for readIndex := 0; readIndex < len(topic.subscribers); readIndex++ {
+		item := topic.subscribers[readIndex]
+		if item == sub {
+			continue
+		}
+
+		topic.subscribers[writeIndex] = item
+		writeIndex += 1
+	}
+
+	topic.subscribers = topic.subscribers[:writeIndex]
+}
+
 func (topic *Topic) Publish(message string) {
 	topic.forEachSubscriber(func(sub chan<- string) {
 		sub <- message
@@ -153,7 +171,24 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	return topic, nil
 }
 
-// TODO: Add ability to unsubscribe
+func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
+	if channel == nil {
+		return
+	}
+
+	key := id.HashKey()
+
+	r.m.Lock()
+	if r.topics == nil {
+		r.topics = make(map[string]*Topic, 8)
+	}
+
+	topic := r.topics[key]
+	r.m.Unlock()
+
+	topic.removeSubscriber(channel)
+}
+
 func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	if channel == nil {
 		return ErrNilSubscriber
