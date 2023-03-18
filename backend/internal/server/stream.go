@@ -31,6 +31,9 @@ type StreamRequest[Input any, Output any] struct {
 	// Initial input to the stream
 	Input Input
 
+	// The channel this stream request outputs to
+	// TODO: maybe this should be a method instead of a channel? There's so many
+	// goroutines right now.
 	Output chan<- Output
 }
 
