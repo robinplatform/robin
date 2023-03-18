@@ -91,7 +91,6 @@ func (app *CompiledApp) getProcessId() process.ProcessId {
 	}
 
 	return process.ProcessId{
-		Kind:   process.KindAppDaemon,
 		Source: projectAlias,
 		Key:    app.Id,
 	}
