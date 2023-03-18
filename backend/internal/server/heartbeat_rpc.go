@@ -13,7 +13,7 @@ var GetHeartbeat = Stream[struct{}, Heartbeat]{
 	SkipInputParsing: true,
 	Run: func(req StreamRequest[struct{}, Heartbeat]) error {
 		for {
-			req.Output <- Heartbeat{Ok: true}
+			req.Send(Heartbeat{Ok: true})
 			time.Sleep(1 * time.Second)
 		}
 	},

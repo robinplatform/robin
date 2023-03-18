@@ -34,7 +34,7 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 
 		// TODO: this is sorta unnecessary, ideally it should be possible to just wait for the topic to close
 		for s := range subscription {
-			req.Output <- s
+			req.Send(s)
 		}
 
 		return nil
