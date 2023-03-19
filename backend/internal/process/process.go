@@ -10,9 +10,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/nxadm/tail"
+
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
+	"robinplatform.dev/internal/pubsub"
 )
 
 var (
@@ -91,9 +94,7 @@ func NewId(source string, name string) (ProcessId, error) {
 	}, nil
 }
 
-// TODO: Avoid logging entire Env
-
-func (process *Process) waitForExit(pid int) {
+func (process *Process) waitForExit(pid int, exitChan chan<- struct{}) {
 	proc, err := os.FindProcess(pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
@@ -114,6 +115,8 @@ func (process *Process) waitForExit(pid int) {
 			"process": process,
 		})
 	}
+
+	exitChan <- struct{}{}
 }
 
 func (process *Process) IsAlive() bool {
@@ -212,6 +215,49 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
+func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan struct{}) {
+	defer topic.Close()
+
+	logger.Debug("Starting pipe into topic", log.Ctx{
+		"topic": topic.Id.String(),
+	})
+
+	config := tail.Config{
+		ReOpen: true,
+		Follow: true,
+	}
+	out, err := tail.TailFile(filename, config)
+	if err != nil {
+		logger.Err("failed to tail file", log.Ctx{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	defer out.Cleanup()
+
+	for {
+		select {
+		case <-exitChan:
+			return
+
+		case line, ok := <-out.Lines:
+			if !ok {
+				return
+			}
+
+			if line.Err != nil {
+				logger.Err("got error in tail line", log.Ctx{
+					"err": line.Err.Error(),
+				})
+			}
+
+			topic.Publish(line.Text)
+		}
+	}
+
+}
+
 // TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
 // from a path
 
@@ -265,6 +311,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
+	// Don't close the file, instead pass it on to the tail goroutine later on
 	output, err := os.Create(processLogsPath)
 	if err != nil {
 		return nil, err
@@ -287,6 +334,24 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		return nil, err
 	}
 
+	exitChan := make(chan struct{})
+
+	topicId := pubsub.TopicId{
+		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Source),
+		Name:     procConfig.Id.Key,
+	}
+
+	topic, err := pubsub.Topics.CreateTopic(topicId)
+	if err != nil {
+		logger.Err("error creating topic", log.Ctx{
+			"err": err.Error(),
+		})
+		_ = proc.Kill()
+		return nil, err
+	}
+
+	go pipeTailIntoTopic(topic, processLogsPath, exitChan)
+
 	entry := Process{
 		Id:        procConfig.Id,
 		WorkDir:   procConfig.WorkDir,
@@ -299,7 +364,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 
 	// Reap zombies
-	go entry.waitForExit(entry.Pid)
+	go entry.waitForExit(entry.Pid, exitChan)
 
 	logger.Debug("Process created", log.Ctx{
 		"id":       entry.Id,

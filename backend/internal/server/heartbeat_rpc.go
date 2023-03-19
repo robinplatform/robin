@@ -8,12 +8,11 @@ type Heartbeat struct {
 	Ok bool `json:"ok"`
 }
 
-var GetHeartbeat = Stream[struct{}, struct{}, Heartbeat]{
-	Name:             "GetHeartbeat",
-	SkipInputParsing: true,
-	Run: func(_ struct{}, output chan<- Heartbeat) error {
+var GetHeartbeat = Stream[struct{}, Heartbeat]{
+	Name: "GetHeartbeat",
+	Run: func(req StreamRequest[struct{}, Heartbeat]) error {
 		for {
-			output <- Heartbeat{Ok: true}
+			req.Send(Heartbeat{Ok: true})
 			time.Sleep(1 * time.Second)
 		}
 	},
