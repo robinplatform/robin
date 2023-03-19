@@ -342,6 +342,14 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 
 	topic, err := pubsub.Topics.CreateTopic(topicId)
+	if err != nil {
+		logger.Err("error creating topic", log.Ctx{
+			"err": err.Error(),
+		})
+		_ = proc.Kill()
+		return nil, err
+	}
+
 	go pipeTailIntoTopic(topic, processLogsPath, exitChan)
 
 	entry := Process{

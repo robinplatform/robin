@@ -1,14 +1,16 @@
 package server
 
-import "robinplatform.dev/internal/pubsub"
+import (
+	"robinplatform.dev/internal/pubsub"
+)
 
 type GetTopicsInput struct {
 }
 
-var GetTopics = AppsRpcMethod[GetTopicsInput, []pubsub.TopicId]{
+var GetTopics = AppsRpcMethod[GetTopicsInput, []pubsub.TopicInfo]{
 	Name: "GetTopics",
-	Run: func(req RpcRequest[GetTopicsInput]) ([]pubsub.TopicId, *HttpError) {
-		names := pubsub.Topics.GetTopics()
+	Run: func(req RpcRequest[GetTopicsInput]) ([]pubsub.TopicInfo, *HttpError) {
+		names := pubsub.Topics.GetTopicInfo()
 		return names, nil
 	},
 }
@@ -45,7 +47,5 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 			}
 
 		}
-
-		return nil
 	},
 }

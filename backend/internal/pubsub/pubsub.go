@@ -70,6 +70,7 @@ type Topic struct {
 	// `subscribers` and `closed` fields.
 	m sync.Mutex
 
+	counter     int
 	closed      bool
 	subscribers []chan<- string
 }
@@ -216,14 +217,30 @@ func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	return nil
 }
 
-func (r *Registry) GetTopics() []TopicId {
+type TopicInfo struct {
+	Id              TopicId `json:"id"`
+	Closed          bool    `json:"closed"`
+	Count           int     `json:"count"`
+	SubscriberCount int     `json:"subscriberCount"`
+}
+
+func (r *Registry) GetTopicInfo() []TopicInfo {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	out := make([]TopicId, 0, len(r.topics))
+	out := make([]TopicInfo, 0, len(r.topics))
 
 	for _, topic := range r.topics {
-		out = append(out, topic.Id)
+		topic.m.Lock()
+
+		out = append(out, TopicInfo{
+			Id:              topic.Id,
+			Closed:          topic.closed,
+			Count:           topic.counter,
+			SubscriberCount: len(topic.subscribers),
+		})
+
+		topic.m.Unlock()
 	}
 
 	return out

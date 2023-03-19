@@ -79,13 +79,24 @@ const TopicId = z.object({
 	category: z.string(),
 	name: z.string(),
 });
+
+type TopicInfo = z.infer<typeof TopicInfo>;
+const TopicInfo = z.object({
+	id: TopicId,
+	closed: z.boolean(),
+	count: z.number(),
+	subscriberCount: z.number(),
+});
 function Topics() {
-	const [selectedTopic, setSelectedTopic] = React.useState<TopicId>();
+	const [selectedTopic, setSelectedTopic] = React.useState<TopicInfo>();
+	const [topicMessages, setTopicMessages] = React.useState<string[]>([]);
+
 	const { data: topics, error } = useRpcQuery({
 		method: 'GetTopics',
 		data: {},
-		result: z.array(TopicId),
+		result: z.array(TopicInfo),
 		pathPrefix: '/api/apps/rpc',
+		refetchInterval: 3000,
 	});
 
 	React.useEffect(() => {
@@ -94,7 +105,7 @@ function Topics() {
 		}
 
 		const id = `${Math.random()} adsf`;
-		const stream = Stream.callStreamRpc('SubscribeTopic', id);
+		const stream = new Stream('SubscribeTopic', id);
 		stream.onmessage = (data) => {
 			console.log('subscribe-message', data);
 		};
@@ -103,7 +114,7 @@ function Topics() {
 		};
 
 		stream.start({
-			id: selectedTopic,
+			id: selectedTopic.id,
 		});
 
 		return () => {
@@ -136,18 +147,31 @@ function Topics() {
 						overflowY: 'scroll',
 					}}
 				>
-					{topics?.map((id) => {
-						const key = `${id.category}-${id.name}`;
+					{topics?.map((topic) => {
+						const key = `${topic.id.category}-${topic.id.name}`;
 						return (
 							<button
 								key={key}
-								className={'robin-rounded robin-pad'}
-								onClick={() => {
-									setSelectedTopic(id);
+								className={'robin-rounded'}
+								style={{
+									backgroundColor: 'Coral',
+									border:
+										selectedTopic?.id.category === topic.id.category &&
+										selectedTopic?.id.name === topic.id.name
+											? '3px solid blue'
+											: '3px solid Coral',
 								}}
-								style={{ backgroundColor: 'Coral' }}
+								onClick={() => {
+									setSelectedTopic((prevTopic) =>
+										prevTopic?.id.category === topic.id.category &&
+										prevTopic?.id.name === topic.id.name
+											? undefined
+											: topic,
+									);
+								}}
 							>
-								{key}
+								{key} with {topic.subscriberCount} subs
+								{topic.closed ? '  X.X' : '  :)'}
 							</button>
 						);
 					})}
@@ -164,11 +188,14 @@ function Topics() {
 					<>
 						<div>
 							Selected topic is{' '}
-							{`${selectedTopic.category}-${selectedTopic.name}`}
+							{`${selectedTopic.id.category} - ${selectedTopic.id.name}`}
 						</div>
 
-						<div>Category: {selectedTopic.category}</div>
-						<div>Name: {selectedTopic.name}</div>
+						<div>
+							{topicMessages.map((msg) => (
+								<div>{msg}</div>
+							))}
+						</div>
 					</>
 				)}
 			</div>
