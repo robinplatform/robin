@@ -35,8 +35,9 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 
 		for {
 			select {
-			case s, closed := <-subscription:
-				if closed {
+			case s, ok := <-subscription:
+				if !ok {
+					// Channel is closed
 					return nil
 				}
 

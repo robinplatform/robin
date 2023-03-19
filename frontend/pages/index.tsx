@@ -96,7 +96,7 @@ function Topics() {
 		data: {},
 		result: z.array(TopicInfo),
 		pathPrefix: '/api/apps/rpc',
-		refetchInterval: 3000,
+		refetchInterval: 5000,
 	});
 
 	React.useEffect(() => {
@@ -106,8 +106,14 @@ function Topics() {
 
 		const id = `${Math.random()} adsf`;
 		const stream = new Stream('SubscribeTopic', id);
-		stream.onmessage = (data) => {
-			console.log('subscribe-message', data);
+		stream.onmessage = (message) => {
+			const { kind, data } = message;
+			if (kind !== 'methodOutput') {
+				console.log('message from topic subscription', message);
+				return;
+			}
+
+			setTopicMessages((prev) => [...prev, String(data)]);
 		};
 		stream.onerror = (err) => {
 			console.log('error', err);
@@ -179,7 +185,7 @@ function Topics() {
 			</div>
 
 			<div
-				className={'full robin-rounded robin-pad'}
+				className={'full robin-rounded col robin-pad robin-gap'}
 				style={{ backgroundColor: 'Brown' }}
 			>
 				{selectedTopic === undefined ? (
@@ -191,10 +197,22 @@ function Topics() {
 							{`${selectedTopic.id.category} - ${selectedTopic.id.name}`}
 						</div>
 
-						<div>
-							{topicMessages.map((msg) => (
-								<div>{msg}</div>
-							))}
+						<div style={{ position: 'relative', flexGrow: 1 }}>
+							<div
+								className={'full col'}
+								style={{
+									position: 'absolute',
+									top: 0,
+									left: 0,
+									right: 0,
+									bottom: 0,
+									overflowY: 'scroll',
+								}}
+							>
+								{topicMessages.map((msg, idx) => (
+									<div key={`${msg} ${idx}`}>{msg}</div>
+								))}
+							</div>
 						</div>
 					</>
 				)}

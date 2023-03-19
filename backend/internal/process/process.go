@@ -241,8 +241,8 @@ func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan str
 		case <-exitChan:
 			return
 
-		case line, closed := <-out.Lines:
-			if closed {
+		case line, ok := <-out.Lines:
+			if !ok {
 				return
 			}
 
