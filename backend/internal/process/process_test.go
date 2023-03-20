@@ -1,6 +1,7 @@
 package process
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -95,6 +96,8 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	})
 	_ = procA
 
+	fmt.Printf("PID: %v\n", procA.Pid)
+
 	if err != nil {
 		t.Fatalf("error spawning process: %s", err.Error())
 	}
@@ -123,19 +126,27 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	errChan := make(chan error)
-	go func() {
+	killProc := func() error {
 		// Kill the process to imitate
 		osProc, err := os.FindProcess(procB.Pid)
 		if err != nil {
-			errChan <- err
-			return
+			return err
 		}
 
-		errChan <- osProc.Kill()
-	}()
+		if err := osProc.Kill(); err != nil {
+			return err
+		}
 
-	if err := <-errChan; err != nil {
+		state, err := osProc.Wait()
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("IDK what's happening: %s\n", state.String())
+		return nil
+	}
+
+	if err := killProc(); err != nil {
 		t.Fatalf("failed to kill process")
 	}
 

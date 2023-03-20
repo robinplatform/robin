@@ -271,7 +271,9 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 func (proc *Process) pollForExit() {
 	for {
 		// TODO: change this to debug
-		logger.Info("Polling for liveness", log.Ctx{})
+		logger.Info("Polling for liveness", log.Ctx{
+			"pid": proc.Pid,
+		})
 		if !proc.osProcessIsAlive() {
 			proc.cancel()
 			return
