@@ -104,7 +104,7 @@ func ProjectAppId(category string, key string) ProcessId {
 	}
 
 	return ProcessId{
-		Category: "@robin/project/" + name + category,
+		Category: "@robin/app/" + name + category,
 		Key:      key,
 	}
 }
@@ -312,7 +312,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 }
 
 func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
-	defer topic.Close()
+	defer m.topics.Close(topic)
 
 	config := tail.Config{
 		ReOpen: true,
