@@ -225,9 +225,12 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 
 	manager.ctx, manager.cancel = context.WithCancel(context.Background())
 
-	manager.db.ForEachWriting(func(proc *Process) {
+	err = manager.db.ForEachWriting(func(proc *Process) {
 		proc.Context, proc.cancel = context.WithCancel(manager.ctx)
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	// This needs to be copied out because otherwise you'd have a situation where
 	// the process being referenced is modified by another thread in parallel
