@@ -20,7 +20,7 @@ func AppProcessLogs(category string, key string) TopicId {
 	}
 
 	return TopicId{
-		Category: "@robin/project/" + name + category,
+		Category: "@robin/logs/@robin/app/" + name + category,
 		Name:     key,
 	}
 }

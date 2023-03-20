@@ -87,24 +87,37 @@ const TopicInfo = z.object({
 	count: z.number(),
 	subscriberCount: z.number(),
 });
-function Topics() {
-	const [selectedTopic, setSelectedTopic] = React.useState<TopicInfo>();
-	const [topicMessages, setTopicMessages] = React.useState<string[]>([]);
 
-	const { data: topics, error } = useRpcQuery({
+type MetaTopicInfo = z.infer<typeof MetaTopicInfo>;
+const MetaTopicInfo = z.discriminatedUnion('kind', [
+	z.object({
+		kind: z.literal('update'),
+		data: TopicInfo,
+	}),
+	z.object({
+		kind: z.literal('close'),
+		data: TopicId,
+	}),
+]);
+function Topics() {
+	const [selectedTopic, setSelectedTopic] = React.useState<
+		TopicInfo & { key: string }
+	>();
+	const [topicMessages, setTopicMessages] = React.useState<
+		Record<string, string[]>
+	>({});
+
+	const [topics, setTopics] = React.useState<Record<string, TopicInfo>>({});
+	const { error } = useRpcQuery({
 		method: 'GetTopics',
 		data: {},
-		result: z.array(TopicInfo),
+		result: z.record(z.string(), TopicInfo),
 		pathPrefix: '/api/apps/rpc',
-		refetchInterval: 5000,
+		onSuccess: setTopics,
 	});
 
 	React.useEffect(() => {
-		if (selectedTopic === undefined) {
-			return;
-		}
-
-		const id = `${Math.random()} adsf`;
+		const id = `${Math.random()} topic-info`;
 		const stream = new Stream('SubscribeTopic', id);
 		stream.onmessage = (message) => {
 			const { kind, data } = message;
@@ -113,7 +126,68 @@ function Topics() {
 				return;
 			}
 
-			setTopicMessages((prev) => [...prev, String(data)]);
+			const res = MetaTopicInfo.safeParse(JSON.parse(data));
+			if (!res.success) {
+				console.log(
+					'parse failure from from topic subscription',
+					message,
+					res.error,
+				);
+				return;
+			}
+
+			const packet = res.data;
+			switch (packet.kind) {
+				case 'update':
+					setTopics((prev) => ({
+						...prev,
+						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
+					}));
+					break;
+				case 'close':
+					setTopics((prev) => {
+						const a = { ...prev };
+						// rome-ignore lint/performance/noDelete: I'm deleting a key from a record... also the docs say this rule shouldn't even apply here.
+						delete a[`${packet.data.category}/${packet.data.name}`];
+						return a;
+					});
+					break;
+			}
+		};
+		stream.onerror = (err) => {
+			console.log('error', err);
+		};
+
+		stream.start({
+			id: {
+				category: '@robin/topics',
+				name: 'meta',
+			},
+		});
+
+		return () => {
+			stream.close();
+		};
+	}, []);
+
+	React.useEffect(() => {
+		if (selectedTopic === undefined) {
+			return;
+		}
+
+		const id = `${Math.random()} topic-contents`;
+		const stream = new Stream('SubscribeTopic', id);
+		stream.onmessage = (message) => {
+			const { kind, data } = message;
+			if (kind !== 'methodOutput') {
+				console.log('message from topic subscription', message);
+				return;
+			}
+
+			setTopicMessages((prev) => ({
+				...prev,
+				[selectedTopic.key]: [...(prev[selectedTopic.key] ?? []), String(data)],
+			}));
 		};
 		stream.onerror = (err) => {
 			console.log('error', err);
@@ -153,8 +227,7 @@ function Topics() {
 						overflowY: 'scroll',
 					}}
 				>
-					{topics?.map((topic) => {
-						const key = `${topic.id.category}-${topic.id.name}`;
+					{Object.entries(topics ?? {}).map(([key, topic]) => {
 						return (
 							<button
 								key={key}
@@ -162,17 +235,13 @@ function Topics() {
 								style={{
 									backgroundColor: 'Coral',
 									border:
-										selectedTopic?.id.category === topic.id.category &&
-										selectedTopic?.id.name === topic.id.name
+										selectedTopic?.key === key
 											? '3px solid blue'
 											: '3px solid Coral',
 								}}
 								onClick={() => {
 									setSelectedTopic((prevTopic) =>
-										prevTopic?.id.category === topic.id.category &&
-										prevTopic?.id.name === topic.id.name
-											? undefined
-											: topic,
+										prevTopic?.key === key ? undefined : { ...topic, key },
 									);
 								}}
 							>
@@ -209,7 +278,7 @@ function Topics() {
 									overflowY: 'scroll',
 								}}
 							>
-								{topicMessages.map((msg, idx) => (
+								{topicMessages[selectedTopic.key]?.map((msg, idx) => (
 									<div key={`${msg} ${idx}`}>{msg}</div>
 								))}
 							</div>
