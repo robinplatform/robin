@@ -82,20 +82,12 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		compiler.appCache = make(map[string]CompiledApp)
 	}
 
-	projectConfig, err := project.LoadFromEnv()
-	if err != nil {
-		return CompiledApp{}, false, fmt.Errorf("failed to load project config: %w", err)
-	}
-
-	appConfig, err := projectConfig.LoadRobinAppById(id)
+	appConfig, err := project.LoadRobinAppById(id)
 	if err != nil {
 		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
 	}
 
-	processId, err := process.NewId(projectConfig.GetProjectAlias(), appConfig.Id)
-	if err != nil {
-		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
-	}
+	processId := process.ProjectAppId("", appConfig.Id)
 
 	app := CompiledApp{
 		compiler:         compiler,
