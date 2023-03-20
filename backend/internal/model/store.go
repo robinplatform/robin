@@ -150,7 +150,7 @@ func (w *WHandle[Model]) ForEach(f func(*Model)) error {
 }
 
 func (store *Store[Model]) ForEachWriting(f func(*Model)) error {
-	// This is called ForEach writing because I wanted to make explicit that it
+	// This is called ForEachWriting because I wanted to make explicit that it
 	// it would take a write lock internally
 	w := store.WriteHandle()
 	defer w.Close()

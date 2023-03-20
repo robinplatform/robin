@@ -137,7 +137,6 @@ func (process *Process) osProcessIsAlive() bool {
 	// or something else.
 	osProcess, err := os.FindProcess(process.Pid)
 	if err != nil {
-		// TODO: make this debug
 		logger.Debug("got error when checking process alive", log.Ctx{
 			"procIsNil": osProcess == nil,
 			"err":       err.Error(),
@@ -145,15 +144,16 @@ func (process *Process) osProcessIsAlive() bool {
 		return false
 	}
 
-	// It turns out, `Release` is super duper important on Windows. I'm not quite sure
-	// exactly why, but it seems that without calling this, there's some handles that don't get closed.
+	// It turns out, `Release` is super duper important on Windows. Without calling release,
+	// the underlying Windows handle doesn't get closed, and the process stays in the "running"
+	// state, at least for the purpose of this check. This isn't a problem on unix, as Release is essentially
+	// a no-op there.
 	defer osProcess.Release()
 
 	// On windows, if we located a process, it's alive.
 	// On other platforms, we only have a handle, and need to send a signal
 	// to see if it's alive.
 	if runtime.GOOS == "windows" {
-
 		return true
 	}
 
