@@ -35,6 +35,7 @@ func (w *WHandle) Kill(id ProcessId) error {
 		if err := osProcess.Kill(); err != nil {
 			return fmt.Errorf("failed to kill process: %w", err)
 		}
+		osProcess.Release()
 	}
 
 	if err := w.db.Delete(findById(id)); err != nil {

@@ -145,10 +145,13 @@ func (process *Process) osProcessIsAlive() bool {
 		return false
 	}
 
+	defer osProcess.Release()
+
 	// On windows, if we located a process, it's alive.
 	// On other platforms, we only have a handle, and need to send a signal
 	// to see if it's alive.
 	if runtime.GOOS == "windows" {
+
 		return true
 	}
 
