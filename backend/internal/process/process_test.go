@@ -61,16 +61,23 @@ func TestSpawnDead(t *testing.T) {
 	proc, err := manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
-		Args:    []string{"0"},
+		Args:    []string{"1"},
 	})
 	if err != nil {
 		t.Fatalf("error spawning process: %s", err.Error())
+	}
+
+	if !proc.osProcessIsAlive() {
+		t.Fatalf("manager thinks the process is dead before it dies")
 	}
 
 	// Wait for the process to die
 	<-proc.Context.Done()
 
 	if manager.IsAlive(id) {
+		t.Fatalf("manager thinks the process is still alive")
+	}
+	if proc.osProcessIsAlive() {
 		t.Fatalf("manager thinks the process is still alive")
 	}
 }

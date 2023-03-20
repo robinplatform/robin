@@ -145,7 +145,9 @@ func (process *Process) osProcessIsAlive() bool {
 		return false
 	}
 
-	defer osProcess.Release()
+	// It turns out, `Release` is super duper important on Windows. I'm not quite sure
+	// exactly why, but it seems that without calling this, there's some handles that don't get closed.
+	// defer osProcess.Release()
 
 	// On windows, if we located a process, it's alive.
 	// On other platforms, we only have a handle, and need to send a signal
