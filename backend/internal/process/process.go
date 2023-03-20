@@ -54,10 +54,10 @@ type ProcessConfig struct {
 	Port int
 }
 
-func (processConfig *ProcessConfig) getLogFilePath() string {
+func (id *ProcessId) getLogFilePath() string {
 	robinPath := config.GetRobinPath()
 	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
-	processLogsPath := filepath.Join(processLogsFolderPath, processConfig.Id.Source+"-"+processConfig.Id.Key+".log")
+	processLogsPath := filepath.Join(processLogsFolderPath, id.Source+"-"+id.Key+".log")
 	return processLogsPath
 }
 
@@ -71,8 +71,11 @@ type Process struct {
 	Args      []string          `json:"args"`
 	Port      int               `json:"port"` // see docs in ProcessConfig
 
-	// This Context can be used to determine whether the process is alive or not.
-	Context context.Context `json:"-"`
+	// NOTE: The context and cancel fields are only valid because
+	// the store doesn't re-load data from disk when the file is updated.
+
+	Context context.Context `json:"-"` // This Context gets canceled when the process dies.
+	cancel  func()          `json:"-"` // Cancel the context
 }
 
 func InternalId(name string) ProcessId {
@@ -98,8 +101,8 @@ func NewId(source string, name string) (ProcessId, error) {
 	}, nil
 }
 
-func (process *Process) waitForExit(pid int, exitChan chan<- struct{}) {
-	proc, err := os.FindProcess(pid)
+func (process Process) waitForExit() {
+	proc, err := os.FindProcess(process.Pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
 			"process": process,
@@ -120,7 +123,7 @@ func (process *Process) waitForExit(pid int, exitChan chan<- struct{}) {
 		})
 	}
 
-	exitChan <- struct{}{}
+	process.cancel()
 }
 
 func (process *Process) IsAlive() bool {
@@ -228,7 +231,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan struct{}) {
+func (process Process) pipeTailIntoTopic(topic *pubsub.Topic) {
 	defer topic.Close()
 
 	logger.Debug("Starting pipe into topic", log.Ctx{
@@ -239,7 +242,7 @@ func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan str
 		ReOpen: true,
 		Follow: true,
 	}
-	out, err := tail.TailFile(filename, config)
+	out, err := tail.TailFile(process.Id.getLogFilePath(), config)
 	if err != nil {
 		logger.Err("failed to tail file", log.Ctx{
 			"err": err.Error(),
@@ -251,7 +254,7 @@ func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan str
 
 	for {
 		select {
-		case <-exitChan:
+		case <-process.Context.Done():
 			return
 
 		case line, ok := <-out.Lines:
@@ -268,7 +271,6 @@ func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan str
 			topic.Publish(line.Text)
 		}
 	}
-
 }
 
 // This reads the path variable to find the right executable.
@@ -316,7 +318,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 	defer empty.Close()
 
-	processLogsPath := procConfig.getLogFilePath()
+	processLogsPath := procConfig.Id.getLogFilePath()
 	processLogsFolderPath := filepath.Dir(processLogsPath)
 
 	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
@@ -346,8 +348,6 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		return nil, err
 	}
 
-	exitChan := make(chan struct{})
-
 	topicId := pubsub.TopicId{
 		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Source),
 		Name:     procConfig.Id.Key,
@@ -362,7 +362,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		return nil, err
 	}
 
-	go pipeTailIntoTopic(topic, processLogsPath, exitChan)
+	ctx, cancel := context.WithCancel(w.Read.m.ctx)
 
 	entry := Process{
 		Id:        procConfig.Id,
@@ -373,10 +373,16 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
 		Port:      procConfig.Port,
+
+		Context: ctx,
+		cancel:  cancel,
 	}
 
+	// Write output to file
+	go entry.pipeTailIntoTopic(topic)
+
 	// Reap zombies
-	go entry.waitForExit(entry.Pid, exitChan)
+	go entry.waitForExit()
 
 	logger.Debug("Process created", log.Ctx{
 		"id":       entry.Id,

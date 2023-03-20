@@ -3,6 +3,7 @@ package process
 import "robinplatform.dev/internal/model"
 
 type RHandle struct {
+	m  *ProcessManager
 	db model.RHandle[Process]
 }
 
@@ -11,14 +12,14 @@ type WHandle struct {
 	db   model.WHandle[Process]
 }
 
-func (manager *ProcessManager) ReadHandle() RHandle {
-	return RHandle{db: manager.db.ReadHandle()}
+func (m *ProcessManager) ReadHandle() RHandle {
+	return RHandle{m: m, db: m.db.ReadHandle()}
 }
 
-func (manager *ProcessManager) WriteHandle() WHandle {
-	db := manager.db.WriteHandle()
+func (m *ProcessManager) WriteHandle() WHandle {
+	db := m.db.WriteHandle()
 	return WHandle{
-		Read: RHandle{db.UncloseableReadHandle()},
+		Read: RHandle{m: m, db: db.UncloseableReadHandle()},
 		db:   db,
 	}
 }

@@ -3,7 +3,6 @@ package process
 import (
 	"path/filepath"
 	"testing"
-	"time"
 )
 
 func TestSpawnProcess(t *testing.T) {
@@ -47,7 +46,7 @@ func TestSpawnDead(t *testing.T) {
 
 	id := InternalId("short")
 
-	_, err = manager.SpawnFromPathVar(ProcessConfig{
+	proc, err := manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"0"},
@@ -56,7 +55,8 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("error spawning process: %s", err.Error())
 	}
 
-	time.Sleep(time.Millisecond * 100)
+	// Wait for the process to die
+	<-proc.Context.Done()
 
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")

@@ -8,6 +8,11 @@ import (
 	"sync"
 )
 
+// Store of information that gets loaded from disk on initialization and persisted to disk on write.
+// It provides the following promises:
+// - Modifications like insertions or mutations are persisted
+// - Data is persisted using JSON
+// - Data is ONLY read on initialization
 type Store[Model any] struct {
 	// FilePath is the path to the json file where the data should be stored.
 	FilePath string
