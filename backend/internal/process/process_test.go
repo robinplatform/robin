@@ -33,7 +33,7 @@ func TestSpawnProcess(t *testing.T) {
 	}
 
 	if !proc.osProcessIsAlive() {
-		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
+		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
 	err = manager.Kill(id)
@@ -43,6 +43,9 @@ func TestSpawnProcess(t *testing.T) {
 
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
+	}
+	if proc.osProcessIsAlive() {
+		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
 
@@ -68,7 +71,7 @@ func TestSpawnDead(t *testing.T) {
 	}
 
 	if !proc.osProcessIsAlive() {
-		t.Fatalf("manager thinks the process is dead before it dies")
+		t.Fatalf("manager/OS thinks the process is dead before it dies")
 	}
 
 	// Wait for the process to die
@@ -78,7 +81,7 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
 	if proc.osProcessIsAlive() {
-		t.Fatalf("manager thinks the process is still alive")
+		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
 
@@ -126,7 +129,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	}
 
 	if !procB.osProcessIsAlive() {
-		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
+		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
 	<-procB.Context.Done()
@@ -136,7 +139,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	}
 
 	if procB.osProcessIsAlive() {
-		t.Fatalf("manager thinks process is alive after it died")
+		t.Fatalf("manager/OS thinks process is alive after it died")
 	}
 }
 
