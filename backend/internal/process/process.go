@@ -413,6 +413,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer proc.Release()
 
 	topicId := pubsub.TopicId{
 		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Source),
@@ -470,11 +471,6 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 			})
 		}
 
-		return nil, err
-	}
-
-	// Release the process so that it doesn't die on exit
-	if err = proc.Release(); err != nil {
 		return nil, err
 	}
 
