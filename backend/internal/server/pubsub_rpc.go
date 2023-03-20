@@ -46,7 +46,6 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 			case <-req.Context.Done():
 				return nil
 			}
-
 		}
 	},
 }

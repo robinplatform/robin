@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"robinplatform.dev/internal/process"
+	"robinplatform.dev/internal/pubsub"
 )
 
 type StartProcessForAppInput struct {
@@ -70,5 +71,38 @@ var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 			"processKey": id,
 			"isAlive":    isAlive,
 		}, nil
+	},
+}
+
+var ReadAppProcessLogs = Stream[CheckProcessHealthInput, string]{
+	Name: "ReadAppProcessLogs",
+	Run: func(req StreamRequest[CheckProcessHealthInput, string]) error {
+		input, err := req.ParseInput()
+		if err != nil {
+			return err
+		}
+
+		id := pubsub.AppProcessLogs(input.AppId, input.ProcessKey)
+
+		subscription := make(chan string)
+		if err := pubsub.Topics.Subscribe(id, subscription); err != nil {
+			return err
+		}
+		defer pubsub.Topics.Unsubscribe(id, subscription)
+
+		for {
+			select {
+			case s, ok := <-subscription:
+				if !ok {
+					// Channel is closed
+					return nil
+				}
+
+				req.Send(s)
+
+			case <-req.Context.Done():
+				return nil
+			}
+		}
 	},
 }
