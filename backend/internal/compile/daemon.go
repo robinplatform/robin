@@ -303,7 +303,7 @@ func (app *CompiledApp) StartServer() error {
 	processConfig.Port = portAvailable
 
 	// Start the app server process
-	serverProcess, err := process.Manager.SpawnPath(processConfig)
+	serverProcess, err := process.Manager.SpawnFromPathVar(processConfig)
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
 		logger.Err("Failed to start app server", log.Ctx{
 			"appId": app.Id,

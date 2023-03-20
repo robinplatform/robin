@@ -121,6 +121,13 @@ func (topic *Topic) removeSubscriber(sub chan<- string) {
 	topic.subscribers = topic.subscribers[:writeIndex]
 }
 
+func (topic *Topic) isClosed() bool {
+	topic.m.Lock()
+	defer topic.m.Unlock()
+
+	return topic.closed
+}
+
 func (topic *Topic) Publish(message string) {
 	topic.forEachSubscriber(func(sub chan<- string) {
 		sub <- message
@@ -162,7 +169,7 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	}
 
 	key := id.HashKey()
-	if prev := r.topics[key]; prev != nil && !prev.closed {
+	if prev := r.topics[key]; prev != nil && prev.isClosed() {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
