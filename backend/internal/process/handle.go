@@ -69,11 +69,11 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 	return w.Kill(id)
 }
 
-func (m *ProcessManager) SpawnPath(config ProcessConfig) (*Process, error) {
+func (m *ProcessManager) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
 	w := m.WriteHandle()
 	defer w.Close()
 
-	return w.SpawnPath(config)
+	return w.SpawnFromPathVar(config)
 }
 
 func (m *ProcessManager) Spawn(config ProcessConfig) (*Process, error) {

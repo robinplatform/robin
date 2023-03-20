@@ -17,7 +17,7 @@ func TestSpawnProcess(t *testing.T) {
 
 	id := InternalId("long")
 
-	_, err = manager.SpawnPath(ProcessConfig{
+	_, err = manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"100"},
@@ -47,7 +47,7 @@ func TestSpawnDead(t *testing.T) {
 
 	id := InternalId("short")
 
-	_, err = manager.SpawnPath(ProcessConfig{
+	_, err = manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"0"},

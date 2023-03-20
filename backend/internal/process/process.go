@@ -263,10 +263,8 @@ func pipeTailIntoTopic(topic *pubsub.Topic, filename string, exitChan <-chan str
 
 }
 
-// TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
-// from a path
-
-func (w *WHandle) SpawnPath(config ProcessConfig) (*Process, error) {
+// This reads the path variable to find the right executable.
+func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
@@ -276,6 +274,7 @@ func (w *WHandle) SpawnPath(config ProcessConfig) (*Process, error) {
 	return w.Spawn(config)
 }
 
+// This spawns a process using the given arguments and executable path.
 func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
 		return nil, err
