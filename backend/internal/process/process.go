@@ -101,7 +101,7 @@ func NewId(source string, name string) (ProcessId, error) {
 	}, nil
 }
 
-func (process Process) waitForExit() {
+func (process *Process) waitForExit() {
 	proc, err := os.FindProcess(process.Pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
@@ -127,6 +127,15 @@ func (process Process) waitForExit() {
 }
 
 func (process *Process) IsAlive() bool {
+	select {
+	case <-process.Context.Done():
+		return false
+	default:
+		return true
+	}
+}
+
+func (process *Process) osProcessIsAlive() bool {
 	// TODO: check the actual error, it might've been a permission error
 	// or something else.
 	osProcess, err := os.FindProcess(process.Pid)
@@ -212,7 +221,36 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 
 	manager.ctx, manager.cancel = context.WithCancel(context.Background())
 
+	manager.db.ForEachWriting(func(proc *Process) {
+		proc.Context, proc.cancel = context.WithCancel(manager.ctx)
+	})
+
+	// This needs to be copied out because otherwise you'd have a situation where
+	// the process being referenced is modified by another thread in parallel
+	for _, proc := range manager.db.ShallowCopyOutData() {
+		if !proc.osProcessIsAlive() {
+			proc.cancel()
+			continue
+		}
+
+		go proc.pollForExit()
+	}
+
 	return manager, nil
+}
+
+// This polls to see if the process is still alive; this is necessary
+// because if the process is not our child, we can't use process.Wait()
+// anymore. This can happen if robin restarts but the child is still alive.
+func (proc *Process) pollForExit() {
+	for {
+		if !proc.osProcessIsAlive() {
+			proc.cancel()
+			return
+		}
+
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func (r *RHandle) FindById(id ProcessId) (*Process, error) {
@@ -231,7 +269,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func (process Process) pipeTailIntoTopic(topic *pubsub.Topic) {
+func (process *Process) pipeTailIntoTopic(topic *pubsub.Topic) {
 	defer topic.Close()
 
 	logger.Debug("Starting pipe into topic", log.Ctx{
