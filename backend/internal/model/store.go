@@ -141,6 +141,21 @@ func (store *Store[Model]) ShallowCopyOutData() []Model {
 	return r.ShallowCopyOutData()
 }
 
+func (w *WHandle[Model]) ForEach(f func(*Model)) {
+	for i := 0; i < len(w.store.data); i++ {
+		f(&w.store.data[i])
+	}
+}
+
+func (store *Store[Model]) ForEachWriting(f func(*Model)) {
+	// This is called ForEach writing because I wanted to make explicit that it
+	// it would take a write lock internally
+	w := store.WriteHandle()
+	defer w.Close()
+
+	w.ForEach(f)
+}
+
 func (store *Store[_]) flush() error {
 	buf, err := json.Marshal(store.data)
 	if err != nil {
