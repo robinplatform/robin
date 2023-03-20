@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -69,6 +70,9 @@ type Process struct {
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
 	Port      int               `json:"port"` // see docs in ProcessConfig
+
+	// This Context can be used to determine whether the process is alive or not.
+	Context context.Context `json:"-"`
 }
 
 func InternalId(name string) ProcessId {
