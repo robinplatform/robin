@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
+	"robinplatform.dev/internal/project"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -24,11 +26,17 @@ var (
 
 // An identifier for a process.
 type ProcessId struct {
-	// The name of the system/app that spawned this process
-	// The following names are reserved:
+	// The category of the process; typically also includes the name of
+	// the system/app that spawned this process.
+	//
+	// The following categories are reserved:
 	// - robin - this is for internal apps
 	// - @robin/* - anything starting with @robin-platform/* is reserved for systems in Robin
-	Source string `json:"source"`
+	//
+	// We're currently using these categories:
+	// - `@robin/app/{project}` for app daemons
+	// - `@robin/app/{project}/{app}` for app-spawned processes
+	Category string `json:"source"`
 	// The name that this process has been given
 	Key string `json:"key"`
 }
@@ -36,7 +44,7 @@ type ProcessId struct {
 func (id ProcessId) String() string {
 	return fmt.Sprintf(
 		"%s-%s",
-		id.Source,
+		id.Category,
 		id.Key,
 	)
 }
@@ -54,7 +62,7 @@ type ProcessConfig struct {
 }
 
 func (m *ProcessManager) getLogFilePath(id ProcessId) string {
-	processLogsPath := filepath.Join(m.processLogsFolderPath, id.Source+"-"+id.Key+".log")
+	processLogsPath := filepath.Join(m.processLogsFolderPath, id.Category+"-"+id.Key+".log")
 	return processLogsPath
 }
 
@@ -77,25 +85,28 @@ type Process struct {
 
 func InternalId(name string) ProcessId {
 	return ProcessId{
-		Source: "robin",
-		Key:    name,
+		Category: "robin",
+		Key:      name,
 	}
 }
 
-func NewId(source string, name string) (ProcessId, error) {
-	if name == "robin" {
-		return ProcessId{}, fmt.Errorf("tried to use internal \"robin\" namespace")
+// ID for an App running in the project. The following
+func ProjectAppId(category string, key string) ProcessId {
+	name, err := project.GetProjectName()
+	if err != nil {
+		panic(err)
 	}
 
-	if strings.HasPrefix(name, "@robin/") {
-		return ProcessId{}, fmt.Errorf("tried to use internal \"@robin/*\" namespace")
+	name = url.PathEscape(name)
 
+	if category != "" {
+		category = "/" + url.PathEscape(category)
 	}
 
 	return ProcessId{
-		Source: source,
-		Key:    name,
-	}, nil
+		Category: "@robin/project/" + name + category,
+		Key:      key,
+	}
 }
 
 func (process *Process) waitForExit() {
@@ -171,7 +182,7 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 		return fmt.Errorf("cannot create process without a Key")
 	}
 
-	if cfg.Id.Source == "" {
+	if cfg.Id.Category == "" {
 		return fmt.Errorf("cannot create process without a source")
 	}
 
@@ -251,7 +262,7 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 		}
 
 		topicId := pubsub.TopicId{
-			Category: fmt.Sprintf("@robin/logs/%s", proc.Id.Source),
+			Category: fmt.Sprintf("@robin/logs/%s", proc.Id.Category),
 			Name:     proc.Id.Key,
 		}
 
@@ -416,7 +427,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	defer proc.Release()
 
 	topicId := pubsub.TopicId{
-		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Source),
+		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Category),
 		Name:     procConfig.Id.Key,
 	}
 
