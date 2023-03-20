@@ -262,12 +262,14 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 // anymore. This can happen if robin restarts but the child is still alive.
 func (proc *Process) pollForExit() {
 	for {
+		// TODO: change this to debug
+		logger.Info("Polling for liveness", log.Ctx{})
 		if !proc.osProcessIsAlive() {
 			proc.cancel()
 			return
 		}
 
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

@@ -145,6 +145,8 @@ func (w *WHandle[Model]) ForEach(f func(*Model)) {
 	for i := 0; i < len(w.store.data); i++ {
 		f(&w.store.data[i])
 	}
+
+	w.store.flush()
 }
 
 func (store *Store[Model]) ForEachWriting(f func(*Model)) {
