@@ -1,7 +1,6 @@
 package server
 
 import (
-	"fmt"
 	"net/http"
 
 	"robinplatform.dev/internal/process"
@@ -19,10 +18,7 @@ var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
 		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
 		if err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("invalid ID for spawning new process: %s", err),
-			}
+			return nil, Errorf(http.StatusInternalServerError, "invalid ID for spawning new process: %s", err)
 		}
 
 		processConfig := process.ProcessConfig{
@@ -33,10 +29,7 @@ var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 
 		proc, err := process.Manager.Spawn(processConfig)
 		if err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to spawn new process %s: %s", req.Data.AppId, err),
-			}
+			return nil, Errorf(http.StatusInternalServerError, "Failed to spawn new process %s: %s", req.Data.AppId, err)
 		}
 
 		return map[string]any{
@@ -56,18 +49,12 @@ var StopProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
 		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
 		if err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("invalid ID for stopping process: %s", err),
-			}
+			return nil, Errorf(http.StatusInternalServerError, "invalid ID for stopping process: %s", err)
 		}
 
 		err = process.Manager.Remove(id)
 		if err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("Failed to kill process %s: %s", req.Data.AppId, err),
-			}
+			return nil, Errorf(http.StatusInternalServerError, "Failed to kill process %s: %s", req.Data.AppId, err)
 		}
 
 		return map[string]any{}, nil
@@ -84,10 +71,7 @@ var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 	Run: func(req RpcRequest[CheckProcessHealthInput]) (map[string]any, *HttpError) {
 		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
 		if err != nil {
-			return nil, &HttpError{
-				StatusCode: http.StatusInternalServerError,
-				Message:    fmt.Sprintf("invalid ID for stopping process: %s", err),
-			}
+			return nil, Errorf(http.StatusInternalServerError, "invalid ID for checking process health: %s", err)
 		}
 
 		isAlive := process.Manager.IsAlive(id)
