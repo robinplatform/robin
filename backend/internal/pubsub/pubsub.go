@@ -126,7 +126,6 @@ func (topic *Topic) isClosed() bool {
 	defer topic.m.Unlock()
 
 	return topic.closed
-
 }
 
 func (topic *Topic) Publish(message string) {
