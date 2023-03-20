@@ -3,23 +3,32 @@ package process
 import "robinplatform.dev/internal/model"
 
 type RHandle struct {
+	m  *ProcessManager
 	db model.RHandle[Process]
 }
 
 type WHandle struct {
-	db model.WHandle[Process]
+	Read RHandle
+	db   model.WHandle[Process]
 }
 
-func (manager *ProcessManager) ReadHandle() RHandle {
-	return RHandle{db: manager.db.ReadHandle()}
+func (m *ProcessManager) ReadHandle() RHandle {
+	return RHandle{m: m, db: m.db.ReadHandle()}
 }
 
-func (manager *ProcessManager) WriteHandle() WHandle {
-	return WHandle{db: manager.db.WriteHandle()}
+func (m *ProcessManager) WriteHandle() WHandle {
+	db := m.db.WriteHandle()
+	return WHandle{
+		Read: RHandle{m: m, db: db.UncloseableReadHandle()},
+		db:   db,
+	}
 }
 
 func (w *WHandle) Close() {
 	w.db.Close()
+
+	var r RHandle
+	w.Read = r
 }
 
 func (r *RHandle) Close() {
@@ -33,11 +42,6 @@ func (m *ProcessManager) FindById(id ProcessId) (*Process, error) {
 	return r.FindById(id)
 }
 
-func (w *WHandle) FindById(id ProcessId) (*Process, error) {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
-	return r.FindById(id)
-}
-
 func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	r := m.ReadHandle()
 	defer r.Close()
@@ -45,20 +49,10 @@ func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	return r.IsAlive(id)
 }
 
-func (w *WHandle) IsAlive(id ProcessId) bool {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
-	return r.IsAlive(id)
-}
-
 func (m *ProcessManager) CopyOutData() []Process {
 	r := m.ReadHandle()
 	defer r.Close()
 
-	return r.CopyOutData()
-}
-
-func (w *WHandle) CopyOutData() []Process {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
 	return r.CopyOutData()
 }
 
@@ -76,11 +70,11 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 	return w.Kill(id)
 }
 
-func (m *ProcessManager) SpawnPath(config ProcessConfig) (*Process, error) {
+func (m *ProcessManager) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
 	w := m.WriteHandle()
 	defer w.Close()
 
-	return w.SpawnPath(config)
+	return w.SpawnFromPathVar(config)
 }
 
 func (m *ProcessManager) Spawn(config ProcessConfig) (*Process, error) {

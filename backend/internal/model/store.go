@@ -8,6 +8,11 @@ import (
 	"sync"
 )
 
+// Store of information that gets loaded from disk on initialization and persisted to disk on write.
+// It provides the following promises:
+// - Modifications like insertions or mutations are persisted
+// - Data is persisted using JSON
+// - Data is ONLY read on initialization
 type Store[Model any] struct {
 	// FilePath is the path to the json file where the data should be stored.
 	FilePath string
@@ -134,6 +139,23 @@ func (store *Store[Model]) ShallowCopyOutData() []Model {
 	defer r.Close()
 
 	return r.ShallowCopyOutData()
+}
+
+func (w *WHandle[Model]) ForEach(f func(*Model)) error {
+	for i := 0; i < len(w.store.data); i++ {
+		f(&w.store.data[i])
+	}
+
+	return w.store.flush()
+}
+
+func (store *Store[Model]) ForEachWriting(f func(*Model)) error {
+	// This is called ForEachWriting because I wanted to make explicit that it
+	// it would take a write lock internally
+	w := store.WriteHandle()
+	defer w.Close()
+
+	return w.ForEach(f)
 }
 
 func (store *Store[_]) flush() error {

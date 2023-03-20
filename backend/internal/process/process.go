@@ -1,6 +1,7 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,28 +11,23 @@ import (
 	"syscall"
 	"time"
 
-	"robinplatform.dev/internal/config"
+	"github.com/nxadm/tail"
+
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
+	"robinplatform.dev/internal/pubsub"
 )
 
 var (
 	logger = log.New("process")
 )
 
-type ProcessKind string
-
-const (
-	KindAppDaemon  ProcessKind = "app-daemon"
-	KindAppSpawned ProcessKind = "app-spawned"
-	KindInternal   ProcessKind = "internal"
-)
-
 // An identifier for a process.
 type ProcessId struct {
-	// The kind of process this is.
-	Kind ProcessKind `json:"kind"`
 	// The name of the system/app that spawned this process
+	// The following names are reserved:
+	// - robin - this is for internal apps
+	// - @robin/* - anything starting with @robin-platform/* is reserved for systems in Robin
 	Source string `json:"source"`
 	// The name that this process has been given
 	Key string `json:"key"`
@@ -39,8 +35,7 @@ type ProcessId struct {
 
 func (id ProcessId) String() string {
 	return fmt.Sprintf(
-		"%s-%s-%s",
-		id.Kind,
+		"%s-%s",
 		id.Source,
 		id.Key,
 	)
@@ -58,10 +53,8 @@ type ProcessConfig struct {
 	Port int
 }
 
-func (processConfig *ProcessConfig) getLogFilePath() string {
-	robinPath := config.GetRobinPath()
-	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
-	processLogsPath := filepath.Join(processLogsFolderPath, string(processConfig.Id.Kind)+"-"+processConfig.Id.Source+"-"+processConfig.Id.Key+".log")
+func (m *ProcessManager) getLogFilePath(id ProcessId) string {
+	processLogsPath := filepath.Join(m.processLogsFolderPath, id.Source+"-"+id.Key+".log")
 	return processLogsPath
 }
 
@@ -74,12 +67,39 @@ type Process struct {
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
 	Port      int               `json:"port"` // see docs in ProcessConfig
+
+	// NOTE: The context and cancel fields are only valid because
+	// the store doesn't re-load data from disk when the file is updated.
+
+	Context context.Context `json:"-"` // This Context gets canceled when the process dies.
+	cancel  func()          `json:"-"` // Cancel the context
 }
 
-// TODO: Avoid logging entire Env
+func InternalId(name string) ProcessId {
+	return ProcessId{
+		Source: "robin",
+		Key:    name,
+	}
+}
 
-func (process *Process) waitForExit(pid int) {
-	proc, err := os.FindProcess(pid)
+func NewId(source string, name string) (ProcessId, error) {
+	if name == "robin" {
+		return ProcessId{}, fmt.Errorf("tried to use internal \"robin\" namespace")
+	}
+
+	if strings.HasPrefix(name, "@robin/") {
+		return ProcessId{}, fmt.Errorf("tried to use internal \"@robin/*\" namespace")
+
+	}
+
+	return ProcessId{
+		Source: source,
+		Key:    name,
+	}, nil
+}
+
+func (process *Process) waitForExit() {
+	proc, err := os.FindProcess(process.Pid)
 	if err != nil {
 		logger.Debug("Failed to find process to wait on", log.Ctx{
 			"process": process,
@@ -99,15 +119,36 @@ func (process *Process) waitForExit(pid int) {
 			"process": process,
 		})
 	}
+
+	process.cancel()
 }
 
 func (process *Process) IsAlive() bool {
+	select {
+	case <-process.Context.Done():
+		return false
+	default:
+		return true
+	}
+}
+
+func (process *Process) osProcessIsAlive() bool {
 	// TODO: check the actual error, it might've been a permission error
 	// or something else.
 	osProcess, err := os.FindProcess(process.Pid)
 	if err != nil {
+		logger.Debug("got error when checking process alive", log.Ctx{
+			"procIsNil": osProcess == nil,
+			"err":       err.Error(),
+		})
 		return false
 	}
+
+	// It turns out, `Release` is super duper important on Windows. Without calling release,
+	// the underlying Windows handle doesn't get closed, and the process stays in the "running"
+	// state, at least for the purpose of this check. This isn't a problem on unix, as Release is essentially
+	// a no-op there.
+	defer osProcess.Release()
 
 	// On windows, if we located a process, it's alive.
 	// On other platforms, we only have a handle, and need to send a signal
@@ -132,10 +173,6 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 
 	if cfg.Id.Source == "" {
 		return fmt.Errorf("cannot create process without a source")
-	}
-
-	if cfg.Id.Kind == "" {
-		cfg.Id.Kind = KindInternal
 	}
 
 	parentEnv := os.Environ()
@@ -170,10 +207,21 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 // This is essentially a global type, but it's set up as an instance for testing purposes.
 // Use `process.Manager` to manage processes.
 type ProcessManager struct {
+	processLogsFolderPath string
+
+	// Data persisted to disk about processes
 	db model.Store[Process]
+
+	topics *pubsub.Registry
+
+	// Context for long running operations, the parent
+	// of all process contexts
+	ctx context.Context
+	// Cancel function for the context
+	cancel func()
 }
 
-func NewProcessManager(dbPath string) (*ProcessManager, error) {
+func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) (*ProcessManager, error) {
 	manager := &ProcessManager{}
 
 	var err error
@@ -182,7 +230,58 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
 
+	manager.processLogsFolderPath = logsPath
+	manager.topics = topics
+
+	manager.ctx, manager.cancel = context.WithCancel(context.Background())
+
+	err = manager.db.ForEachWriting(func(proc *Process) {
+		proc.Context, proc.cancel = context.WithCancel(manager.ctx)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// This needs to be copied out because otherwise you'd have a situation where
+	// the process being referenced is modified by another thread in parallel
+	for _, proc := range manager.db.ShallowCopyOutData() {
+		if !proc.osProcessIsAlive() {
+			proc.cancel()
+			continue
+		}
+
+		topicId := pubsub.TopicId{
+			Category: fmt.Sprintf("@robin/logs/%s", proc.Id.Source),
+			Name:     proc.Id.Key,
+		}
+
+		topic, err := manager.topics.CreateTopic(topicId)
+		if err != nil {
+			logger.Err("error creating topic", log.Ctx{
+				"err": err.Error(),
+			})
+			return nil, err
+		}
+
+		go manager.pipeTailIntoTopic(&proc, topic)
+		go proc.pollForExit()
+	}
+
 	return manager, nil
+}
+
+// This polls to see if the process is still alive; this is necessary
+// because if the process is not our child, we can't use process.Wait()
+// anymore. This can happen if robin restarts but the child is still alive.
+func (proc *Process) pollForExit() {
+	for {
+		if !proc.osProcessIsAlive() {
+			proc.cancel()
+			return
+		}
+
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (r *RHandle) FindById(id ProcessId) (*Process, error) {
@@ -201,10 +300,47 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-// TODO: 'SpawnPath' is a bad name for this, esp since it does the opposite of spawning
-// from a path
+func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
+	defer topic.Close()
 
-func (w *WHandle) SpawnPath(config ProcessConfig) (*Process, error) {
+	config := tail.Config{
+		ReOpen: true,
+		Follow: true,
+		Logger: tail.DiscardingLogger,
+	}
+	out, err := tail.TailFile(m.getLogFilePath(process.Id), config)
+	if err != nil {
+		logger.Err("failed to tail file", log.Ctx{
+			"err": err.Error(),
+		})
+		return
+	}
+
+	defer out.Cleanup()
+
+	for {
+		select {
+		case <-process.Context.Done():
+			return
+
+		case line, ok := <-out.Lines:
+			if !ok {
+				return
+			}
+
+			if line.Err != nil {
+				logger.Err("got error in tail line", log.Ctx{
+					"err": line.Err.Error(),
+				})
+			}
+
+			topic.Publish(line.Text)
+		}
+	}
+}
+
+// This reads the path variable to find the right executable.
+func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
@@ -214,6 +350,7 @@ func (w *WHandle) SpawnPath(config ProcessConfig) (*Process, error) {
 	return w.Spawn(config)
 }
 
+// This spawns a process using the given arguments and executable path.
 func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
 		return nil, err
@@ -247,13 +384,14 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 	defer empty.Close()
 
-	processLogsPath := procConfig.getLogFilePath()
+	processLogsPath := w.Read.m.getLogFilePath(procConfig.Id)
 	processLogsFolderPath := filepath.Dir(processLogsPath)
 
 	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
+	// Don't close the file, instead pass it on to the tail goroutine later on
 	output, err := os.Create(processLogsPath)
 	if err != nil {
 		return nil, err
@@ -275,6 +413,23 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer proc.Release()
+
+	topicId := pubsub.TopicId{
+		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Source),
+		Name:     procConfig.Id.Key,
+	}
+
+	topic, err := w.Read.m.topics.CreateTopic(topicId)
+	if err != nil {
+		logger.Err("error creating topic", log.Ctx{
+			"err": err.Error(),
+		})
+		_ = proc.Kill()
+		return nil, err
+	}
+
+	ctx, cancel := context.WithCancel(w.Read.m.ctx)
 
 	entry := Process{
 		Id:        procConfig.Id,
@@ -285,10 +440,16 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
 		Port:      procConfig.Port,
+
+		Context: ctx,
+		cancel:  cancel,
 	}
 
+	// Write output to file
+	go w.Read.m.pipeTailIntoTopic(&entry, topic)
+
 	// Reap zombies
-	go entry.waitForExit(entry.Pid)
+	go entry.waitForExit()
 
 	logger.Debug("Process created", log.Ctx{
 		"id":       entry.Id,
@@ -310,11 +471,6 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 			})
 		}
 
-		return nil, err
-	}
-
-	// Release the process so that it doesn't die on exit
-	if err = proc.Release(); err != nil {
 		return nil, err
 	}
 
