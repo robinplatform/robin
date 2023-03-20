@@ -188,6 +188,7 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 // This is essentially a global type, but it's set up as an instance for testing purposes.
 // Use `process.Manager` to manage processes.
 type ProcessManager struct {
+	// Data persisted to disk about processes
 	db model.Store[Process]
 }
 

@@ -7,7 +7,8 @@ type RHandle struct {
 }
 
 type WHandle struct {
-	db model.WHandle[Process]
+	Read RHandle
+	db   model.WHandle[Process]
 }
 
 func (manager *ProcessManager) ReadHandle() RHandle {
@@ -15,11 +16,18 @@ func (manager *ProcessManager) ReadHandle() RHandle {
 }
 
 func (manager *ProcessManager) WriteHandle() WHandle {
-	return WHandle{db: manager.db.WriteHandle()}
+	db := manager.db.WriteHandle()
+	return WHandle{
+		Read: RHandle{db.UncloseableReadHandle()},
+		db:   db,
+	}
 }
 
 func (w *WHandle) Close() {
 	w.db.Close()
+
+	var r RHandle
+	w.Read = r
 }
 
 func (r *RHandle) Close() {
@@ -33,11 +41,6 @@ func (m *ProcessManager) FindById(id ProcessId) (*Process, error) {
 	return r.FindById(id)
 }
 
-func (w *WHandle) FindById(id ProcessId) (*Process, error) {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
-	return r.FindById(id)
-}
-
 func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	r := m.ReadHandle()
 	defer r.Close()
@@ -45,20 +48,10 @@ func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	return r.IsAlive(id)
 }
 
-func (w *WHandle) IsAlive(id ProcessId) bool {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
-	return r.IsAlive(id)
-}
-
 func (m *ProcessManager) CopyOutData() []Process {
 	r := m.ReadHandle()
 	defer r.Close()
 
-	return r.CopyOutData()
-}
-
-func (w *WHandle) CopyOutData() []Process {
-	r := RHandle{db: w.db.UncloseableReadHandle()}
 	return r.CopyOutData()
 }
 
