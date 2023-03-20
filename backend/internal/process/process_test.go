@@ -1,6 +1,7 @@
 package process
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -85,12 +86,12 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := InternalId("long")
+	id := InternalId("previous")
 
 	_, err = managerA.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
-		Args:    []string{"1"},
+		Args:    []string{"100"},
 	})
 	if err != nil {
 		t.Fatalf("error spawning process: %s", err.Error())
@@ -118,6 +119,22 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 
 	if !proc.osProcessIsAlive() {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
+	}
+
+	errChan := make(chan error)
+	go func() {
+		// Kill the process to imitate
+		osProc, err := os.FindProcess(proc.Pid)
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		errChan <- osProc.Kill()
+	}()
+
+	if err := <-errChan; err != nil {
+		t.Fatalf("failed to kill process")
 	}
 
 	<-proc.Context.Done()
