@@ -145,9 +145,9 @@ func (process *Process) osProcessIsAlive() bool {
 		return false
 	}
 
-	if osProcess == nil {
-		logger.Info("proc is nil", log.Ctx{})
-	}
+	logger.Info("proc alive checked", log.Ctx{
+		"procIsNil": osProcess == nil,
+	})
 
 	// On windows, if we located a process, it's alive.
 	// On other platforms, we only have a handle, and need to send a signal
