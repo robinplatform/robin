@@ -90,7 +90,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	_, err = managerA.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
-		Args:    []string{"0.1"},
+		Args:    []string{"1"},
 	})
 	if err != nil {
 		t.Fatalf("error spawning process: %s", err.Error())
