@@ -4,13 +4,14 @@ import (
 	"path/filepath"
 
 	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/pubsub"
 )
 
 var Manager *ProcessManager
 
 func init() {
 	robinPath := config.GetRobinPath()
-	manager, err := NewProcessManager(filepath.Join(
+	manager, err := NewProcessManager(&pubsub.Topics, filepath.Join(
 		robinPath,
 		"data",
 		"spawned-processes.db",

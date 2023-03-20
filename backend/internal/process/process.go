@@ -203,6 +203,8 @@ type ProcessManager struct {
 	// Data persisted to disk about processes
 	db model.Store[Process]
 
+	topics *pubsub.Registry
+
 	// Context for long running operations, the parent
 	// of all process contexts
 	ctx context.Context
@@ -210,7 +212,7 @@ type ProcessManager struct {
 	cancel func()
 }
 
-func NewProcessManager(dbPath string) (*ProcessManager, error) {
+func NewProcessManager(topics *pubsub.Registry, dbPath string) (*ProcessManager, error) {
 	manager := &ProcessManager{}
 
 	var err error
@@ -218,6 +220,8 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
+
+	manager.topics = topics
 
 	manager.ctx, manager.cancel = context.WithCancel(context.Background())
 
@@ -233,6 +237,20 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 			continue
 		}
 
+		topicId := pubsub.TopicId{
+			Category: fmt.Sprintf("@robin/logs/%s", proc.Id.Source),
+			Name:     proc.Id.Key,
+		}
+
+		topic, err := manager.topics.CreateTopic(topicId)
+		if err != nil {
+			logger.Err("error creating topic", log.Ctx{
+				"err": err.Error(),
+			})
+			return nil, err
+		}
+
+		go proc.pipeTailIntoTopic(topic)
 		go proc.pollForExit()
 	}
 
@@ -279,6 +297,7 @@ func (process *Process) pipeTailIntoTopic(topic *pubsub.Topic) {
 	config := tail.Config{
 		ReOpen: true,
 		Follow: true,
+		Logger: tail.DiscardingLogger,
 	}
 	out, err := tail.TailFile(process.Id.getLogFilePath(), config)
 	if err != nil {
@@ -391,7 +410,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Name:     procConfig.Id.Key,
 	}
 
-	topic, err := pubsub.Topics.CreateTopic(topicId)
+	topic, err := w.Read.m.topics.CreateTopic(topicId)
 	if err != nil {
 		logger.Err("error creating topic", log.Ctx{
 			"err": err.Error(),
