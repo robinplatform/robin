@@ -125,8 +125,8 @@ func (process *Process) waitForExit() {
 
 func (process *Process) IsAlive() bool {
 	select {
-	case <-process.Context.Done():
-		return false
+	case _, ok := <-process.Context.Done():
+		return !ok
 	default:
 		return true
 	}
