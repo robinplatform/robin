@@ -20,35 +20,58 @@ async function getWs(): Promise<WebSocket> {
 			return;
 		}
 
-		if (data.kind === 'error') {
-			stream.onerror(data.error);
-		} else {
-			stream.onmessage(data);
+		switch (data.kind) {
+			case 'error':
+				stream.onerror(data.error);
+				break;
+
+			case 'methodDone':
+				stream.onclose();
+				break;
+
+			default:
+				stream.onmessage(data);
 		}
 	};
 
 	ws.onerror = (evt) => {
-		console.log('error', evt);
+		console.error('Robin WS error', evt);
 	};
 
 	ws.onopen = () => {
-		console.log('opened');
 		resolve(ws);
 	};
 
 	return _ws;
 }
 
+// This is a low-level primitive that can be used to implement higher-level
+// streaming requests.
 export class Stream {
-	onmessage: (a: any) => void = () => {};
-	onerror: (a: any) => void = () => {};
+	onmessage: (a: unknown) => void = () => {};
+	onerror: (a: unknown) => void = () => {};
 
 	private started = false;
 	private closed = false;
 
+	private closeHandler: () => void = () => {
+		this.closed = true;
+	};
+
 	constructor(readonly method: string, readonly id: string) {}
 
-	async start(data: any) {
+	set onclose(f: () => void) {
+		this.closeHandler = () => {
+			f();
+			this.closed = true;
+		};
+	}
+
+	get onclose(): () => void {
+		return this.closeHandler;
+	}
+
+	async start(data: unknown) {
 		if (this.started) {
 			throw new Error('Already started');
 		}

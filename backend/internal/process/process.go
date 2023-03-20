@@ -2,6 +2,7 @@ package process
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -343,9 +344,18 @@ func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic
 				logger.Err("got error in tail line", log.Ctx{
 					"err": line.Err.Error(),
 				})
+				continue
 			}
 
-			topic.Publish(line.Text)
+			bytes, err := json.Marshal(map[string]any{"line": line.Text})
+			if err != nil {
+				logger.Err("got error in JSON encoding", log.Ctx{
+					"err": line.Err.Error(),
+				})
+				continue
+			}
+
+			topic.Publish(string(bytes))
 		}
 	}
 }
