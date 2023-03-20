@@ -273,10 +273,6 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 // anymore. This can happen if robin restarts but the child is still alive.
 func (proc *Process) pollForExit() {
 	for {
-		// TODO: change this to debug
-		logger.Info("Polling for liveness", log.Ctx{
-			"pid": proc.Pid,
-		})
 		if !proc.osProcessIsAlive() {
 			proc.cancel()
 			return
@@ -304,10 +300,6 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 
 func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
 	defer topic.Close()
-
-	logger.Debug("Starting pipe into topic", log.Ctx{
-		"topic": topic.Id.String(),
-	})
 
 	config := tail.Config{
 		ReOpen: true,
