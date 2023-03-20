@@ -17,14 +17,18 @@ type StartProcessForAppInput struct {
 var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Name: "StartProcess",
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
+		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
+		if err != nil {
+			return nil, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("invalid ID for spawning new process: %s", err),
+			}
+		}
+
 		processConfig := process.ProcessConfig{
 			Command: req.Data.Command,
 			Args:    req.Data.Args,
-			Id: process.ProcessId{
-				Kind:   process.KindAppSpawned,
-				Source: req.Data.AppId,
-				Key:    req.Data.ProcessKey,
-			},
+			Id:      id,
 		}
 
 		proc, err := process.Manager.Spawn(processConfig)
@@ -50,13 +54,15 @@ type StopProcessForAppInput struct {
 var StopProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Name: "StopProcess",
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
-		id := process.ProcessId{
-			Kind:   process.KindAppSpawned,
-			Source: req.Data.AppId,
-			Key:    req.Data.ProcessKey,
+		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
+		if err != nil {
+			return nil, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("invalid ID for stopping process: %s", err),
+			}
 		}
 
-		err := process.Manager.Remove(id)
+		err = process.Manager.Remove(id)
 		if err != nil {
 			return nil, &HttpError{
 				StatusCode: http.StatusInternalServerError,
@@ -76,10 +82,12 @@ type CheckProcessHealthInput struct {
 var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 	Name: "CheckProcessHealth",
 	Run: func(req RpcRequest[CheckProcessHealthInput]) (map[string]any, *HttpError) {
-		id := process.ProcessId{
-			Key:    req.Data.ProcessKey,
-			Kind:   process.KindAppSpawned,
-			Source: req.Data.AppId,
+		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
+		if err != nil {
+			return nil, &HttpError{
+				StatusCode: http.StatusInternalServerError,
+				Message:    fmt.Sprintf("invalid ID for stopping process: %s", err),
+			}
 		}
 
 		isAlive := process.Manager.IsAlive(id)
