@@ -5,9 +5,9 @@ jobs:
   check-go:
     runs-on: ubuntu-22.04
 
-    concurrency:
-      group: ${{ github.ref }}-check-go
-      cancel-in-progress: true
+#     concurrency:
+#       group: ${{ github.ref }}-check-go
+#       cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
@@ -58,9 +58,9 @@ jobs:
 
     runs-on: ${{ matrix.runner }}
 
-    concurrency:
-      group: ${{ github.ref }}-test-go-${{ matrix.runner }}
-      cancel-in-progress: true
+#     concurrency:
+#       group: ${{ github.ref }}-test-go-${{ matrix.runner }}
+#       cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
@@ -97,9 +97,9 @@ jobs:
 
   check-ts:
     runs-on: ubuntu-22.04
-    concurrency:
-      group: ${{ github.ref }}-check-ts
-      cancel-in-progress: true
+#     concurrency:
+#       group: ${{ github.ref }}-check-ts
+#       cancel-in-progress: true
 
     steps:
       - uses: actions/checkout@v3
