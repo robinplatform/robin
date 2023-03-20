@@ -41,6 +41,8 @@ func TestSpawnProcess(t *testing.T) {
 		t.Fatalf("failed to kill process %+v: %s", id, err.Error())
 	}
 
+	<-proc.Context.Done()
+
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
