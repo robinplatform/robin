@@ -147,7 +147,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	}
 
 	if err := killProc(); err != nil {
-		t.Fatalf("failed to kill process")
+		t.Fatalf("failed to kill process: %s", err.Error())
 	}
 
 	<-procB.Context.Done()
