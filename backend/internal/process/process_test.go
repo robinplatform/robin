@@ -12,7 +12,7 @@ func TestSpawnProcess(t *testing.T) {
 	dbFile := filepath.Join(dir, "testing.db")
 
 	topics := &pubsub.Registry{}
-	manager, err := NewProcessManager(topics, dbFile)
+	manager, err := NewProcessManager(topics, dir, dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
@@ -51,7 +51,7 @@ func TestSpawnDead(t *testing.T) {
 	dbFile := filepath.Join(dir, "testing.db")
 
 	topics := &pubsub.Registry{}
-	manager, err := NewProcessManager(topics, dbFile)
+	manager, err := NewProcessManager(topics, dir, dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
@@ -80,7 +80,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	dbFile := filepath.Join(dir, "testing.db")
 
 	topicsA := &pubsub.Registry{}
-	managerA, err := NewProcessManager(topicsA, dbFile)
+	managerA, err := NewProcessManager(topicsA, dir, dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
@@ -102,7 +102,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 	// and then we don't touch it anymore. Then, the second is created, as if Robin
 	// restarted and the manager is going in fresh with processes that haven't died yet.
 	topicsB := &pubsub.Registry{}
-	managerB, err := NewProcessManager(topicsB, dbFile)
+	managerB, err := NewProcessManager(topicsB, dir, dbFile)
 	if err != nil {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}

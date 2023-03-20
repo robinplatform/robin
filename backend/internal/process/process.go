@@ -13,7 +13,6 @@ import (
 
 	"github.com/nxadm/tail"
 
-	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
 	"robinplatform.dev/internal/pubsub"
@@ -54,10 +53,8 @@ type ProcessConfig struct {
 	Port int
 }
 
-func (id *ProcessId) getLogFilePath() string {
-	robinPath := config.GetRobinPath()
-	processLogsFolderPath := filepath.Join(robinPath, "logs", "processes")
-	processLogsPath := filepath.Join(processLogsFolderPath, id.Source+"-"+id.Key+".log")
+func (m *ProcessManager) getLogFilePath(id ProcessId) string {
+	processLogsPath := filepath.Join(m.processLogsFolderPath, id.Source+"-"+id.Key+".log")
 	return processLogsPath
 }
 
@@ -200,6 +197,8 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 // This is essentially a global type, but it's set up as an instance for testing purposes.
 // Use `process.Manager` to manage processes.
 type ProcessManager struct {
+	processLogsFolderPath string
+
 	// Data persisted to disk about processes
 	db model.Store[Process]
 
@@ -212,7 +211,7 @@ type ProcessManager struct {
 	cancel func()
 }
 
-func NewProcessManager(topics *pubsub.Registry, dbPath string) (*ProcessManager, error) {
+func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) (*ProcessManager, error) {
 	manager := &ProcessManager{}
 
 	var err error
@@ -221,6 +220,7 @@ func NewProcessManager(topics *pubsub.Registry, dbPath string) (*ProcessManager,
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
 
+	manager.processLogsFolderPath = logsPath
 	manager.topics = topics
 
 	manager.ctx, manager.cancel = context.WithCancel(context.Background())
@@ -250,7 +250,7 @@ func NewProcessManager(topics *pubsub.Registry, dbPath string) (*ProcessManager,
 			return nil, err
 		}
 
-		go proc.pipeTailIntoTopic(topic)
+		go manager.pipeTailIntoTopic(&proc, topic)
 		go proc.pollForExit()
 	}
 
@@ -287,7 +287,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func (process *Process) pipeTailIntoTopic(topic *pubsub.Topic) {
+func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
 	defer topic.Close()
 
 	logger.Debug("Starting pipe into topic", log.Ctx{
@@ -299,7 +299,7 @@ func (process *Process) pipeTailIntoTopic(topic *pubsub.Topic) {
 		Follow: true,
 		Logger: tail.DiscardingLogger,
 	}
-	out, err := tail.TailFile(process.Id.getLogFilePath(), config)
+	out, err := tail.TailFile(m.getLogFilePath(process.Id), config)
 	if err != nil {
 		logger.Err("failed to tail file", log.Ctx{
 			"err": err.Error(),
@@ -375,7 +375,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 	defer empty.Close()
 
-	processLogsPath := procConfig.Id.getLogFilePath()
+	processLogsPath := w.Read.m.getLogFilePath(procConfig.Id)
 	processLogsFolderPath := filepath.Dir(processLogsPath)
 
 	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
@@ -436,7 +436,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 
 	// Write output to file
-	go entry.pipeTailIntoTopic(topic)
+	go w.Read.m.pipeTailIntoTopic(&entry, topic)
 
 	// Reap zombies
 	go entry.waitForExit()
