@@ -27,13 +27,23 @@ if narrowedTopic, castSucceeded := topic.(Topic[T]); castSucceeded {
 */
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 var Topics Registry
+
+func init() {
+	err := Topics.CreateMetaTopics()
+	if err != nil {
+		panic(err)
+	}
+}
 
 var (
 	ErrTopicClosed      error = errors.New("tried to operate on a closed topic")
@@ -42,24 +52,25 @@ var (
 	ErrNilSubscriber    error = errors.New("used a nil channel when subscribing")
 )
 
+var (
+	MetaTopic TopicId = TopicId{Category: "@robin/topics", Name: "meta"}
+)
+
 type TopicId struct {
 	// Category of the topic. The following categories are reserved:
 	// - "robin"
 	// - "@robin/*" - everything prefixed with "@robin/" is reserved
+	//
+	// Currently used:
+	// - "@robin/logs/{app-category}" logs for an app with a certain category
+	// - "@robin/topics" meta category for information about topics
 	Category string `json:"category"`
 	// The name of the topic
 	Name string `json:"name"`
 }
 
 func (topic *TopicId) String() string {
-	return fmt.Sprintf("%s-%s", topic.Category, topic.Name)
-}
-
-func (topic *TopicId) HashKey() string {
-	// Simple bit of code to prevent collisions
-	cat := strings.ReplaceAll(topic.Category, "-", "\\-")
-	name := strings.ReplaceAll(topic.Name, "-", "\\-")
-	return fmt.Sprintf("%s-%s", cat, name)
+	return fmt.Sprintf("%s/%s", topic.Category, topic.Name)
 }
 
 type Topic struct {
@@ -134,7 +145,7 @@ func (topic *Topic) Publish(message string) {
 	})
 }
 
-func (topic *Topic) Close() {
+func (r *Registry) Close(topic *Topic) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -144,6 +155,18 @@ func (topic *Topic) Close() {
 
 	topic.closed = true
 
+	if meta := r.metaTopic.Load(); meta != nil {
+		data, err := json.Marshal(MetaTopicInfo{
+			Kind: "close",
+			Data: topic.Id,
+		})
+
+		// TODO: handle errors
+		if err == nil {
+			meta.Publish(string(data))
+		}
+	}
+
 	for _, channel := range topic.subscribers {
 		close(channel)
 	}
@@ -151,8 +174,15 @@ func (topic *Topic) Close() {
 	topic.subscribers = nil
 }
 
+type MetaTopicInfo struct {
+	Kind string `json:"kind"`
+	Data any    `json:"data"`
+}
+
 type Registry struct {
 	m sync.Mutex
+
+	metaTopic atomic.Pointer[Topic]
 
 	// TODO: this implementation will scatter stuff all over the heap.
 	// It can be fixed with some kind of stable-pointer-arraylist but
@@ -161,14 +191,23 @@ type Registry struct {
 }
 
 func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
+	if strings.HasPrefix(id.Category, "@robin/topics") {
+		return nil, ErrTopicExists
+	}
+
 	r.m.Lock()
 	defer r.m.Unlock()
 
+	return r.createTopic(id)
+}
+
+// Requires caller to take the lock
+func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 	if r.topics == nil {
 		r.topics = make(map[string]*Topic, 8)
 	}
 
-	key := id.HashKey()
+	key := id.String()
 	if prev := r.topics[key]; prev != nil && prev.isClosed() {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
@@ -184,7 +223,7 @@ func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
 		return
 	}
 
-	key := id.HashKey()
+	key := id.String()
 
 	r.m.Lock()
 	if r.topics == nil {
@@ -197,12 +236,66 @@ func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
 	topic.removeSubscriber(channel)
 }
 
+func (r *Registry) pollMetaInfo() {
+	for {
+		r.m.Lock()
+
+		for _, topic := range r.topics {
+			topic.m.Lock()
+
+			if topic.closed {
+				topic.m.Unlock()
+				continue
+			}
+
+			info := MetaTopicInfo{
+				Kind: "update",
+				Data: TopicInfo{
+					Id:              topic.Id,
+					Closed:          topic.closed,
+					Count:           topic.counter,
+					SubscriberCount: len(topic.subscribers),
+				},
+			}
+
+			topic.m.Unlock()
+
+			data, err := json.Marshal(info)
+			if err != nil {
+				continue
+			}
+
+			r.metaTopic.Load().Publish(string(data))
+		}
+
+		r.m.Unlock()
+
+		time.Sleep(time.Millisecond * 500)
+	}
+}
+
+func (r *Registry) CreateMetaTopics() error {
+	r.m.Lock()
+	defer r.m.Unlock()
+
+	// Lazily create meta topic
+	meta, err := r.createTopic(MetaTopic)
+	if err != nil {
+		return err
+	}
+	r.metaTopic.Store(meta)
+
+	go r.pollMetaInfo()
+
+	return nil
+}
+
 func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	if channel == nil {
 		return ErrNilSubscriber
 	}
 
-	key := id.HashKey()
+	key := id.String()
 
 	r.m.Lock()
 
@@ -231,21 +324,21 @@ type TopicInfo struct {
 	SubscriberCount int     `json:"subscriberCount"`
 }
 
-func (r *Registry) GetTopicInfo() []TopicInfo {
+func (r *Registry) GetTopicInfo() map[string]TopicInfo {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	out := make([]TopicInfo, 0, len(r.topics))
+	out := make(map[string]TopicInfo, len(r.topics))
 
-	for _, topic := range r.topics {
+	for key, topic := range r.topics {
 		topic.m.Lock()
 
-		out = append(out, TopicInfo{
+		out[key] = TopicInfo{
 			Id:              topic.Id,
 			Closed:          topic.closed,
 			Count:           topic.counter,
 			SubscriberCount: len(topic.subscribers),
-		})
+		}
 
 		topic.m.Unlock()
 	}
