@@ -190,6 +190,12 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 type ProcessManager struct {
 	// Data persisted to disk about processes
 	db model.Store[Process]
+
+	// Context for long running operations, the parent
+	// of all process contexts
+	ctx context.Context
+	// Cancel function for the context
+	cancel func()
 }
 
 func NewProcessManager(dbPath string) (*ProcessManager, error) {
@@ -200,6 +206,8 @@ func NewProcessManager(dbPath string) (*ProcessManager, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create process database: %w", err)
 	}
+
+	manager.ctx, manager.cancel = context.WithCancel(context.Background())
 
 	return manager, nil
 }
