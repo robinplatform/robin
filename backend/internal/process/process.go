@@ -137,6 +137,11 @@ func (process *Process) osProcessIsAlive() bool {
 	// or something else.
 	osProcess, err := os.FindProcess(process.Pid)
 	if err != nil {
+		// TODO: make this debug
+		logger.Info("got error when checking process alive", log.Ctx{
+			"procIsNil": osProcess == nil,
+			"err":       err.Error(),
+		})
 		return false
 	}
 
