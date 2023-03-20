@@ -16,10 +16,7 @@ type StartProcessForAppInput struct {
 var StartProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Name: "StartProcess",
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
-		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
-		if err != nil {
-			return nil, Errorf(http.StatusInternalServerError, "invalid ID for spawning new process: %s", err)
-		}
+		id := process.ProjectAppId(req.Data.AppId, req.Data.ProcessKey)
 
 		processConfig := process.ProcessConfig{
 			Command: req.Data.Command,
@@ -47,13 +44,9 @@ type StopProcessForAppInput struct {
 var StopProcessForApp = AppsRpcMethod[StartProcessForAppInput, map[string]any]{
 	Name: "StopProcess",
 	Run: func(req RpcRequest[StartProcessForAppInput]) (map[string]any, *HttpError) {
-		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
-		if err != nil {
-			return nil, Errorf(http.StatusInternalServerError, "invalid ID for stopping process: %s", err)
-		}
+		id := process.ProjectAppId(req.Data.AppId, req.Data.ProcessKey)
 
-		err = process.Manager.Remove(id)
-		if err != nil {
+		if err := process.Manager.Remove(id); err != nil {
 			return nil, Errorf(http.StatusInternalServerError, "Failed to kill process %s: %s", req.Data.AppId, err)
 		}
 
@@ -69,10 +62,7 @@ type CheckProcessHealthInput struct {
 var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 	Name: "CheckProcessHealth",
 	Run: func(req RpcRequest[CheckProcessHealthInput]) (map[string]any, *HttpError) {
-		id, err := process.NewId(req.Data.AppId, req.Data.ProcessKey)
-		if err != nil {
-			return nil, Errorf(http.StatusInternalServerError, "invalid ID for checking process health: %s", err)
-		}
+		id := process.ProjectAppId(req.Data.AppId, req.Data.ProcessKey)
 
 		isAlive := process.Manager.IsAlive(id)
 
