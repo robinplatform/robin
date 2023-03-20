@@ -1,6 +1,7 @@
 package process
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -88,11 +89,12 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 
 	id := InternalId("previous")
 
-	_, err = managerA.SpawnFromPathVar(ProcessConfig{
+	procA, err := managerA.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
 		Args:    []string{"100"},
 	})
+
 	if err != nil {
 		t.Fatalf("error spawning process: %s", err.Error())
 	}
@@ -108,23 +110,30 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	proc, err := managerB.FindById(id)
+	procB, err := managerB.FindById(id)
 	if err != nil {
 		t.Fatalf("error finding process: %s", err.Error())
+	}
+
+	fmt.Printf("A: %#v, B: %#v", procA, procB)
+
+	if procB.Pid != procA.Pid {
+		t.Fatalf("PIDS are different")
+
 	}
 
 	if !managerB.IsAlive(id) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	if !proc.osProcessIsAlive() {
+	if !procB.osProcessIsAlive() {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
 	errChan := make(chan error)
 	go func() {
 		// Kill the process to imitate
-		osProc, err := os.FindProcess(proc.Pid)
+		osProc, err := os.FindProcess(procB.Pid)
 		if err != nil {
 			errChan <- err
 			return
@@ -137,13 +146,13 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("failed to kill process")
 	}
 
-	<-proc.Context.Done()
+	<-procB.Context.Done()
 
 	if managerB.IsAlive(id) {
 		t.Fatalf("manager thinks process is alive after it died")
 	}
 
-	if proc.osProcessIsAlive() {
+	if procB.osProcessIsAlive() {
 		t.Fatalf("manager thinks process is alive after it died")
 	}
 }
