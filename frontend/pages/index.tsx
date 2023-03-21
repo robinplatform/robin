@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
 import { Stream } from '@robinplatform/toolkit/stream';
+import { useStreamMethod } from '@robinplatform/toolkit/react/stream';
 
 // This is a temporary bit of code to just display what's in the processes DB
 // to make writing other features easier
@@ -103,104 +104,66 @@ function Topics() {
 	const [selectedTopic, setSelectedTopic] = React.useState<
 		TopicInfo & { key: string }
 	>();
-	const [topicMessages, setTopicMessages] = React.useState<
-		Record<string, string[]>
-	>({});
 
-	const [topics, setTopics] = React.useState<Record<string, TopicInfo>>({});
-	const { error } = useRpcQuery({
+	const { data: initialTopics, error } = useRpcQuery({
 		method: 'GetTopics',
 		data: {},
 		result: z.record(z.string(), TopicInfo),
 		pathPrefix: '/api/apps/rpc',
-		onSuccess: setTopics,
 	});
 
-	React.useEffect(() => {
-		const id = `${Math.random()} topic-info`;
-		const stream = new Stream('SubscribeTopic', id);
-		stream.onmessage = (message) => {
-			const { kind, data } = message;
-			if (kind !== 'methodOutput') {
-				console.log('message from topic subscription', message);
-				return;
-			}
-
-			const res = MetaTopicInfo.safeParse(JSON.parse(data));
-			if (!res.success) {
-				console.log(
-					'parse failure from from topic subscription',
-					message,
-					res.error,
-				);
-				return;
-			}
-
-			const packet = res.data;
-			switch (packet.kind) {
-				case 'update':
-					setTopics((prev) => ({
-						...prev,
-						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
-					}));
-					break;
-				case 'close':
-					setTopics((prev) => {
-						const a = { ...prev };
-						// rome-ignore lint/performance/noDelete: I'm deleting a key from a record... also the docs say this rule shouldn't even apply here.
-						delete a[`${packet.data.category}/${packet.data.name}`];
-						return a;
-					});
-					break;
-			}
-		};
-		stream.onerror = (err) => {
-			console.log('error', err);
-		};
-
-		stream.start({
+	const { state: topics } = useStreamMethod({
+		methodName: 'SubscribeTopic',
+		resultType: MetaTopicInfo,
+		skip: !initialTopics,
+		data: {
 			id: {
 				category: '@robin/topics',
 				name: 'meta',
 			},
-		});
+		},
+		initialState: initialTopics ?? {},
+		reducer: (prev, packet) => {
+			switch (packet.kind) {
+				case 'update':
+					return {
+						...prev,
+						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
+					};
+				case 'close':
+					const a: Record<string, TopicInfo> = { ...prev };
+					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record... also the docs say this rule shouldn't even apply here.
+					delete a[`${packet.data.category}/${packet.data.name}`];
+					return a;
+			}
+		},
+	});
 
-		return () => {
-			stream.close();
-		};
-	}, []);
-
-	React.useEffect(() => {
-		if (selectedTopic === undefined) {
-			return;
-		}
-
-		const id = `${Math.random()} topic-contents`;
-		const stream = new Stream('SubscribeTopic', id);
-		stream.onmessage = (message) => {
-			const { kind, data } = message;
-			if (kind !== 'methodOutput') {
-				console.log('message from topic subscription', message);
-				return;
+	const { state: topicMessages } = useStreamMethod<
+		Record<string, string[]>,
+		unknown
+	>({
+		methodName: 'SubscribeTopic',
+		resultType: z.unknown(),
+		skip: !selectedTopic?.id,
+		data: {
+			id: selectedTopic?.id,
+		},
+		initialState: {},
+		reducer: (prev, packet) => {
+			if (!selectedTopic) {
+				return prev;
 			}
 
-			setTopicMessages((prev) => ({
+			return {
 				...prev,
-				[selectedTopic.key]: [...(prev[selectedTopic.key] ?? []), String(data)],
-			}));
-		};
-		stream.onerror = (err) => {
-			console.log('error', err);
-		};
-
-		stream.start({
-			id: selectedTopic.id,
-		});
-
-		return () => {
-			stream.close();
-		};
-	}, [selectedTopic]);
+				[selectedTopic.key]: [
+					...(prev[selectedTopic.key] ?? []),
+					JSON.stringify(packet),
+				],
+			};
+		},
+	});
 
 	return (
 		<div
