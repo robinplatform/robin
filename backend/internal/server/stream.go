@@ -183,22 +183,22 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 			}
 
 			req, found := inFlightRequests[input.Id]
-			if req == nil {
-				mCtx, mCancel := context.WithCancel(ctx)
+
+			switch input.Kind {
+			case "call":
+				if found {
+					req.SendRaw("error", "'id' field used previous ID value")
+					continue MessageLoop
+				}
+
 				req = &streamRequest{
 					Method:   input.Method,
 					Id:       input.Id,
 					Server:   server,
 					RawInput: input.Data,
 					output:   outputChannel,
-					Context:  mCtx,
-					cancel:   mCancel,
 				}
 
-			}
-
-			switch input.Kind {
-			case "call":
 				method, ok := ws.handlers[req.Method]
 				if !ok {
 					logger.Debug("RPC websocket got invalid value for 'method'", log.Ctx{
@@ -215,13 +215,10 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 					continue MessageLoop
 				}
 
-				if found {
-					req.SendRaw("error", "'id' field used previous ID value")
-					continue MessageLoop
-				}
+				req.Context, req.cancel = context.WithCancel(ctx)
+				inFlightRequests[req.Id] = req
 
 				go runMethod(method, req)
-				inFlightRequests[req.Id] = req
 
 			case "cancel":
 				if !found {
