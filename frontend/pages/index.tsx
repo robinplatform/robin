@@ -3,7 +3,6 @@ import React from 'react';
 import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { Stream } from '@robinplatform/toolkit/stream';
 import { useStreamMethod } from '@robinplatform/toolkit/react/stream';
 
 // This is a temporary bit of code to just display what's in the processes DB
@@ -131,9 +130,12 @@ function Topics() {
 						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
 					};
 				case 'close':
-					const a: Record<string, TopicInfo> = { ...prev };
-					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record... also the docs say this rule shouldn't even apply here.
+					const a = { ...prev };
+					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record...
 					delete a[`${packet.data.category}/${packet.data.name}`];
+
+					// ...also the docs say this rule shouldn't even apply here. Like the rule is supposed to
+					// ignore this case.
 					return a;
 			}
 		},
@@ -141,10 +143,10 @@ function Topics() {
 
 	const { state: topicMessages } = useStreamMethod<
 		Record<string, string[]>,
-		any
+		unknown
 	>({
 		methodName: 'SubscribeTopic',
-		resultType: z.any(),
+		resultType: z.unknown(),
 		skip: !selectedTopic?.id,
 		data: {
 			id: selectedTopic?.id,

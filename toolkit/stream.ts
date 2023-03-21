@@ -48,17 +48,21 @@ async function getWs(): Promise<WebSocket> {
 // This is a low-level primitive that can be used to implement higher-level
 // streaming requests.
 export class Stream {
-	onmessage: (a: unknown) => void = () => {};
-	onerror: (a: unknown) => void = () => {};
-
 	private started = false;
 	private closed = false;
+
+	constructor(readonly method: string, readonly id: string) {}
 
 	private closeHandler: () => void = () => {
 		this.closed = true;
 	};
 
-	constructor(readonly method: string, readonly id: string) {}
+	onmessage: (a: unknown) => void = (a) => {
+		console.log(`Stream(${this.method}, ${this.id}) message:`, a);
+	};
+	onerror: (a: unknown) => void = (a) => {
+		console.error(`Stream(${this.method}, ${this.id}) error:`, a);
+	};
 
 	set onclose(f: () => void) {
 		this.closeHandler = () => {

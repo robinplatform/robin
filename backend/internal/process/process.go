@@ -25,6 +25,24 @@ var (
 	logger = log.New("process")
 )
 
+// TODO: probably want to move to a system without the `@robin/*` shit.
+// When I thought of it initially, I sorta imagined it similar to a file system,
+// but I didn't realize that when you take that analogy to the logical conclusion,
+// you'd want to support things like path concatenation. We have a concrete case of this
+// with logs, where the paths look like `@robin/logs/@robin/app/example/server-manager`
+// which is just silly.
+//
+// To prevent this kind of silliness, the ID categories should just be REAL paths, i.e. /app/example/server-manager
+// instead of @robin/app/example/server-manager. That way the above example becomes `/logs/app/example/server-manager`.
+// Initially, I had thought that e.g. users/apps would arbitrarily be creating paths
+// willy-nilly, but I realize that any kind of thing that the user could want to create,
+// we can simply choose to namespace it ourselves. e.g. we could decide that users
+// can create whatever category they want under the `/custom` prefix.
+//
+// What I missed initially is that we don't have to support the user creating arbitrary categories,
+// because unlike a file system, Robin code is the ultimate decider of every path at all times.
+// We can simply put things into namespaces.
+
 // An identifier for a process.
 type ProcessId struct {
 	// The category of the process; typically also includes the name of
@@ -347,6 +365,9 @@ func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic
 				continue
 			}
 
+			// This is a bit silly, but since pubsub doesn't support generics right now,
+			// other parts of the code are outputting JSON as a string, so for now we do that here
+			// too, until we can do something more general purpose.
 			bytes, err := json.Marshal(map[string]any{"line": line.Text})
 			if err != nil {
 				logger.Err("got error in JSON encoding", log.Ctx{

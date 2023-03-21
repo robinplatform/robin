@@ -1,12 +1,7 @@
-import {
-	QueryClientProvider,
-	QueryClient,
-	useQuery,
-	UseQueryOptions,
-} from '@tanstack/react-query';
 import React from 'react';
 import { z } from 'zod';
 import { Stream } from '../stream';
+import stableStringify from 'json-stable-stringify';
 
 export function useStreamMethod<State, Output>({
 	methodName,
@@ -34,9 +29,13 @@ export function useStreamMethod<State, Output>({
 
 	const [state, dispatch] = React.useReducer(cb, initialState);
 
+	// Skip is an extra dependency so that the stream gets reset when
+	// the stream is turned off/on again.
+	// initialData JSON is also here, so that when you change the information
+	// in the parameters, you get a new stream.
 	const id = React.useMemo(
 		() => `${methodName}-${Math.random()}`,
-		[methodName, JSON.stringify(initialData), skip],
+		[methodName, stableStringify(initialData), skip],
 	);
 
 	const stream = React.useMemo(
@@ -44,7 +43,6 @@ export function useStreamMethod<State, Output>({
 		[methodName, id],
 	);
 
-	// TODO: use stable stringify for the dep check
 	React.useEffect(() => {
 		if (skip) {
 			return;
@@ -59,7 +57,7 @@ export function useStreamMethod<State, Output>({
 			const res = resultType.safeParse(JSON.parse(data));
 			if (!res.success) {
 				// TODO: handle the error
-				console.log('Robin stream parse error', res.error);
+				stream.onerror(res.error);
 				return;
 			}
 
@@ -71,7 +69,7 @@ export function useStreamMethod<State, Output>({
 		return () => {
 			stream.close();
 		};
-	}, [skip, stream, JSON.stringify(initialData)]);
+	}, [skip, stream, stableStringify(initialData)]);
 
 	return { state, dispatch };
 }
