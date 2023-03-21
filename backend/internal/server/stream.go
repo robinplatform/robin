@@ -39,6 +39,28 @@ type streamRequest struct {
 	cancel func()
 }
 
+func (req *streamRequest) SendRaw(kind string, data any) {
+	req.output <- socketMessageOut{
+		Method: req.Method,
+		Id:     req.Id,
+		Kind:   kind,
+		Data:   data,
+	}
+}
+
+func (s *StreamRequest[_, _]) SendRaw(kind string, data any) {
+	(*streamRequest)(s).SendRaw(kind, data)
+}
+
+// The idea behind using `ParseInput` instead of something with generics is twofold:
+//  1. It reduces the amount of generic code necessary to implement certain things in
+//     this file. - Specifically, some of the hooks for handling code are now very very short,
+//     and don't need to be duplicated for each generic instantiation
+//  2. It allows more flexibility - This is a bit weak, but it does technically allow the user
+//     to make some custom parsing error handling, or to parse the input in a custom way.
+//
+// Using ParseInput also comes with downsides, mostly in usability. It's unclear if the tradeoff is
+// worth it yet, but we will see.
 func (s *StreamRequest[Input, _]) ParseInput() (Input, error) {
 	var input Input
 	err := json.Unmarshal(s.RawInput, &input)
@@ -53,13 +75,16 @@ func (s *StreamRequest[Input, _]) ParseInput() (Input, error) {
 	return input, err
 }
 
+// This code uses `Send` instead of a channel to try to reduce the number
+// of channels/goroutines that need to run at any one time. Otherwise there'd
+// need to at least be one goroutine per-stream, and often pubsub uses channels
+// with *very slight* caveats, which require an additional goroutine/thread intercepting
+// the subscription channel and piping into the stream's channel.
+//
+// With a send function, we at least eliminate some complexity in the implementation, and also allow
+// the user to decide themselves what parallelism paradigms they would like to use.
 func (s *StreamRequest[_, Output]) Send(o Output) {
-	s.output <- socketMessageOut{
-		Method: s.Method,
-		Id:     s.Id,
-		Kind:   "methodOutput",
-		Data:   o,
-	}
+	s.SendRaw("methodOutput", o)
 }
 
 type socketMessageIn struct {
@@ -234,28 +259,15 @@ func runMethod(method handler, rawReq streamRequest) {
 		"id":     rawReq.Id,
 	})
 
-	rawReq.output <- socketMessageOut{
-		Id:     rawReq.Id,
-		Method: rawReq.Method,
-		Kind:   "methodStarted",
-	}
+	rawReq.SendRaw("methodStarted", nil)
 
 	if err := method(rawReq); err != nil {
-		rawReq.output <- socketMessageOut{
-			Id:     rawReq.Id,
-			Method: rawReq.Method,
-			Kind:   "error",
-			Err:    err.Error(),
-		}
+		rawReq.SendRaw("error", err.Error())
 
 		return
 	}
 
-	rawReq.output <- socketMessageOut{
-		Id:     rawReq.Id,
-		Method: rawReq.Method,
-		Kind:   "methodDone",
-	}
+	rawReq.SendRaw("methodDone", nil)
 }
 
 func (method *Stream[Input, Output]) handler(rawReq streamRequest) error {

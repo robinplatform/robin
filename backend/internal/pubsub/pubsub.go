@@ -24,6 +24,10 @@ if narrowedTopic, castSucceeded := topic.(Topic[T]); castSucceeded {
   subscribe to the topic using the narrowedTopic variable...
 }
 ```
+
+It may also be useful or even necessary to include a "state" field for each topic, so for example,
+a subscription can get the list of log statements that happened before it existed. ~Something something monad.~
+I don't quite want to implement all that hoopla right this second, but it's something to be aware of.
 */
 
 import (
