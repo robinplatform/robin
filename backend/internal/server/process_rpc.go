@@ -76,7 +76,7 @@ var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 
 var ReadAppProcessLogs = Stream[CheckProcessHealthInput, string]{
 	Name: "ReadAppProcessLogs",
-	Run: func(req StreamRequest[CheckProcessHealthInput, string]) error {
+	Run: func(req *StreamRequest[CheckProcessHealthInput, string]) error {
 		input, err := req.ParseInput()
 		if err != nil {
 			return err
