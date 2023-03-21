@@ -131,9 +131,12 @@ function Topics() {
 						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
 					};
 				case 'close':
-					const a: Record<string, TopicInfo> = { ...prev };
-					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record... also the docs say this rule shouldn't even apply here.
+					const a = { ...prev };
+					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record...
 					delete a[`${packet.data.category}/${packet.data.name}`];
+
+					// ...also the docs say this rule shouldn't even apply here. Like the rule is supposed to
+					// ignore this case.
 					return a;
 			}
 		},
