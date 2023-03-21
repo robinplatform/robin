@@ -21,7 +21,7 @@ type SubscribeTopicInput struct {
 
 var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 	Name: "SubscribeTopic",
-	Run: func(req StreamRequest[SubscribeTopicInput, string]) error {
+	Run: func(req *StreamRequest[SubscribeTopicInput, string]) error {
 		input, err := req.ParseInput()
 		if err != nil {
 			return err
