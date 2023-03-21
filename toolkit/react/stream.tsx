@@ -57,7 +57,7 @@ export function useStreamMethod<State, Output>({
 			const res = resultType.safeParse(JSON.parse(data));
 			if (!res.success) {
 				// TODO: handle the error
-				console.log('Robin stream parse error', res.error);
+				stream.onerror(res.error);
 				return;
 			}
 
