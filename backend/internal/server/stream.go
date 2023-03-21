@@ -16,7 +16,7 @@ type Stream[Input any, Output any] struct {
 	Name string
 
 	// Run implements the actual method.
-	Run func(req StreamRequest[Input, Output]) error
+	Run func(req *StreamRequest[Input, Output]) error
 }
 
 // TODO: Add context stuffs so that requests can be cancelled
@@ -46,10 +46,6 @@ func (req *streamRequest) SendRaw(kind string, data any) {
 		Kind:   kind,
 		Data:   data,
 	}
-}
-
-func (s *StreamRequest[_, _]) SendRaw(kind string, data any) {
-	(*streamRequest)(s).SendRaw(kind, data)
 }
 
 // The idea behind using `ParseInput` instead of something with generics is twofold:
@@ -84,7 +80,7 @@ func (s *StreamRequest[Input, _]) ParseInput() (Input, error) {
 // With a send function, we at least eliminate some complexity in the implementation, and also allow
 // the user to decide themselves what parallelism paradigms they would like to use.
 func (s *StreamRequest[_, Output]) Send(o Output) {
-	s.SendRaw("methodOutput", o)
+	(*streamRequest)(s).SendRaw("methodOutput", o)
 }
 
 type socketMessageIn struct {
@@ -113,14 +109,14 @@ type socketMessageOut struct {
 	Data   any    `json:"data,omitempty"`
 }
 
-type handler func(req streamRequest) error
+type handler func(req *streamRequest) error
 type RpcWebsocket struct {
 	handlers map[string]handler
 }
 
 func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 	return func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
-		inFlightRequests := make(map[string]streamRequest)
+		inFlightRequests := make(map[string]*streamRequest)
 
 		upgrader := websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
@@ -186,59 +182,52 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 				continue MessageLoop
 			}
 
-			errMessage := socketMessageOut{
-				Method: input.Method,
-				Kind:   "error",
-				Id:     input.Id,
-			}
+			req, found := inFlightRequests[input.Id]
 
 			switch input.Kind {
 			case "call":
-				method, ok := ws.handlers[input.Method]
+				if found {
+					req.SendRaw("error", "'id' field used previous ID value")
+					continue MessageLoop
+				}
+
+				req = &streamRequest{
+					Method:   input.Method,
+					Id:       input.Id,
+					Server:   server,
+					RawInput: input.Data,
+					output:   outputChannel,
+				}
+
+				method, ok := ws.handlers[req.Method]
 				if !ok {
 					logger.Debug("RPC websocket got invalid value for 'method'", log.Ctx{
 						"method":  input.Method,
 						"message": string(message),
 					})
 
-					errMessage.Err = "invalid value for 'method'"
-					outputChannel <- errMessage
+					req.SendRaw("error", "invalid value for 'method'")
 					continue MessageLoop
 				}
 
-				if input.Id == "" {
-					errMessage.Err = "'id' field was empty"
-					outputChannel <- errMessage
+				if req.Id == "" {
+					req.SendRaw("error", "'id' field was empty")
+					continue MessageLoop
 				}
 
-				if _, foundPrevious := inFlightRequests[input.Id]; foundPrevious {
-					errMessage.Err = "'id' field used previous ID value"
-					outputChannel <- errMessage
-				}
-
-				mCtx, mCancel := context.WithCancel(ctx)
-				req := streamRequest{
-					Method:   input.Method,
-					Id:       input.Id,
-					Server:   server,
-					RawInput: input.Data,
-					output:   outputChannel,
-					Context:  mCtx,
-					cancel:   mCancel,
-				}
-				go runMethod(method, req)
+				req.Context, req.cancel = context.WithCancel(ctx)
 				inFlightRequests[req.Id] = req
 
+				go runMethod(method, req)
+
 			case "cancel":
-				req, found := inFlightRequests[input.Id]
 				if !found {
-					errMessage.Err = "'id' not found"
-					outputChannel <- errMessage
+					req.SendRaw("error", "'id' not found")
 					continue MessageLoop
 				}
 
 				req.cancel()
-				delete(inFlightRequests, input.Id)
+				delete(inFlightRequests, req.Id)
 
 			default:
 				logger.Debug("RPC websocket got invalid value for 'kind'", log.Ctx{
@@ -246,14 +235,13 @@ func (ws *RpcWebsocket) WebsocketHandler(server *Server) httprouter.Handle {
 					"message": string(message),
 				})
 
-				errMessage.Err = "invalid value for 'kind'"
-				outputChannel <- errMessage
+				req.SendRaw("error", "invalid value for 'kind'")
 			}
 		}
 	}
 }
 
-func runMethod(method handler, rawReq streamRequest) {
+func runMethod(method handler, rawReq *streamRequest) {
 	logger.Debug("starting up RPC stream", log.Ctx{
 		"method": rawReq.Method,
 		"id":     rawReq.Id,
@@ -270,8 +258,8 @@ func runMethod(method handler, rawReq streamRequest) {
 	rawReq.SendRaw("methodDone", nil)
 }
 
-func (method *Stream[Input, Output]) handler(rawReq streamRequest) error {
-	req := StreamRequest[Input, Output](rawReq)
+func (method *Stream[Input, Output]) handler(rawReq *streamRequest) error {
+	req := (*StreamRequest[Input, Output])(rawReq)
 	return method.Run(req)
 }
 
