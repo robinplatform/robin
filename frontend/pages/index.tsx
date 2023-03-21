@@ -3,7 +3,6 @@ import React from 'react';
 import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { Stream } from '@robinplatform/toolkit/stream';
 import { useStreamMethod } from '@robinplatform/toolkit/react/stream';
 
 // This is a temporary bit of code to just display what's in the processes DB
