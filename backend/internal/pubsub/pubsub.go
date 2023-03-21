@@ -212,7 +212,7 @@ func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 	}
 
 	key := id.String()
-	if prev := r.topics[key]; prev != nil && prev.isClosed() {
+	if prev := r.topics[key]; prev != nil && !prev.isClosed() {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
