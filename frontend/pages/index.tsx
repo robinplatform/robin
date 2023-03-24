@@ -199,16 +199,16 @@ function Topics() {
 							Selected topic is{' '}
 							{`${selectedTopic.id.category} - ${selectedTopic.id.name}`}
 						</div>
-
-						<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>
-							{topicMessages[selectedTopic.key]?.map((msg, idx) => (
-								<div key={`${msg} ${idx}`} style={{ wordBreak: 'break-word' }}>
-									{msg}
-								</div>
-							))}
-						</ScrollWindow>
 					</>
 				)}
+
+				<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>
+					{topicMessages[selectedTopic?.key ?? '']?.map((msg, idx) => (
+						<div key={`${msg} ${idx}`} style={{ wordBreak: 'break-word' }}>
+							{msg}
+						</div>
+					))}
+				</ScrollWindow>
 			</div>
 		</div>
 	);
