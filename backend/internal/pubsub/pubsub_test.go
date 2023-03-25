@@ -10,7 +10,7 @@ func TestPubSubSimple(t *testing.T) {
 
 	topicId := TopicId{
 		Category: "wassa",
-		Name:     "wassa",
+		Key:      "wassa",
 	}
 	topic, err := registry.CreateTopic(topicId)
 	if err != nil {

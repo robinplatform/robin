@@ -17,7 +17,10 @@ func TestSpawnProcess(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := InternalId("long")
+	id := ProcessId{
+		Category: "robin",
+		Key:      "long",
+	}
 
 	proc, err := manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
@@ -61,7 +64,10 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := InternalId("short")
+	id := ProcessId{
+		Category: "robin",
+		Key:      "short",
+	}
 
 	proc, err := manager.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
@@ -97,8 +103,10 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	id := InternalId("previous")
-
+	id := ProcessId{
+		Category: "robin",
+		Key:      "previous",
+	}
 	procA, err := managerA.SpawnFromPathVar(ProcessConfig{
 		Id:      id,
 		Command: "sleep",
