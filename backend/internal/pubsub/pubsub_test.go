@@ -12,7 +12,7 @@ func TestPubSubSimple(t *testing.T) {
 		Category: "wassa",
 		Key:      "wassa",
 	}
-	topic, err := CreateTopic(&registry, topicId)
+	topic, err := CreateTopic[string](&registry, topicId)
 	if err != nil {
 		t.Fatalf("topic couldn't be created: %s", err.Error())
 	}
@@ -49,7 +49,7 @@ func TestPubSubSimple(t *testing.T) {
 		wStart.Add(1)
 		wStop.Add(1)
 
-		sub, err := Subscribe(&registry, topicId)
+		sub, err := Subscribe[string](&registry, topicId)
 		if err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}

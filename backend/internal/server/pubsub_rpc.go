@@ -27,7 +27,7 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 			return err
 		}
 
-		sub, err := pubsub.Subscribe(&pubsub.Topics, input.Id)
+		sub, err := pubsub.Subscribe[string](&pubsub.Topics, input.Id)
 		if err != nil {
 			return err
 		}

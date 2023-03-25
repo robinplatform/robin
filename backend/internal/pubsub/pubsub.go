@@ -31,7 +31,6 @@ I don't quite want to implement all that hoopla right this second, but it's some
 */
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -69,7 +68,7 @@ func (topic TopicId) String() string {
 	return (identity.Id)(topic).String()
 }
 
-type Topic struct {
+type Topic[T any] struct {
 	// `id` is only set at creation time and isn't written to afterwards.
 	Id TopicId
 	// `registry` is only set at creation time and isn't written to afterwards.
@@ -81,7 +80,7 @@ type Topic struct {
 
 	counter     int
 	closed      bool
-	subscribers []chan string
+	subscribers []chan T
 }
 
 type anyTopic interface {
@@ -89,12 +88,12 @@ type anyTopic interface {
 	getInfo() TopicInfo
 }
 
-type Subscription struct {
-	Out   <-chan string
-	topic *Topic
+type Subscription[T any] struct {
+	Out   <-chan T
+	topic *Topic[T]
 }
 
-func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
+func (topic *Topic[T]) forEachSubscriber(iterator func(sub chan<- T)) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -109,7 +108,7 @@ func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
 	return nil
 }
 
-func (topic *Topic) addSubscriber(sub chan string) error {
+func (topic *Topic[T]) addSubscriber(sub chan T) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -122,7 +121,7 @@ func (topic *Topic) addSubscriber(sub chan string) error {
 	return nil
 }
 
-func (topic *Topic) removeSubscriber(sub <-chan string) {
+func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -140,7 +139,7 @@ func (topic *Topic) removeSubscriber(sub <-chan string) {
 	topic.subscribers = topic.subscribers[:writeIndex]
 }
 
-func (topic *Topic) getInfo() TopicInfo {
+func (topic *Topic[_]) getInfo() TopicInfo {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -152,20 +151,20 @@ func (topic *Topic) getInfo() TopicInfo {
 	}
 }
 
-func (topic *Topic) isClosed() bool {
+func (topic *Topic[_]) isClosed() bool {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
 	return topic.closed
 }
 
-func (topic *Topic) Publish(message string) {
-	topic.forEachSubscriber(func(sub chan<- string) {
+func (topic *Topic[T]) Publish(message T) {
+	topic.forEachSubscriber(func(sub chan<- T) {
 		sub <- message
 	})
 }
 
-func (topic *Topic) Close() {
+func (topic *Topic[_]) Close() {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -176,15 +175,10 @@ func (topic *Topic) Close() {
 	topic.closed = true
 
 	if meta := topic.registry.metaTopic.Load(); meta != nil {
-		data, err := json.Marshal(MetaTopicInfo{
+		meta.Publish(MetaTopicInfo{
 			Kind: "close",
 			Data: topic.Id,
 		})
-
-		// TODO: handle errors
-		if err == nil {
-			meta.Publish(string(data))
-		}
 	}
 
 	for _, channel := range topic.subscribers {
@@ -202,7 +196,7 @@ type MetaTopicInfo struct {
 type Registry struct {
 	m sync.Mutex
 
-	metaTopic atomic.Pointer[Topic]
+	metaTopic atomic.Pointer[Topic[MetaTopicInfo]]
 
 	// TODO: this implementation will scatter stuff all over the heap.
 	// It can be fixed with some kind of stable-pointer-arraylist but
@@ -210,7 +204,7 @@ type Registry struct {
 	topics map[string]anyTopic
 }
 
-func CreateTopic(r *Registry, id TopicId) (*Topic, error) {
+func CreateTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
@@ -218,11 +212,11 @@ func CreateTopic(r *Registry, id TopicId) (*Topic, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	return createTopic(r, id)
+	return createTopic[T](r, id)
 }
 
 // Requires caller to take the lock
-func createTopic(r *Registry, id TopicId) (*Topic, error) {
+func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	if r.topics == nil {
 		r.topics = make(map[string]anyTopic, 8)
 	}
@@ -232,7 +226,7 @@ func createTopic(r *Registry, id TopicId) (*Topic, error) {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
-	topic := &Topic{Id: id, registry: r}
+	topic := &Topic[T]{Id: id, registry: r}
 	r.topics[key] = topic
 
 	return topic, nil
@@ -248,17 +242,10 @@ func (r *Registry) pollMetaInfo() {
 				continue
 			}
 
-			out := MetaTopicInfo{
+			r.metaTopic.Load().Publish(MetaTopicInfo{
 				Kind: "update",
 				Data: info,
-			}
-
-			data, err := json.Marshal(out)
-			if err != nil {
-				continue
-			}
-
-			r.metaTopic.Load().Publish(string(data))
+			})
 		}
 
 		r.m.Unlock()
@@ -272,7 +259,7 @@ func (r *Registry) CreateMetaTopics() error {
 	defer r.m.Unlock()
 
 	// Lazily create meta topic
-	meta, err := createTopic(r, MetaTopic)
+	meta, err := createTopic[MetaTopicInfo](r, MetaTopic)
 	if err != nil {
 		return err
 	}
@@ -283,7 +270,7 @@ func (r *Registry) CreateMetaTopics() error {
 	return nil
 }
 
-func Subscribe(r *Registry, id TopicId) (Subscription, error) {
+func getTopic(r *Registry, id TopicId) (anyTopic, error) {
 	key := id.String()
 
 	r.m.Lock()
@@ -296,24 +283,33 @@ func Subscribe(r *Registry, id TopicId) (Subscription, error) {
 	r.m.Unlock()
 
 	if topicUntyped == nil {
-		return Subscription{}, fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
+		return nil, fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
 	}
 
-	channel := make(chan string)
+	return topicUntyped, nil
+}
 
-	topic, ok := topicUntyped.(*Topic)
+func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
+	topicUntyped, err := getTopic(r, id)
+	if err != nil {
+		return Subscription[T]{}, err
+	}
+
+	channel := make(chan T)
+
+	topic, ok := topicUntyped.(*Topic[T])
 	if !ok {
-		return Subscription{}, fmt.Errorf("%w: %s topic was the wrong type", ErrTopicDoesntExist, id.String())
+		return Subscription[T]{}, fmt.Errorf("%w: %s topic was the wrong type", ErrTopicDoesntExist, id.String())
 	}
 
 	if err := topic.addSubscriber(channel); err != nil {
-		return Subscription{}, err
+		return Subscription[T]{}, err
 	}
 
-	return Subscription{Out: channel, topic: topic}, nil
+	return Subscription[T]{Out: channel, topic: topic}, nil
 }
 
-func (sub *Subscription) Unsubscribe() {
+func (sub *Subscription[T]) Unsubscribe() {
 	sub.topic.removeSubscriber(sub.Out)
 }
 
