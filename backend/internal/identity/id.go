@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"path"
+	"strings"
 )
 
 type Id struct {
@@ -37,7 +38,15 @@ func (id Id) String() string {
 func Category(ids ...string) string {
 	parts := make([]string, 0, len(ids))
 	for _, id := range ids {
-		parts = append(parts, url.PathEscape(id))
+		escapedId := url.PathEscape(id)
+
+		// path.Join runs path.Clean right afterwards, which, when given
+		// input like '..', causes it to pop fields off the stack. Since we
+		// don't want some kind of weird behavior where the user passes in
+		// '..' as an app name and then our path structure is all messed up,
+		// we gotta replace instances of '.' with its escaped form.
+		escapedId = strings.ReplaceAll(escapedId, ".", "%2E")
+		parts = append(parts, escapedId)
 	}
 
 	return "/" + path.Join(parts...)
