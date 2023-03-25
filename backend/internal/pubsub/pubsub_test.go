@@ -12,7 +12,7 @@ func TestPubSubSimple(t *testing.T) {
 		Category: "wassa",
 		Key:      "wassa",
 	}
-	topic, err := registry.CreateTopic(topicId)
+	topic, err := CreateTopic(&registry, topicId)
 	if err != nil {
 		t.Fatalf("topic couldn't be created: %s", err.Error())
 	}

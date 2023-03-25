@@ -205,7 +205,7 @@ type Registry struct {
 	topics map[string]*Topic
 }
 
-func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
+func CreateTopic(r *Registry, id TopicId) (*Topic, error) {
 	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
@@ -213,11 +213,11 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	return r.createTopic(id)
+	return createTopic(r, id)
 }
 
 // Requires caller to take the lock
-func (r *Registry) createTopic(id TopicId) (*Topic, error) {
+func createTopic(r *Registry, id TopicId) (*Topic, error) {
 	if r.topics == nil {
 		r.topics = make(map[string]*Topic, 8)
 	}
@@ -267,7 +267,7 @@ func (r *Registry) CreateMetaTopics() error {
 	defer r.m.Unlock()
 
 	// Lazily create meta topic
-	meta, err := r.createTopic(MetaTopic)
+	meta, err := createTopic(r, MetaTopic)
 	if err != nil {
 		return err
 	}

@@ -223,7 +223,7 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 			Key:      proc.Id.Key,
 		}
 
-		topic, err := manager.topics.CreateTopic(topicId)
+		topic, err := pubsub.CreateTopic(manager.topics, topicId)
 		if err != nil {
 			logger.Err("error creating topic", log.Ctx{
 				"err": err.Error(),
@@ -400,7 +400,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Key:      procConfig.Id.Key,
 	}
 
-	topic, err := w.Read.m.topics.CreateTopic(topicId)
+	topic, err := pubsub.CreateTopic(w.Read.m.topics, topicId)
 	if err != nil {
 		logger.Err("error creating topic", log.Ctx{
 			"err": err.Error(),
