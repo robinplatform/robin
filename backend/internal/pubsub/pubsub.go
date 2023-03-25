@@ -57,7 +57,7 @@ type Topic[T any] struct {
 }
 
 type anyTopic interface {
-	addAnySubscriber(chan any) (func(), error)
+	addAnySubscriber() (Subscription[any], error)
 	isClosed() bool
 	getInfo() TopicInfo
 }
@@ -67,14 +67,15 @@ type Subscription[T any] struct {
 	Unsubscribe func()
 }
 
-func (topic *Topic[T]) addSubscriber(sub chan T) error {
+func (topic *Topic[T]) addSubscriber() (chan T, error) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
 	if topic.closed {
-		return fmt.Errorf("%w: %s", ErrTopicClosed, topic.Id.String())
+		return nil, fmt.Errorf("%w: %s", ErrTopicClosed, topic.Id.String())
 	}
 
+	sub := make(chan T, 4)
 	topic.subscribers = append(topic.subscribers, sub)
 
 	if topic.metaChannel != nil {
@@ -88,24 +89,25 @@ func (topic *Topic[T]) addSubscriber(sub chan T) error {
 		}
 	}
 
-	return nil
+	return sub, nil
 }
 
-func (topic *Topic[T]) addAnySubscriber(sub chan any) (func(), error) {
-	channel := make(chan T, 4)
-	if err := topic.addSubscriber(channel); err != nil {
-		return nil, err
+func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
+	channel, err := topic.addSubscriber()
+	if err != nil {
+		return Subscription[any]{}, err
 	}
 
+	anyChannel := make(chan any)
 	go func() {
 		for {
 			val, ok := <-channel
 			if !ok {
-				close(sub)
+				close(anyChannel)
 				return
 			}
 
-			sub <- val
+			anyChannel <- val
 		}
 	}()
 
@@ -116,7 +118,12 @@ func (topic *Topic[T]) addAnySubscriber(sub chan any) (func(), error) {
 		close(channel)
 	}
 
-	return unsub, nil
+	sub := Subscription[any]{
+		Out:         anyChannel,
+		Unsubscribe: unsub,
+	}
+
+	return sub, nil
 }
 
 func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
@@ -301,16 +308,9 @@ func SubscribeAny(r *Registry, id TopicId) (Subscription[any], error) {
 		return Subscription[any]{}, err
 	}
 
-	channel := make(chan any)
-
-	unsub, err := topicUntyped.addAnySubscriber(channel)
+	sub, err := topicUntyped.addAnySubscriber()
 	if err != nil {
 		return Subscription[any]{}, err
-	}
-
-	sub := Subscription[any]{
-		Out:         channel,
-		Unsubscribe: unsub,
 	}
 
 	return sub, nil
@@ -322,14 +322,13 @@ func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 		return Subscription[T]{}, err
 	}
 
-	channel := make(chan T, 4)
-
 	topic, ok := topicUntyped.(*Topic[T])
 	if !ok {
 		return Subscription[T]{}, fmt.Errorf("%w: %s topic was the wrong type", ErrTopicDoesntExist, id.String())
 	}
 
-	if err := topic.addSubscriber(channel); err != nil {
+	channel, err := topic.addSubscriber()
+	if err != nil {
 		return Subscription[T]{}, err
 	}
 
