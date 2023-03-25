@@ -262,7 +262,14 @@ func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 
 func (r *Registry) pollMetaInfo() {
 	for {
+		time.Sleep(time.Second / 2)
+
 		r.m.Lock()
+
+		metaTopic := r.metaTopic.Load()
+		if metaTopic == nil {
+			continue
+		}
 
 		for _, topic := range r.topics {
 			info := topic.getInfo()
@@ -270,7 +277,7 @@ func (r *Registry) pollMetaInfo() {
 				continue
 			}
 
-			r.metaTopic.Load().Publish(MetaTopicInfo{
+			metaTopic.Publish(MetaTopicInfo{
 				Kind: "update",
 				Data: info,
 			})
@@ -278,7 +285,6 @@ func (r *Registry) pollMetaInfo() {
 
 		r.m.Unlock()
 
-		time.Sleep(time.Millisecond * 500)
 	}
 }
 

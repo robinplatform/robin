@@ -3,7 +3,7 @@ import React from 'react';
 import { z } from 'zod';
 import { useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { useStreamMethod } from '@robinplatform/toolkit/react/stream';
+import { useStreamMethod } from '../../toolkit/react/stream';
 import { ScrollWindow } from '../components/ScrollWindow';
 
 // This is a temporary bit of code to just display what's in the processes DB
@@ -90,25 +90,18 @@ function Topics() {
 		TopicInfo & { key: string }
 	>();
 
-	const { data: initialTopics } = useRpcQuery({
-		method: 'GetTopics',
-		data: {},
-		result: z.record(z.string(), TopicInfo),
-		pathPrefix: '/api/apps/rpc',
-	});
-
-	const { state: topics } = useStreamMethod({
+	const { state: topics, dispatch } = useStreamMethod({
 		methodName: 'SubscribeTopic',
 		resultType: MetaTopicInfo,
-		skip: !initialTopics,
 		data: {
 			id: {
 				category: '/topics',
 				key: 'meta',
 			},
 		},
-		initialState: initialTopics ?? {},
+		initialState: {} as Record<string, TopicInfo>,
 		reducer: (prev, packet) => {
+			console.log('prev', prev);
 			switch (packet.kind) {
 				case 'update':
 					return {
@@ -123,6 +116,21 @@ function Topics() {
 					// ...also the docs say this rule shouldn't even apply here. Like the rule is supposed to
 					// ignore this case.
 					return a;
+			}
+		},
+	});
+
+	useRpcQuery({
+		method: 'GetTopics',
+		data: {},
+		result: z.record(z.string(), TopicInfo),
+		pathPrefix: '/api/apps/rpc',
+		onSuccess: (data) => {
+			for (const [key, info] of Object.entries(data)) {
+				dispatch({
+					kind: 'update',
+					data: info,
+				});
 			}
 		},
 	});
