@@ -69,7 +69,6 @@ type TopicInfo = z.infer<typeof TopicInfo>;
 const TopicInfo = z.object({
 	id: TopicId,
 	closed: z.boolean(),
-	count: z.number(),
 	subscriberCount: z.number(),
 });
 

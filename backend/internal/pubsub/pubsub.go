@@ -78,7 +78,6 @@ type Topic[T any] struct {
 	// `subscribers` and `closed` fields.
 	m sync.Mutex
 
-	counter     int
 	closed      bool
 	subscribers []chan T
 }
@@ -174,7 +173,6 @@ func (topic *Topic[_]) getInfo() TopicInfo {
 	return TopicInfo{
 		Id:              topic.Id,
 		Closed:          topic.closed,
-		Count:           topic.counter,
 		SubscriberCount: len(topic.subscribers),
 	}
 }
@@ -374,7 +372,6 @@ func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 type TopicInfo struct {
 	Id              TopicId `json:"id"`
 	Closed          bool    `json:"closed"`
-	Count           int     `json:"count"`
 	SubscriberCount int     `json:"subscriberCount"`
 }
 
