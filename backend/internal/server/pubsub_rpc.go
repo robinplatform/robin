@@ -1,7 +1,6 @@
 package server
 
 import (
-	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -17,7 +16,7 @@ var GetTopics = AppsRpcMethod[GetTopicsInput, map[string]pubsub.TopicInfo]{
 }
 
 type SubscribeTopicInput struct {
-	Id identity.Id `json:"id"`
+	Id pubsub.TopicId `json:"id"`
 }
 
 var SubscribeTopic = Stream[SubscribeTopicInput, string]{

@@ -32,6 +32,10 @@ var (
 // - `/app/{project}/{app}` for app-spawned processes
 type ProcessId identity.Id
 
+func (p ProcessId) String() string {
+	return (identity.Id)(p).String()
+}
+
 type ProcessConfig struct {
 	Id      ProcessId
 	WorkDir string
@@ -218,7 +222,7 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 			continue
 		}
 
-		topicId := identity.Id{
+		topicId := pubsub.TopicId{
 			Category: path.Join("/logs", proc.Id.Category),
 			Key:      proc.Id.Key,
 		}
@@ -395,7 +399,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	}
 	defer proc.Release()
 
-	topicId := identity.Id{
+	topicId := pubsub.TopicId{
 		Category: path.Join("/logs", procConfig.Id.Category),
 		Key:      procConfig.Id.Key,
 	}

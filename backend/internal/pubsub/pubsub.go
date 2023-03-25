@@ -59,12 +59,22 @@ var (
 )
 
 var (
-	MetaTopic = identity.Id{Category: "/topics", Key: "meta"}
+	MetaTopic TopicId = TopicId{Category: "/topics", Key: "meta"}
 )
+
+// Identifier of a topic
+// Currently used:
+// - "/logs/{app-category}" logs for an app with a certain category
+// - "/topics" meta category for information about topics
+type TopicId identity.Id
+
+func (topic TopicId) String() string {
+	return (identity.Id)(topic).String()
+}
 
 type Topic struct {
 	// `id` is only set at creation time and isn't written to afterwards.
-	Id identity.Id
+	Id TopicId
 
 	// This mutex controls the reading and writing of the
 	// `subscribers` and `closed` fields.
@@ -179,7 +189,7 @@ type Registry struct {
 	topics map[string]*Topic
 }
 
-func (r *Registry) CreateTopic(id identity.Id) (*Topic, error) {
+func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
@@ -191,7 +201,7 @@ func (r *Registry) CreateTopic(id identity.Id) (*Topic, error) {
 }
 
 // Requires caller to take the lock
-func (r *Registry) createTopic(id identity.Id) (*Topic, error) {
+func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 	if r.topics == nil {
 		r.topics = make(map[string]*Topic, 8)
 	}
@@ -207,7 +217,7 @@ func (r *Registry) createTopic(id identity.Id) (*Topic, error) {
 	return topic, nil
 }
 
-func (r *Registry) Unsubscribe(id identity.Id, channel chan<- string) {
+func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
 	if channel == nil {
 		return
 	}
@@ -279,7 +289,7 @@ func (r *Registry) CreateMetaTopics() error {
 	return nil
 }
 
-func (r *Registry) Subscribe(id identity.Id, channel chan<- string) error {
+func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	if channel == nil {
 		return ErrNilSubscriber
 	}
@@ -307,10 +317,10 @@ func (r *Registry) Subscribe(id identity.Id, channel chan<- string) error {
 }
 
 type TopicInfo struct {
-	Id              identity.Id `json:"id"`
-	Closed          bool        `json:"closed"`
-	Count           int         `json:"count"`
-	SubscriberCount int         `json:"subscriberCount"`
+	Id              TopicId `json:"id"`
+	Closed          bool    `json:"closed"`
+	Count           int     `json:"count"`
+	SubscriberCount int     `json:"subscriberCount"`
 }
 
 func (r *Registry) GetTopicInfo() map[string]TopicInfo {
