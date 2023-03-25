@@ -75,6 +75,10 @@ const TopicInfo = z.object({
 type MetaTopicInfo = z.infer<typeof MetaTopicInfo>;
 const MetaTopicInfo = z.discriminatedUnion('kind', [
 	z.object({
+		kind: z.literal('replace'),
+		data: z.record(z.string(), TopicInfo),
+	}),
+	z.object({
 		kind: z.literal('update'),
 		data: TopicInfo,
 	}),
@@ -101,13 +105,15 @@ function Topics() {
 		initialState: {} as Record<string, TopicInfo>,
 		reducer: (prev, packet) => {
 			switch (packet.kind) {
+				case 'replace':
+					return packet.data;
 				case 'update':
 					return {
 						...prev,
 						[`${packet.data.id.category}#${packet.data.id.key}`]: packet.data,
 					};
 				case 'close':
-					const a = { ...prev };
+					const a: Record<string, TopicInfo> = { ...prev };
 					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record...
 					delete a[`${packet.data.category}#${packet.data.key}`];
 
@@ -123,14 +129,11 @@ function Topics() {
 		data: {},
 		result: z.record(z.string(), TopicInfo),
 		pathPrefix: '/api/apps/rpc',
-		onSuccess: (data) => {
-			for (const [key, info] of Object.entries(data)) {
-				dispatch({
-					kind: 'update',
-					data: info,
-				});
-			}
-		},
+		onSuccess: (data) =>
+			dispatch({
+				kind: 'replace',
+				data,
+			}),
 	});
 
 	const { state: topicMessages } = useStreamMethod<
