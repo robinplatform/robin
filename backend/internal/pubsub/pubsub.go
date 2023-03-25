@@ -286,13 +286,12 @@ func (r *Registry) CreateMetaTopics() error {
 func getTopic(r *Registry, id TopicId) (anyTopic, error) {
 	key := id.String()
 
+	var topicUntyped anyTopic
+
 	r.m.Lock()
-
-	if r.topics == nil {
-		r.topics = make(map[string]anyTopic, 8)
+	if r.topics != nil {
+		topicUntyped = r.topics[key]
 	}
-
-	topicUntyped := r.topics[key]
 	r.m.Unlock()
 
 	if topicUntyped == nil {
