@@ -84,6 +84,11 @@ type Topic struct {
 	subscribers []chan string
 }
 
+type anyTopic interface {
+	isClosed() bool
+	getInfo() TopicInfo
+}
+
 type Subscription struct {
 	Out   <-chan string
 	topic *Topic
@@ -202,7 +207,7 @@ type Registry struct {
 	// TODO: this implementation will scatter stuff all over the heap.
 	// It can be fixed with some kind of stable-pointer-arraylist but
 	// that's not worth writing right now
-	topics map[string]*Topic
+	topics map[string]anyTopic
 }
 
 func CreateTopic(r *Registry, id TopicId) (*Topic, error) {
@@ -219,7 +224,7 @@ func CreateTopic(r *Registry, id TopicId) (*Topic, error) {
 // Requires caller to take the lock
 func createTopic(r *Registry, id TopicId) (*Topic, error) {
 	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
+		r.topics = make(map[string]anyTopic, 8)
 	}
 
 	key := id.String()
@@ -284,17 +289,22 @@ func Subscribe(r *Registry, id TopicId) (Subscription, error) {
 	r.m.Lock()
 
 	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
+		r.topics = make(map[string]anyTopic, 8)
 	}
 
-	topic := r.topics[key]
+	topicUntyped := r.topics[key]
 	r.m.Unlock()
 
-	if topic == nil {
+	if topicUntyped == nil {
 		return Subscription{}, fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
 	}
 
 	channel := make(chan string)
+
+	topic, ok := topicUntyped.(*Topic)
+	if !ok {
+		return Subscription{}, fmt.Errorf("%w: %s topic was the wrong type", ErrTopicDoesntExist, id.String())
+	}
 
 	if err := topic.addSubscriber(channel); err != nil {
 		return Subscription{}, err
