@@ -2,7 +2,6 @@ package process
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -136,11 +135,11 @@ func findById(id ProcessId) func(row Process) bool {
 
 func (cfg *ProcessConfig) fillEmptyValues() error {
 	if cfg.Id.Key == "" {
-		return fmt.Errorf("cannot create process without a Key")
+		return fmt.Errorf("cannot create process without a key")
 	}
 
 	if cfg.Id.Category == "" {
-		return fmt.Errorf("cannot create process without a source")
+		return fmt.Errorf("cannot create process without a category")
 	}
 
 	parentEnv := os.Environ()
@@ -223,7 +222,7 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 			Key:      proc.Id.Key,
 		}
 
-		topic, err := manager.topics.CreateTopic(topicId)
+		topic, err := pubsub.CreateTopic[string](manager.topics, topicId)
 		if err != nil {
 			logger.Err("error creating topic", log.Ctx{
 				"err": err.Error(),
@@ -268,8 +267,8 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
-	defer m.topics.Close(topic)
+func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic[string]) {
+	defer topic.Close()
 
 	config := tail.Config{
 		ReOpen: true,
@@ -303,18 +302,7 @@ func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic
 				continue
 			}
 
-			// This is a bit silly, but since pubsub doesn't support generics right now,
-			// other parts of the code are outputting JSON as a string, so for now we do that here
-			// too, until we can do something more general purpose.
-			bytes, err := json.Marshal(map[string]any{"line": line.Text})
-			if err != nil {
-				logger.Err("got error in JSON encoding", log.Ctx{
-					"err": line.Err.Error(),
-				})
-				continue
-			}
-
-			topic.Publish(string(bytes))
+			topic.Publish(line.Text)
 		}
 	}
 }
@@ -400,7 +388,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 		Key:      procConfig.Id.Key,
 	}
 
-	topic, err := w.Read.m.topics.CreateTopic(topicId)
+	topic, err := pubsub.CreateTopic[string](w.Read.m.topics, topicId)
 	if err != nil {
 		logger.Err("error creating topic", log.Ctx{
 			"err": err.Error(),

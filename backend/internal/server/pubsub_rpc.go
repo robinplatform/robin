@@ -19,23 +19,23 @@ type SubscribeTopicInput struct {
 	Id pubsub.TopicId `json:"id"`
 }
 
-var SubscribeTopic = Stream[SubscribeTopicInput, string]{
+var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 	Name: "SubscribeTopic",
-	Run: func(req *StreamRequest[SubscribeTopicInput, string]) error {
+	Run: func(req *StreamRequest[SubscribeTopicInput, any]) error {
 		input, err := req.ParseInput()
 		if err != nil {
 			return err
 		}
 
-		subscription := make(chan string)
-		if err := pubsub.Topics.Subscribe(input.Id, subscription); err != nil {
+		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
+		if err != nil {
 			return err
 		}
-		defer pubsub.Topics.Unsubscribe(input.Id, subscription)
+		defer sub.Unsubscribe()
 
 		for {
 			select {
-			case s, ok := <-subscription:
+			case s, ok := <-sub.Out:
 				if !ok {
 					// Channel is closed
 					return nil

@@ -38,15 +38,12 @@ export function useStreamMethod<State, Output>({
 		[methodName, stableStringify(initialData), skip],
 	);
 
-	const stream = React.useMemo(
-		() => new Stream(methodName, id),
-		[methodName, id],
-	);
-
 	React.useEffect(() => {
 		if (skip) {
 			return;
 		}
+
+		const stream = new Stream(methodName, id);
 
 		stream.onmessage = (message) => {
 			const { kind, data } = message as { kind: string; data: string };
@@ -54,7 +51,7 @@ export function useStreamMethod<State, Output>({
 				return;
 			}
 
-			const res = resultType.safeParse(JSON.parse(data));
+			const res = resultType.safeParse(data);
 			if (!res.success) {
 				// TODO: handle the error
 				stream.onerror(res.error);
@@ -69,7 +66,7 @@ export function useStreamMethod<State, Output>({
 		return () => {
 			stream.close();
 		};
-	}, [skip, stream, stableStringify(initialData)]);
+	}, [skip, methodName, id, stableStringify(initialData)]);
 
 	return { state, dispatch };
 }

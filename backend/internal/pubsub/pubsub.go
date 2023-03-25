@@ -31,7 +31,6 @@ I don't quite want to implement all that hoopla right this second, but it's some
 */
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -69,9 +68,11 @@ func (topic TopicId) String() string {
 	return (identity.Id)(topic).String()
 }
 
-type Topic struct {
+type Topic[T any] struct {
 	// `id` is only set at creation time and isn't written to afterwards.
 	Id TopicId
+	// `registry` is only set at creation time and isn't written to afterwards.
+	registry *Registry
 
 	// This mutex controls the reading and writing of the
 	// `subscribers` and `closed` fields.
@@ -79,10 +80,21 @@ type Topic struct {
 
 	counter     int
 	closed      bool
-	subscribers []chan<- string
+	subscribers []chan T
 }
 
-func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
+type anyTopic interface {
+	addAnySubscriber(chan any) (func(), error)
+	isClosed() bool
+	getInfo() TopicInfo
+}
+
+type Subscription[T any] struct {
+	Out         <-chan T
+	Unsubscribe func()
+}
+
+func (topic *Topic[T]) forEachSubscriber(iterator func(sub chan<- T)) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -97,7 +109,7 @@ func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
 	return nil
 }
 
-func (topic *Topic) addSubscriber(sub chan<- string) error {
+func (topic *Topic[T]) addSubscriber(sub chan T) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -110,7 +122,34 @@ func (topic *Topic) addSubscriber(sub chan<- string) error {
 	return nil
 }
 
-func (topic *Topic) removeSubscriber(sub chan<- string) {
+func (topic *Topic[T]) addAnySubscriber(sub chan any) (func(), error) {
+	channel := make(chan T)
+	if err := topic.addSubscriber(channel); err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			val, ok := <-channel
+			if !ok {
+				close(sub)
+				return
+			}
+
+			sub <- val
+		}
+	}()
+
+	unsub := func() {
+		// This close allows the goroutine to die when the subscriber unsubscribes
+		close(channel)
+		topic.removeSubscriber(channel)
+	}
+
+	return unsub, nil
+}
+
+func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -128,20 +167,32 @@ func (topic *Topic) removeSubscriber(sub chan<- string) {
 	topic.subscribers = topic.subscribers[:writeIndex]
 }
 
-func (topic *Topic) isClosed() bool {
+func (topic *Topic[_]) getInfo() TopicInfo {
+	topic.m.Lock()
+	defer topic.m.Unlock()
+
+	return TopicInfo{
+		Id:              topic.Id,
+		Closed:          topic.closed,
+		Count:           topic.counter,
+		SubscriberCount: len(topic.subscribers),
+	}
+}
+
+func (topic *Topic[_]) isClosed() bool {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
 	return topic.closed
 }
 
-func (topic *Topic) Publish(message string) {
-	topic.forEachSubscriber(func(sub chan<- string) {
+func (topic *Topic[T]) Publish(message T) {
+	topic.forEachSubscriber(func(sub chan<- T) {
 		sub <- message
 	})
 }
 
-func (r *Registry) Close(topic *Topic) {
+func (topic *Topic[_]) Close() {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -151,16 +202,11 @@ func (r *Registry) Close(topic *Topic) {
 
 	topic.closed = true
 
-	if meta := r.metaTopic.Load(); meta != nil {
-		data, err := json.Marshal(MetaTopicInfo{
+	if meta := topic.registry.metaTopic.Load(); meta != nil {
+		meta.Publish(MetaTopicInfo{
 			Kind: "close",
 			Data: topic.Id,
 		})
-
-		// TODO: handle errors
-		if err == nil {
-			meta.Publish(string(data))
-		}
 	}
 
 	for _, channel := range topic.subscribers {
@@ -178,15 +224,15 @@ type MetaTopicInfo struct {
 type Registry struct {
 	m sync.Mutex
 
-	metaTopic atomic.Pointer[Topic]
+	metaTopic atomic.Pointer[Topic[MetaTopicInfo]]
 
 	// TODO: this implementation will scatter stuff all over the heap.
 	// It can be fixed with some kind of stable-pointer-arraylist but
 	// that's not worth writing right now
-	topics map[string]*Topic
+	topics map[string]anyTopic
 }
 
-func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
+func CreateTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
@@ -194,13 +240,13 @@ func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	return r.createTopic(id)
+	return createTopic[T](r, id)
 }
 
 // Requires caller to take the lock
-func (r *Registry) createTopic(id TopicId) (*Topic, error) {
+func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
+		r.topics = make(map[string]anyTopic, 8)
 	}
 
 	key := id.String()
@@ -208,65 +254,37 @@ func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
-	topic := &Topic{Id: id}
+	topic := &Topic[T]{Id: id, registry: r}
 	r.topics[key] = topic
 
 	return topic, nil
 }
 
-func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
-	if channel == nil {
-		return
-	}
-
-	key := id.String()
-
-	r.m.Lock()
-	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
-	}
-
-	topic := r.topics[key]
-	r.m.Unlock()
-
-	topic.removeSubscriber(channel)
-}
-
 func (r *Registry) pollMetaInfo() {
 	for {
+		time.Sleep(time.Second / 2)
+
 		r.m.Lock()
 
+		metaTopic := r.metaTopic.Load()
+		if metaTopic == nil {
+			continue
+		}
+
 		for _, topic := range r.topics {
-			topic.m.Lock()
-
-			if topic.closed {
-				topic.m.Unlock()
+			info := topic.getInfo()
+			if info.Closed {
 				continue
 			}
 
-			info := MetaTopicInfo{
+			metaTopic.Publish(MetaTopicInfo{
 				Kind: "update",
-				Data: TopicInfo{
-					Id:              topic.Id,
-					Closed:          topic.closed,
-					Count:           topic.counter,
-					SubscriberCount: len(topic.subscribers),
-				},
-			}
-
-			topic.m.Unlock()
-
-			data, err := json.Marshal(info)
-			if err != nil {
-				continue
-			}
-
-			r.metaTopic.Load().Publish(string(data))
+				Data: info,
+			})
 		}
 
 		r.m.Unlock()
 
-		time.Sleep(time.Millisecond * 500)
 	}
 }
 
@@ -275,7 +293,7 @@ func (r *Registry) CreateMetaTopics() error {
 	defer r.m.Unlock()
 
 	// Lazily create meta topic
-	meta, err := r.createTopic(MetaTopic)
+	meta, err := createTopic[MetaTopicInfo](r, MetaTopic)
 	if err != nil {
 		return err
 	}
@@ -286,31 +304,71 @@ func (r *Registry) CreateMetaTopics() error {
 	return nil
 }
 
-func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
-	if channel == nil {
-		return ErrNilSubscriber
-	}
-
+func getTopic(r *Registry, id TopicId) (anyTopic, error) {
 	key := id.String()
 
 	r.m.Lock()
 
 	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
+		r.topics = make(map[string]anyTopic, 8)
 	}
 
-	topic := r.topics[key]
+	topicUntyped := r.topics[key]
 	r.m.Unlock()
 
-	if topic == nil {
-		return fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
+	if topicUntyped == nil {
+		return nil, fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
+	}
+
+	return topicUntyped, nil
+}
+
+func SubscribeAny(r *Registry, id TopicId) (Subscription[any], error) {
+	topicUntyped, err := getTopic(r, id)
+	if err != nil {
+		return Subscription[any]{}, err
+	}
+
+	channel := make(chan any)
+
+	unsub, err := topicUntyped.addAnySubscriber(channel)
+	if err != nil {
+		return Subscription[any]{}, err
+	}
+
+	sub := Subscription[any]{
+		Out:         channel,
+		Unsubscribe: unsub,
+	}
+
+	return sub, nil
+}
+
+func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
+	topicUntyped, err := getTopic(r, id)
+	if err != nil {
+		return Subscription[T]{}, err
+	}
+
+	channel := make(chan T)
+
+	topic, ok := topicUntyped.(*Topic[T])
+	if !ok {
+		return Subscription[T]{}, fmt.Errorf("%w: %s topic was the wrong type", ErrTopicDoesntExist, id.String())
 	}
 
 	if err := topic.addSubscriber(channel); err != nil {
-		return err
+		return Subscription[T]{}, err
 	}
 
-	return nil
+	sub := Subscription[T]{
+		Out: channel,
+		Unsubscribe: func() {
+			topic.removeSubscriber(channel)
+		},
+	}
+
+	return sub, nil
 }
 
 type TopicInfo struct {
@@ -327,16 +385,7 @@ func (r *Registry) GetTopicInfo() map[string]TopicInfo {
 	out := make(map[string]TopicInfo, len(r.topics))
 
 	for key, topic := range r.topics {
-		topic.m.Lock()
-
-		out[key] = TopicInfo{
-			Id:              topic.Id,
-			Closed:          topic.closed,
-			Count:           topic.counter,
-			SubscriberCount: len(topic.subscribers),
-		}
-
-		topic.m.Unlock()
+		out[key] = topic.getInfo()
 	}
 
 	return out
