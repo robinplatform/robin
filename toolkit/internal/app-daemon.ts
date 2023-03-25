@@ -23,7 +23,6 @@ async function handleRequest(
 	lastRequest = Date.now();
 
 	if (req.url === '/api/health') {
-		console.log(`GET /api/health`);
 		res.writeHead(200, { 'Content-Type': 'application/json' });
 		res.end(`{"ok":true}`);
 		return;
@@ -108,11 +107,11 @@ async function main() {
 
 		// Start a timer to automatically exit after 5 minutes of inactivity
 		setInterval(() => {
-			if (Date.now() - lastRequest > 1 * 60 * 1000) {
+			if (Date.now() - lastRequest > 1000) {
 				console.log('No requests in 5 minutes, exiting');
 				process.exit(0);
 			}
-		}, 1 * 60 * 1000);
+		}, 1000);
 	} catch (err) {
 		console.error(err);
 		process.exit(1);
