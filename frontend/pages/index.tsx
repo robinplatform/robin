@@ -101,7 +101,6 @@ function Topics() {
 		},
 		initialState: {} as Record<string, TopicInfo>,
 		reducer: (prev, packet) => {
-			console.log('prev', prev);
 			switch (packet.kind) {
 				case 'update':
 					return {

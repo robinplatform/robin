@@ -39,11 +39,6 @@ export function useStreamMethod<State, Output>({
 	);
 
 	React.useEffect(() => {
-		console.log('stuffso', {
-			skip,
-			id,
-			initialData,
-		});
 		if (skip) {
 			return;
 		}
