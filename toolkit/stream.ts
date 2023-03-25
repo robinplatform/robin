@@ -1,6 +1,12 @@
 let _ws: Promise<WebSocket> | null = null;
 let inFlight: Record<string, Stream> = {};
 
+const STARTED = 1;
+const SERVER_STARTED = 2;
+const CLOSED = 4;
+
+const stage = Symbol('Robin stream stage');
+
 async function getWs(): Promise<WebSocket> {
 	if (_ws !== null) return _ws;
 
@@ -29,6 +35,11 @@ async function getWs(): Promise<WebSocket> {
 				stream.onclose();
 				break;
 
+			case 'methodStarted':
+				stream[stage] = SERVER_STARTED;
+				console.log('methodStarted:', stream.id);
+				break;
+
 			default:
 				stream.onmessage(data);
 		}
@@ -48,13 +59,13 @@ async function getWs(): Promise<WebSocket> {
 // This is a low-level primitive that can be used to implement higher-level
 // streaming requests.
 export class Stream {
-	private started = false;
-	private closed = false;
+	[stage] = 0;
 
 	constructor(readonly method: string, readonly id: string) {}
 
 	private closeHandler: () => void = () => {
-		this.closed = true;
+		console.log(`Stream(${this.method}, ${this.id}) closed`);
+		this[stage] = CLOSED;
 	};
 
 	onmessage: (a: unknown) => void = (a) => {
@@ -67,7 +78,7 @@ export class Stream {
 	set onclose(f: () => void) {
 		this.closeHandler = () => {
 			f();
-			this.closed = true;
+			this[stage] = CLOSED;
 		};
 	}
 
@@ -76,11 +87,11 @@ export class Stream {
 	}
 
 	async start(data: unknown) {
-		if (this.started) {
+		if (this[stage] >= STARTED) {
 			throw new Error('Already started');
 		}
 
-		this.started = true;
+		this[stage] = STARTED;
 		inFlight[this.id] = this;
 
 		const ws = await getWs();
@@ -95,15 +106,15 @@ export class Stream {
 	}
 
 	async close() {
-		if (!this.started) {
+		if (this[stage] < STARTED) {
 			throw new Error(`hasn't started yet`);
 		}
 
-		if (this.closed) {
+		if (this[stage] >= CLOSED) {
 			return;
 		}
 
-		this.closed = true;
+		this[stage] = CLOSED;
 
 		const ws = await getWs();
 		ws.send(
