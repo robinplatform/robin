@@ -90,7 +90,7 @@ function Topics() {
 		TopicInfo & { key: string }
 	>();
 
-	const { data: initialTopics, error } = useRpcQuery({
+	const { data: initialTopics } = useRpcQuery({
 		method: 'GetTopics',
 		data: {},
 		result: z.record(z.string(), TopicInfo),
@@ -144,12 +144,13 @@ function Topics() {
 			}
 
 			const prevArray: string[] = prev[selectedTopic.key] ?? [];
+			const message = JSON.stringify(packet);
 			return {
 				...prev,
 				[selectedTopic.key]:
 					prevArray.length > 20
-						? [...prevArray.slice(1), JSON.stringify(packet)]
-						: [...prevArray, JSON.stringify(packet)],
+						? [...prevArray.slice(1), message]
+						: [...prevArray, message],
 			};
 		},
 	});
@@ -194,12 +195,10 @@ function Topics() {
 				{selectedTopic === undefined ? (
 					<div>No topic is selected</div>
 				) : (
-					<>
-						<div>
-							Selected topic is{' '}
-							{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
-						</div>
-					</>
+					<div>
+						Selected topic is{' '}
+						{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
+					</div>
 				)}
 
 				<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>

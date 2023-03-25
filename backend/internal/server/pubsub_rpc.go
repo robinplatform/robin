@@ -19,15 +19,15 @@ type SubscribeTopicInput struct {
 	Id pubsub.TopicId `json:"id"`
 }
 
-var SubscribeTopic = Stream[SubscribeTopicInput, string]{
+var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 	Name: "SubscribeTopic",
-	Run: func(req *StreamRequest[SubscribeTopicInput, string]) error {
+	Run: func(req *StreamRequest[SubscribeTopicInput, any]) error {
 		input, err := req.ParseInput()
 		if err != nil {
 			return err
 		}
 
-		sub, err := pubsub.Subscribe[string](&pubsub.Topics, input.Id)
+		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
 		if err != nil {
 			return err
 		}

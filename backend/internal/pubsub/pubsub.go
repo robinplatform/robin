@@ -84,13 +84,14 @@ type Topic[T any] struct {
 }
 
 type anyTopic interface {
+	addAnySubscriber(chan any) (func(), error)
 	isClosed() bool
 	getInfo() TopicInfo
 }
 
 type Subscription[T any] struct {
-	Out   <-chan T
-	topic *Topic[T]
+	Out         <-chan T
+	Unsubscribe func()
 }
 
 func (topic *Topic[T]) forEachSubscriber(iterator func(sub chan<- T)) error {
@@ -119,6 +120,33 @@ func (topic *Topic[T]) addSubscriber(sub chan T) error {
 	topic.subscribers = append(topic.subscribers, sub)
 
 	return nil
+}
+
+func (topic *Topic[T]) addAnySubscriber(sub chan any) (func(), error) {
+	channel := make(chan T)
+	if err := topic.addSubscriber(channel); err != nil {
+		return nil, err
+	}
+
+	go func() {
+		for {
+			val, ok := <-channel
+			if !ok {
+				close(sub)
+				return
+			}
+
+			sub <- val
+		}
+	}()
+
+	unsub := func() {
+		// This close allows the goroutine to die when the subscriber unsubscribes
+		close(channel)
+		topic.removeSubscriber(channel)
+	}
+
+	return unsub, nil
 }
 
 func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
@@ -289,6 +317,27 @@ func getTopic(r *Registry, id TopicId) (anyTopic, error) {
 	return topicUntyped, nil
 }
 
+func SubscribeAny(r *Registry, id TopicId) (Subscription[any], error) {
+	topicUntyped, err := getTopic(r, id)
+	if err != nil {
+		return Subscription[any]{}, err
+	}
+
+	channel := make(chan any)
+
+	unsub, err := topicUntyped.addAnySubscriber(channel)
+	if err != nil {
+		return Subscription[any]{}, err
+	}
+
+	sub := Subscription[any]{
+		Out:         channel,
+		Unsubscribe: unsub,
+	}
+
+	return sub, nil
+}
+
 func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 	topicUntyped, err := getTopic(r, id)
 	if err != nil {
@@ -306,11 +355,14 @@ func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 		return Subscription[T]{}, err
 	}
 
-	return Subscription[T]{Out: channel, topic: topic}, nil
-}
+	sub := Subscription[T]{
+		Out: channel,
+		Unsubscribe: func() {
+			topic.removeSubscriber(channel)
+		},
+	}
 
-func (sub *Subscription[T]) Unsubscribe() {
-	sub.topic.removeSubscriber(sub.Out)
+	return sub, nil
 }
 
 type TopicInfo struct {

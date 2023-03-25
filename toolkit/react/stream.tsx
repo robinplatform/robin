@@ -54,7 +54,7 @@ export function useStreamMethod<State, Output>({
 				return;
 			}
 
-			const res = resultType.safeParse(JSON.parse(data));
+			const res = resultType.safeParse(data);
 			if (!res.success) {
 				// TODO: handle the error
 				stream.onerror(res.error);

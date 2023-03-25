@@ -135,11 +135,11 @@ func findById(id ProcessId) func(row Process) bool {
 
 func (cfg *ProcessConfig) fillEmptyValues() error {
 	if cfg.Id.Key == "" {
-		return fmt.Errorf("cannot create process without a Key")
+		return fmt.Errorf("cannot create process without a key")
 	}
 
 	if cfg.Id.Category == "" {
-		return fmt.Errorf("cannot create process without a source")
+		return fmt.Errorf("cannot create process without a category")
 	}
 
 	parentEnv := os.Environ()
