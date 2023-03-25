@@ -128,6 +128,18 @@ func (topic *Topic) removeSubscriber(sub chan<- string) {
 	topic.subscribers = topic.subscribers[:writeIndex]
 }
 
+func (topic *Topic) getInfo() TopicInfo {
+	topic.m.Lock()
+	defer topic.m.Unlock()
+
+	return TopicInfo{
+		Id:              topic.Id,
+		Closed:          topic.closed,
+		Count:           topic.counter,
+		SubscriberCount: len(topic.subscribers),
+	}
+}
+
 func (topic *Topic) isClosed() bool {
 	topic.m.Lock()
 	defer topic.m.Unlock()
@@ -237,26 +249,17 @@ func (r *Registry) pollMetaInfo() {
 		r.m.Lock()
 
 		for _, topic := range r.topics {
-			topic.m.Lock()
-
-			if topic.closed {
-				topic.m.Unlock()
+			info := topic.getInfo()
+			if info.Closed {
 				continue
 			}
 
-			info := MetaTopicInfo{
+			out := MetaTopicInfo{
 				Kind: "update",
-				Data: TopicInfo{
-					Id:              topic.Id,
-					Closed:          topic.closed,
-					Count:           topic.counter,
-					SubscriberCount: len(topic.subscribers),
-				},
+				Data: info,
 			}
 
-			topic.m.Unlock()
-
-			data, err := json.Marshal(info)
+			data, err := json.Marshal(out)
 			if err != nil {
 				continue
 			}
@@ -327,16 +330,7 @@ func (r *Registry) GetTopicInfo() map[string]TopicInfo {
 	out := make(map[string]TopicInfo, len(r.topics))
 
 	for key, topic := range r.topics {
-		topic.m.Lock()
-
-		out[key] = TopicInfo{
-			Id:              topic.Id,
-			Closed:          topic.closed,
-			Count:           topic.counter,
-			SubscriberCount: len(topic.subscribers),
-		}
-
-		topic.m.Unlock()
+		out[key] = topic.getInfo()
 	}
 
 	return out
