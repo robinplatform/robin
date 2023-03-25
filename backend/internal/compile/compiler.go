@@ -94,13 +94,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		panic(err)
 	}
 
-	category, err := identity.Category("app", projectName)
-	if err != nil {
-		return CompiledApp{}, false, fmt.Errorf("failed to create process: %w", err)
-	}
-
 	processId := process.ProcessId{
-		Category: category,
+		Category: identity.Category("app", projectName),
 		Key:      appConfig.Id,
 	}
 

@@ -34,20 +34,11 @@ func (id Id) String() string {
 
 // Cleans inputs and then creates a category from them. If you have a valid category already,
 // ust path.Join to combine it with another category.
-//
-// TODO: are the errors returned here actually useful? My gut says no but it was easy enough to add the checks for now.
-func Category(ids ...string) (string, error) {
-	if len(ids) == 0 {
-		return "", fmt.Errorf("empty category path")
-	}
-
+func Category(ids ...string) string {
 	parts := make([]string, 0, len(ids))
 	for _, id := range ids {
-		if id == "" {
-			return "", fmt.Errorf("one of the segments of the category was empty")
-		}
 		parts = append(parts, url.PathEscape(id))
 	}
 
-	return "/" + path.Join(parts...), nil
+	return "/" + path.Join(parts...)
 }
