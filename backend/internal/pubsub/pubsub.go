@@ -72,6 +72,8 @@ func (topic TopicId) String() string {
 type Topic struct {
 	// `id` is only set at creation time and isn't written to afterwards.
 	Id TopicId
+	// `registry` is only set at creation time and isn't written to afterwards.
+	registry *Registry
 
 	// This mutex controls the reading and writing of the
 	// `subscribers` and `closed` fields.
@@ -158,7 +160,7 @@ func (topic *Topic) Publish(message string) {
 	})
 }
 
-func (r *Registry) Close(topic *Topic) {
+func (topic *Topic) Close() {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -168,7 +170,7 @@ func (r *Registry) Close(topic *Topic) {
 
 	topic.closed = true
 
-	if meta := r.metaTopic.Load(); meta != nil {
+	if meta := topic.registry.metaTopic.Load(); meta != nil {
 		data, err := json.Marshal(MetaTopicInfo{
 			Kind: "close",
 			Data: topic.Id,
@@ -225,7 +227,7 @@ func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
-	topic := &Topic{Id: id}
+	topic := &Topic{Id: id, registry: r}
 	r.topics[key] = topic
 
 	return topic, nil

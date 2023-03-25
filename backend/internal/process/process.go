@@ -269,7 +269,7 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 }
 
 func (m *ProcessManager) pipeTailIntoTopic(process *Process, topic *pubsub.Topic) {
-	defer m.topics.Close(topic)
+	defer topic.Close()
 
 	config := tail.Config{
 		ReOpen: true,
