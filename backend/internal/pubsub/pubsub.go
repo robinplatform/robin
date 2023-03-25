@@ -212,7 +212,6 @@ type Registry struct {
 	m sync.Mutex
 
 	metaChannel chan MetaTopicInfo
-	metaTopic   *Topic[MetaTopicInfo]
 
 	// TODO: this implementation will scatter stuff all over the heap.
 	// It can be fixed with some kind of stable-pointer-arraylist but
@@ -257,7 +256,8 @@ func (r *Registry) CreateMetaTopics() error {
 	// between the subscriber trying to add to the metaChannel and the
 	// goroutine below trying to get the meta topic mutex. However,
 	// this does not necessarily guarantee that the goroutine won't deadlock later,
-	// if a subscription happens when a crapton of messages are being sent.
+	// if a lock on the meta topic happens when a crapton of messages are being sent in
+	// the channel.
 	metaChannel := make(chan MetaTopicInfo, 8)
 	r.metaChannel = metaChannel
 
@@ -266,8 +266,6 @@ func (r *Registry) CreateMetaTopics() error {
 	if err != nil {
 		return err
 	}
-
-	r.metaTopic = meta
 
 	go func() {
 		for item := range metaChannel {
