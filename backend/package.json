@@ -8,7 +8,7 @@
 	"scripts": {
 		"test": "go test -v -race ./...",
 		"lint": "if ! test -z \"`gofmt -s -l .`\"; then gofmt -s -l .; exit 1; fi",
-		"dev": "go run github.com/mitranim/gow -e 'go,tsx,html' run ./cmd/cli start",
+		"dev": "go run github.com/mitranim/gow -e 'go,tsx,html' run -race ./cmd/cli start",
 		"format": "go fmt ./... && go vet ./...",
 		"release": "./scripts/release.sh"
 	},
