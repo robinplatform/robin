@@ -14,7 +14,8 @@ type Id struct {
 	// The following path formats are currently used:
 	// - /app/{project}/{app-id} - the category for an app's spawned processes
 	// - /app/{project} - the category for a project's spawned apps
-	// - /logs/{app-category} - the category for the logs of a spawned process
+	// - /logs/{app-category} - logs for an app with a certain category
+	// - /topics - meta category for information about topics
 	Category string `json:"category"`
 	// The identifier used to refer to an object. This is not cleaned, and has no
 	// guarantees about formatting.
