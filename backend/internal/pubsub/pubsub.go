@@ -38,6 +38,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"robinplatform.dev/internal/identity"
 )
 
 var Topics Registry
@@ -57,24 +59,14 @@ var (
 )
 
 var (
-	MetaTopic TopicId = TopicId{Category: "@robin/topics", Name: "meta"}
+	MetaTopic TopicId = TopicId{Category: "/topics", Key: "meta"}
 )
 
-type TopicId struct {
-	// Category of the topic. The following categories are reserved:
-	// - "robin"
-	// - "@robin/*" - everything prefixed with "@robin/" is reserved
-	//
-	// Currently used:
-	// - "@robin/logs/{app-category}" logs for an app with a certain category
-	// - "@robin/topics" meta category for information about topics
-	Category string `json:"category"`
-	// The name of the topic
-	Name string `json:"name"`
-}
+// Identifier of a topic
+type TopicId identity.Id
 
-func (topic *TopicId) String() string {
-	return fmt.Sprintf("%s/%s", topic.Category, topic.Name)
+func (topic TopicId) String() string {
+	return (identity.Id)(topic).String()
 }
 
 type Topic struct {
@@ -195,7 +187,7 @@ type Registry struct {
 }
 
 func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
-	if strings.HasPrefix(id.Category, "@robin/topics") {
+	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
 

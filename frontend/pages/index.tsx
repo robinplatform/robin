@@ -15,7 +15,7 @@ function Processes() {
 		result: z.array(
 			z.object({
 				id: z.object({
-					source: z.string(),
+					category: z.string(),
 					key: z.string(),
 				}),
 				command: z.string(),
@@ -39,7 +39,7 @@ function Processes() {
 
 			<ScrollWindow className={'full'} innerClassName={'col robin-gap'}>
 				{processes?.map((value) => {
-					const key = `${value.id.source} ${value.id.key}`;
+					const key = `${value.id.category} ${value.id.key}`;
 					return (
 						<div
 							key={key}
@@ -62,7 +62,7 @@ function Processes() {
 type TopicId = z.infer<typeof TopicId>;
 const TopicId = z.object({
 	category: z.string(),
-	name: z.string(),
+	key: z.string(),
 });
 
 type TopicInfo = z.infer<typeof TopicInfo>;
@@ -103,8 +103,8 @@ function Topics() {
 		skip: !initialTopics,
 		data: {
 			id: {
-				category: '@robin/topics',
-				name: 'meta',
+				category: '/topics',
+				key: 'meta',
 			},
 		},
 		initialState: initialTopics ?? {},
@@ -113,12 +113,12 @@ function Topics() {
 				case 'update':
 					return {
 						...prev,
-						[`${packet.data.id.category}/${packet.data.id.name}`]: packet.data,
+						[`${packet.data.id.category}#${packet.data.id.key}`]: packet.data,
 					};
 				case 'close':
 					const a = { ...prev };
 					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record...
-					delete a[`${packet.data.category}/${packet.data.name}`];
+					delete a[`${packet.data.category}#${packet.data.key}`];
 
 					// ...also the docs say this rule shouldn't even apply here. Like the rule is supposed to
 					// ignore this case.
@@ -197,7 +197,7 @@ function Topics() {
 					<>
 						<div>
 							Selected topic is{' '}
-							{`${selectedTopic.id.category} - ${selectedTopic.id.name}`}
+							{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
 						</div>
 					</>
 				)}

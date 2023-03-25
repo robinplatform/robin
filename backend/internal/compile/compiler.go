@@ -16,6 +16,7 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
+	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
@@ -87,7 +88,16 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
 	}
 
-	processId := process.ProjectAppId("", appConfig.Id)
+	projectName, err := project.GetProjectName()
+	if err != nil {
+		// This should have been resolved long before.
+		panic(err)
+	}
+
+	processId := process.ProcessId{
+		Category: identity.Category("app", projectName),
+		Key:      appConfig.Id,
+	}
 
 	app := CompiledApp{
 		compiler:         compiler,

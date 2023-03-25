@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,9 +15,9 @@ import (
 
 	"github.com/nxadm/tail"
 
+	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
-	"robinplatform.dev/internal/project"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -25,47 +25,11 @@ var (
 	logger = log.New("process")
 )
 
-// TODO: probably want to move to a system without the `@robin/*` shit.
-// When I thought of it initially, I sorta imagined it similar to a file system,
-// but I didn't realize that when you take that analogy to the logical conclusion,
-// you'd want to support things like path concatenation. We have a concrete case of this
-// with logs, where the paths look like `@robin/logs/@robin/app/example/server-manager`
-// which is just silly.
-//
-// To prevent this kind of silliness, the ID categories should just be REAL paths, i.e. /app/example/server-manager
-// instead of @robin/app/example/server-manager. That way the above example becomes `/logs/app/example/server-manager`.
-// Initially, I had thought that e.g. users/apps would arbitrarily be creating paths
-// willy-nilly, but I realize that any kind of thing that the user could want to create,
-// we can simply choose to namespace it ourselves. e.g. we could decide that users
-// can create whatever category they want under the `/custom` prefix.
-//
-// What I missed initially is that we don't have to support the user creating arbitrary categories,
-// because unlike a file system, Robin code is the ultimate decider of every path at all times.
-// We can simply put things into namespaces.
-
 // An identifier for a process.
-type ProcessId struct {
-	// The category of the process; typically also includes the name of
-	// the system/app that spawned this process.
-	//
-	// The following categories are reserved:
-	// - robin - this is for internal apps
-	// - @robin/* - anything starting with @robin-platform/* is reserved for systems in Robin
-	//
-	// We're currently using these categories:
-	// - `@robin/app/{project}` for app daemons
-	// - `@robin/app/{project}/{app}` for app-spawned processes
-	Category string `json:"source"`
-	// The name that this process has been given
-	Key string `json:"key"`
-}
+type ProcessId identity.Id
 
-func (id ProcessId) String() string {
-	return fmt.Sprintf(
-		"%s-%s",
-		id.Category,
-		id.Key,
-	)
+func (p ProcessId) String() string {
+	return (identity.Id)(p).String()
 }
 
 type ProcessConfig struct {
@@ -100,32 +64,6 @@ type Process struct {
 
 	Context context.Context `json:"-"` // This Context gets canceled when the process dies.
 	cancel  func()          `json:"-"` // Cancel the context
-}
-
-func InternalId(name string) ProcessId {
-	return ProcessId{
-		Category: "robin",
-		Key:      name,
-	}
-}
-
-// ID for an App running in the project. The following
-func ProjectAppId(category string, key string) ProcessId {
-	name, err := project.GetProjectName()
-	if err != nil {
-		panic(err)
-	}
-
-	name = url.PathEscape(name)
-
-	if category != "" {
-		category = "/" + url.PathEscape(category)
-	}
-
-	return ProcessId{
-		Category: "@robin/app/" + name + category,
-		Key:      key,
-	}
 }
 
 func (process *Process) waitForExit() {
@@ -281,8 +219,8 @@ func NewProcessManager(topics *pubsub.Registry, logsPath string, dbPath string) 
 		}
 
 		topicId := pubsub.TopicId{
-			Category: fmt.Sprintf("@robin/logs/%s", proc.Id.Category),
-			Name:     proc.Id.Key,
+			Category: path.Join("/logs", proc.Id.Category),
+			Key:      proc.Id.Key,
 		}
 
 		topic, err := manager.topics.CreateTopic(topicId)
@@ -458,8 +396,8 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	defer proc.Release()
 
 	topicId := pubsub.TopicId{
-		Category: fmt.Sprintf("@robin/logs/%s", procConfig.Id.Category),
-		Name:     procConfig.Id.Key,
+		Category: path.Join("/logs", procConfig.Id.Category),
+		Key:      procConfig.Id.Key,
 	}
 
 	topic, err := w.Read.m.topics.CreateTopic(topicId)
