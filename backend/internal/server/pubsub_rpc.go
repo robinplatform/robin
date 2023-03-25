@@ -27,15 +27,15 @@ var SubscribeTopic = Stream[SubscribeTopicInput, string]{
 			return err
 		}
 
-		subscription := make(chan string)
-		if err := pubsub.Topics.Subscribe(input.Id, subscription); err != nil {
+		sub, err := pubsub.Subscribe(&pubsub.Topics, input.Id)
+		if err != nil {
 			return err
 		}
-		defer pubsub.Topics.Unsubscribe(input.Id, subscription)
+		defer sub.Unsubscribe()
 
 		for {
 			select {
-			case s, ok := <-subscription:
+			case s, ok := <-sub.Out:
 				if !ok {
 					// Channel is closed
 					return nil

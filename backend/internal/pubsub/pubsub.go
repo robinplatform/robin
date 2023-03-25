@@ -79,7 +79,12 @@ type Topic struct {
 
 	counter     int
 	closed      bool
-	subscribers []chan<- string
+	subscribers []chan string
+}
+
+type Subscription struct {
+	Out   <-chan string
+	topic *Topic
 }
 
 func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
@@ -97,7 +102,7 @@ func (topic *Topic) forEachSubscriber(iterator func(sub chan<- string)) error {
 	return nil
 }
 
-func (topic *Topic) addSubscriber(sub chan<- string) error {
+func (topic *Topic) addSubscriber(sub chan string) error {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -110,7 +115,7 @@ func (topic *Topic) addSubscriber(sub chan<- string) error {
 	return nil
 }
 
-func (topic *Topic) removeSubscriber(sub chan<- string) {
+func (topic *Topic) removeSubscriber(sub <-chan string) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -226,24 +231,6 @@ func (r *Registry) createTopic(id TopicId) (*Topic, error) {
 	return topic, nil
 }
 
-func (r *Registry) Unsubscribe(id TopicId, channel chan<- string) {
-	if channel == nil {
-		return
-	}
-
-	key := id.String()
-
-	r.m.Lock()
-	if r.topics == nil {
-		r.topics = make(map[string]*Topic, 8)
-	}
-
-	topic := r.topics[key]
-	r.m.Unlock()
-
-	topic.removeSubscriber(channel)
-}
-
 func (r *Registry) pollMetaInfo() {
 	for {
 		r.m.Lock()
@@ -289,11 +276,7 @@ func (r *Registry) CreateMetaTopics() error {
 	return nil
 }
 
-func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
-	if channel == nil {
-		return ErrNilSubscriber
-	}
-
+func Subscribe(r *Registry, id TopicId) (Subscription, error) {
 	key := id.String()
 
 	r.m.Lock()
@@ -306,14 +289,20 @@ func (r *Registry) Subscribe(id TopicId, channel chan<- string) error {
 	r.m.Unlock()
 
 	if topic == nil {
-		return fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
+		return Subscription{}, fmt.Errorf("%w: %s", ErrTopicDoesntExist, id.String())
 	}
+
+	channel := make(chan string)
 
 	if err := topic.addSubscriber(channel); err != nil {
-		return err
+		return Subscription{}, err
 	}
 
-	return nil
+	return Subscription{Out: channel, topic: topic}, nil
+}
+
+func (sub *Subscription) Unsubscribe() {
+	sub.topic.removeSubscriber(sub.Out)
 }
 
 type TopicInfo struct {

@@ -22,7 +22,7 @@ func TestPubSubSimple(t *testing.T) {
 	failChannel := make(chan string, 10)
 	defer close(failChannel)
 
-	subscriber := func(channel chan string) {
+	subscriber := func(channel <-chan string) {
 		wStart.Done()
 
 		message, ok := <-channel
@@ -49,13 +49,12 @@ func TestPubSubSimple(t *testing.T) {
 		wStart.Add(1)
 		wStop.Add(1)
 
-		channel := make(chan string, 2)
-		err := registry.Subscribe(topicId, channel)
+		sub, err := Subscribe(&registry, topicId)
 		if err != nil {
 			t.Fatalf("error: %s", err.Error())
 		}
 
-		go subscriber(channel)
+		go subscriber(sub.Out)
 	}
 
 	wStart.Wait()
