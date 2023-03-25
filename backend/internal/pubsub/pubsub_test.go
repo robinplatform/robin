@@ -3,12 +3,14 @@ package pubsub
 import (
 	"sync"
 	"testing"
+
+	"robinplatform.dev/internal/identity"
 )
 
 func TestPubSubSimple(t *testing.T) {
 	var registry Registry
 
-	topicId := TopicId{
+	topicId := identity.Id{
 		Category: "wassa",
 		Key:      "wassa",
 	}
