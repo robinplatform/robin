@@ -190,7 +190,7 @@ type Registry struct {
 }
 
 func (r *Registry) CreateTopic(id TopicId) (*Topic, error) {
-	if strings.HasPrefix(id.Category, "@robin/topics") {
+	if strings.HasPrefix(id.Category, "/topics") {
 		return nil, ErrTopicExists
 	}
 

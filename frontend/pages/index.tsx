@@ -103,8 +103,8 @@ function Topics() {
 		skip: !initialTopics,
 		data: {
 			id: {
-				category: '@robin/topics',
-				name: 'meta',
+				category: '/topics',
+				key: 'meta',
 			},
 		},
 		initialState: initialTopics ?? {},
@@ -113,12 +113,12 @@ function Topics() {
 				case 'update':
 					return {
 						...prev,
-						[`${packet.data.id.category}/${packet.data.id.key}`]: packet.data,
+						[`${packet.data.id.category}#${packet.data.id.key}`]: packet.data,
 					};
 				case 'close':
 					const a = { ...prev };
 					// rome-ignore lint/performance/noDelete: I'm deleting a key from a record...
-					delete a[`${packet.data.category}/${packet.data.key}`];
+					delete a[`${packet.data.category}#${packet.data.key}`];
 
 					// ...also the docs say this rule shouldn't even apply here. Like the rule is supposed to
 					// ignore this case.
