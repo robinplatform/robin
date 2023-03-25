@@ -26,10 +26,6 @@ var (
 )
 
 // An identifier for a process.
-//
-// We're currently using these categories:
-// - `/app/{project}` for app daemons
-// - `/app/{project}/{app}` for app-spawned processes
 type ProcessId identity.Id
 
 func (p ProcessId) String() string {

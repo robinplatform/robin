@@ -63,9 +63,6 @@ var (
 )
 
 // Identifier of a topic
-// Currently used:
-// - "/logs/{app-category}" logs for an app with a certain category
-// - "/topics" meta category for information about topics
 type TopicId identity.Id
 
 func (topic TopicId) String() string {
