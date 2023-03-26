@@ -1,4 +1,4 @@
-package compile
+package compilerServer
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/compile/resolve"
+	"robinplatform.dev/internal/compilerServer/resolve"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/log"

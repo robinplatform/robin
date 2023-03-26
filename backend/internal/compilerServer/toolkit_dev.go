@@ -1,6 +1,6 @@
 //go:build !prod
 
-package compile
+package compilerServer
 
 import (
 	"io/fs"
