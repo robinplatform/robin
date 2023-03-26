@@ -197,9 +197,10 @@ func TestHttpCacheMaxSize(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// make 10 requests, which should all be cached
+	// make 10 requests, which should all be a cache miss
 	for i := 0; i < 10; i++ {
-		res, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
+		tmpUrl := fmt.Sprintf("http://%s/%d", listener.Addr().String(), i)
+		res, err := client.Get(tmpUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -208,7 +209,7 @@ func TestHttpCacheMaxSize(t *testing.T) {
 			t.Fatalf("unexpected response: %s", res.Body)
 		}
 		if res.FromCache {
-			t.Fatalf("unexpected cache hit")
+			t.Fatalf("unexpected cache hit: %s", tmpUrl)
 		}
 	}
 
@@ -224,7 +225,8 @@ func TestHttpCacheMaxSize(t *testing.T) {
 
 	// re-fetch all 10, should all hit the cache
 	for i := 0; i < 10; i++ {
-		res, err := client.Get(fmt.Sprintf("http://%s/%d", listener.Addr().String(), i))
+		tmpUrl := fmt.Sprintf("http://%s/%d", listener.Addr().String(), i)
+		res, err := client.Get(tmpUrl)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -233,7 +235,7 @@ func TestHttpCacheMaxSize(t *testing.T) {
 			t.Fatalf("unexpected response: %s", res.Body)
 		}
 		if !res.FromCache {
-			t.Fatalf("unexpected cache miss")
+			t.Fatalf("unexpected cache miss: %s", tmpUrl)
 		}
 
 		// small delay to make sure that the order of the cache is preserved
