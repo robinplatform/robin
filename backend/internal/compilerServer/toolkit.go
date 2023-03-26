@@ -7,7 +7,7 @@ import (
 	"sync"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/compilerServer/resolve"
+	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/project"
 )
