@@ -27,8 +27,8 @@ type httpCache struct {
 	mux      *sync.Mutex
 	maxSize  int
 
-	size   int
-	values map[string]*CacheEntry
+	Size   int
+	Values map[string]*CacheEntry
 }
 
 type Cache interface {
@@ -47,7 +47,7 @@ func New(filename string, maxSize int) (Cache, error) {
 		filename: filename,
 		mux:      &sync.Mutex{},
 		maxSize:  maxSize,
-		values:   make(map[string]*CacheEntry),
+		Values:   make(map[string]*CacheEntry),
 	}
 	return cache, cache.open()
 }
@@ -79,8 +79,8 @@ func (cache *httpCache) open() error {
 
 	logger.Debug("Loaded http cache", log.Ctx{
 		"filename":   cache.filename,
-		"numEntries": len(cache.values),
-		"size":       cache.size,
+		"numEntries": len(cache.Values),
+		"size":       cache.Size,
 		"maxSize":    cache.maxSize,
 	})
 
@@ -119,43 +119,43 @@ func (cache *httpCache) GetSize() int {
 	cache.mux.Lock()
 	defer cache.mux.Unlock()
 
-	return cache.size
+	return cache.Size
 }
 
 // delete performs a delete of the given cache entry. This method must be called with a write
 // lock on the cache.
 func (cache *httpCache) delete(key string) {
-	if node, ok := cache.values[key]; ok {
+	if node, ok := cache.Values[key]; ok {
 		logger.Debug("Removing from cache", log.Ctx{
 			"url":      key,
 			"size":     len(node.Value),
 			"lastUsed": time.Unix(0, *node.LastUsed).String(),
 		})
-		cache.size -= len(node.Value)
-		delete(cache.values, key)
+		cache.Size -= len(node.Value)
+		delete(cache.Values, key)
 	}
 }
 
 func (cache *httpCache) compact() {
-	if cache.size < cache.maxSize {
+	if cache.Size < cache.maxSize {
 		return
 	}
 
-	cacheStartSize := cache.size
-	cacheStartNumEntries := len(cache.values)
+	cacheStartSize := cache.Size
+	cacheStartNumEntries := len(cache.Values)
 
 	// delete all stale entries
-	for key, entry := range cache.values {
+	for key, entry := range cache.Values {
 		if entry.Deadline != nil && *entry.Deadline < time.Now().UnixNano() {
 			cache.delete(key)
 		}
 	}
 
 	// until we reach target size, delete the last used entry
-	for cache.size > cache.maxSize {
+	for cache.Size > cache.maxSize {
 		var lastUsedKey string
 		var lastUsedEntry *CacheEntry
-		for key, node := range cache.values {
+		for key, node := range cache.Values {
 			if lastUsedEntry == nil || *node.LastUsed < *lastUsedEntry.LastUsed {
 				lastUsedKey = key
 				lastUsedEntry = node
@@ -171,8 +171,8 @@ func (cache *httpCache) compact() {
 	logger.Debug("HTTP cache compacted", log.Ctx{
 		"startSize":       cacheStartSize,
 		"startNumEntries": cacheStartNumEntries,
-		"endSize":         cache.size,
-		"endNumEntries":   len(cache.values),
+		"endSize":         cache.Size,
+		"endNumEntries":   len(cache.Values),
 	})
 }
 
@@ -187,7 +187,7 @@ func (cache *httpCache) Get(key string) (CacheEntry, bool) {
 	cache.mux.Lock()
 	defer cache.mux.Unlock()
 
-	node, ok := cache.values[key]
+	node, ok := cache.Values[key]
 	if ok {
 		// If the entry has expired, delete and pretend it wasn't found
 		if node.Deadline != nil && *node.Deadline < time.Now().UnixNano() {
@@ -221,13 +221,13 @@ func (cache *httpCache) Set(key string, entry CacheEntry) {
 	lastUsed := int64(time.Now().UnixNano())
 	entry.LastUsed = &lastUsed
 
-	cache.values[key] = &entry
-	cache.size += len(entry.Value)
+	cache.Values[key] = &entry
+	cache.Size += len(entry.Value)
 
 	logger.Debug("Added to cache", log.Ctx{
 		"url":              key,
 		"size":             len(entry.Value),
-		"updatedCacheSize": cache.size,
+		"updatedCacheSize": cache.Size,
 	})
 	cache.compact()
 }
