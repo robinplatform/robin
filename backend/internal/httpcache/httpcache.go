@@ -24,11 +24,11 @@ type CacheEntry struct {
 
 type httpCache struct {
 	filename string
-	mux      *sync.RWMutex
+	mux      *sync.Mutex
 	maxSize  int
 
-	Size   int
-	Values map[string]*CacheEntry
+	size   int
+	values map[string]*CacheEntry
 }
 
 type Cache interface {
@@ -45,9 +45,9 @@ type Cache interface {
 func New(filename string, maxSize int) (Cache, error) {
 	cache := &httpCache{
 		filename: filename,
-		mux:      &sync.RWMutex{},
+		mux:      &sync.Mutex{},
 		maxSize:  maxSize,
-		Values:   make(map[string]*CacheEntry),
+		values:   make(map[string]*CacheEntry),
 	}
 	return cache, cache.open()
 }
@@ -79,8 +79,8 @@ func (cache *httpCache) open() error {
 
 	logger.Debug("Loaded http cache", log.Ctx{
 		"filename":   cache.filename,
-		"numEntries": len(cache.Values),
-		"size":       cache.Size,
+		"numEntries": len(cache.values),
+		"size":       cache.size,
 		"maxSize":    cache.maxSize,
 	})
 
@@ -88,12 +88,12 @@ func (cache *httpCache) open() error {
 }
 
 func (cache *httpCache) Save() error {
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	if cache.filename == "" {
 		return fmt.Errorf("cannot save cache without a filename")
 	}
-
-	cache.mux.Lock()
-	defer cache.mux.Unlock()
 
 	cache.compact()
 
@@ -116,43 +116,46 @@ func (cache *httpCache) Save() error {
 }
 
 func (cache *httpCache) GetSize() int {
-	return cache.Size
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
+	return cache.size
 }
 
 // delete performs a delete of the given cache entry. This method must be called with a write
 // lock on the cache.
 func (cache *httpCache) delete(key string) {
-	if node, ok := cache.Values[key]; ok {
+	if node, ok := cache.values[key]; ok {
 		logger.Debug("Removing from cache", log.Ctx{
 			"url":      key,
 			"size":     len(node.Value),
 			"lastUsed": time.Unix(0, *node.LastUsed).String(),
 		})
-		cache.Size -= len(node.Value)
-		delete(cache.Values, key)
+		cache.size -= len(node.Value)
+		delete(cache.values, key)
 	}
 }
 
 func (cache *httpCache) compact() {
-	if cache.Size < cache.maxSize {
+	if cache.size < cache.maxSize {
 		return
 	}
 
-	cacheStartSize := cache.Size
-	cacheStartNumEntries := len(cache.Values)
+	cacheStartSize := cache.size
+	cacheStartNumEntries := len(cache.values)
 
 	// delete all stale entries
-	for key, entry := range cache.Values {
+	for key, entry := range cache.values {
 		if entry.Deadline != nil && *entry.Deadline < time.Now().UnixNano() {
 			cache.delete(key)
 		}
 	}
 
 	// until we reach target size, delete the last used entry
-	for cache.Size > cache.maxSize {
+	for cache.size > cache.maxSize {
 		var lastUsedKey string
 		var lastUsedEntry *CacheEntry
-		for key, node := range cache.Values {
+		for key, node := range cache.values {
 			if lastUsedEntry == nil || *node.LastUsed < *lastUsedEntry.LastUsed {
 				lastUsedKey = key
 				lastUsedEntry = node
@@ -168,26 +171,27 @@ func (cache *httpCache) compact() {
 	logger.Debug("HTTP cache compacted", log.Ctx{
 		"startSize":       cacheStartSize,
 		"startNumEntries": cacheStartNumEntries,
-		"endSize":         cache.Size,
-		"endNumEntries":   len(cache.Values),
+		"endSize":         cache.size,
+		"endNumEntries":   len(cache.values),
 	})
 }
 
 func (cache *httpCache) Delete(key string) {
 	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	cache.delete(key)
-	cache.mux.Unlock()
 }
 
 func (cache *httpCache) Get(key string) (CacheEntry, bool) {
-	cache.mux.RLock()
-	node, ok := cache.Values[key]
-	cache.mux.RUnlock()
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
 
+	node, ok := cache.values[key]
 	if ok {
 		// If the entry has expired, delete and pretend it wasn't found
 		if node.Deadline != nil && *node.Deadline < time.Now().UnixNano() {
-			cache.Delete(key)
+			cache.delete(key)
 			return CacheEntry{}, false
 		}
 
@@ -199,6 +203,9 @@ func (cache *httpCache) Get(key string) (CacheEntry, bool) {
 }
 
 func (cache *httpCache) Set(key string, entry CacheEntry) {
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	// do not allow single resources that are larger than the cache
 	if len(entry.Value) >= cache.maxSize {
 		logger.Debug("Refusing to cache large resource", log.Ctx{
@@ -209,21 +216,18 @@ func (cache *httpCache) Set(key string, entry CacheEntry) {
 		return
 	}
 
-	cache.mux.Lock()
-	defer cache.mux.Unlock()
-
 	cache.delete(key)
 
 	lastUsed := int64(time.Now().UnixNano())
 	entry.LastUsed = &lastUsed
 
-	cache.Values[key] = &entry
-	cache.Size += len(entry.Value)
+	cache.values[key] = &entry
+	cache.size += len(entry.Value)
 
 	logger.Debug("Added to cache", log.Ctx{
 		"url":              key,
 		"size":             len(entry.Value),
-		"updatedCacheSize": cache.Size,
+		"updatedCacheSize": cache.size,
 	})
 	cache.compact()
 }
