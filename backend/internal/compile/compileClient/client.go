@@ -75,7 +75,7 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 		Define:   input.DefineConstants,
 		Plugins: concat(
 			getExtractServerPlugins(appConfig, input.HttpClient, serverExports),
-			toolkit.Plugin(appConfig),
+			toolkit.Plugins(appConfig),
 			resolve.HttpPlugin(input.HttpClient),
 			plugins.ResolverPlugin(appConfig, input.HttpClient, pagePath),
 			plugins.CssLoaderPlugins(appConfig, input.HttpClient),

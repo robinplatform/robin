@@ -265,7 +265,7 @@ func (app *CompiledApp) buildServerBundle() error {
 					},
 				},
 			},
-			toolkit.Plugin(appConfig),
+			toolkit.Plugins(appConfig),
 			plugins.ResolverPlugin(appConfig, httpClient, pagePath),
 		),
 	})
