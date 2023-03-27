@@ -1,8 +1,11 @@
 package compileClient
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"os"
 	"path"
 	"strings"
@@ -17,6 +20,13 @@ import (
 	"robinplatform.dev/internal/project"
 )
 
+var (
+	//go:embed client.html
+	clientHtmlTemplateRaw string
+
+	clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
+)
+
 type ClientJSInput struct {
 	AppId           string
 	HttpClient      httpcache.CacheClient
@@ -26,6 +36,7 @@ type ClientJSInput struct {
 type ClientBundle struct {
 	JS       string
 	Metafile map[string]any
+	Html     string
 }
 
 func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
@@ -96,9 +107,19 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 
 	output := result.OutputFiles[0]
 
+	js := string(output.Contents)
+	htmlOutput := bytes.NewBuffer(nil)
+	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
+		"AppConfig":    appConfig,
+		"ScriptSource": js,
+	}); err != nil {
+		return ClientBundle{}, fmt.Errorf("failed to render client html: %w", err)
+	}
+
 	bundle := ClientBundle{
-		JS:       string(output.Contents),
+		JS:       js,
 		Metafile: metafile,
+		Html:     htmlOutput.String(),
 	}
 	return bundle, nil
 }

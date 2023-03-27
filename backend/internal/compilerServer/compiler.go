@@ -1,8 +1,6 @@
 package compilerServer
 
 import (
-	"bytes"
-	_ "embed"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,7 +8,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
@@ -25,11 +22,6 @@ import (
 )
 
 var (
-	//go:embed client.html
-	clientHtmlTemplateRaw string
-
-	clientHtmlTemplate = template.Must(template.New("robinAppClientHtml").Parse(clientHtmlTemplateRaw))
-
 	logger log.Logger = log.New("compile")
 
 	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
@@ -128,7 +120,7 @@ func (compiler *Compiler) Precompile(id string) {
 		return
 	}
 
-	go app.buildClientJs()
+	go app.buildClient()
 
 	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 		go app.keepAlive()
@@ -141,29 +133,8 @@ func (compiler *Compiler) RenderClient(id string, res http.ResponseWriter) error
 		return err
 	}
 
-	if app.ClientJs == "" {
-		app.builderMux.Lock()
-		defer app.builderMux.Unlock()
-	}
-
-	if app.ClientJs == "" {
-		if err := app.buildClientJs(); err != nil {
-			return err
-		}
-
-		appConfig, err := project.LoadRobinAppById(id)
-		if err != nil {
-			return fmt.Errorf("failed to load app config: %w", err)
-		}
-
-		htmlOutput := bytes.NewBuffer(nil)
-		if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
-			"AppConfig":    appConfig,
-			"ScriptSource": app.ClientJs,
-		}); err != nil {
-			return fmt.Errorf("failed to render client html: %w", err)
-		}
-		app.Html = htmlOutput.String()
+	if err := app.buildClient(); err != nil {
+		return err
 	}
 
 	if res != nil {
@@ -199,7 +170,7 @@ func (app *CompiledApp) getEnvConstants() map[string]string {
 	}
 }
 
-func (app *CompiledApp) buildClientJs() error {
+func (app *CompiledApp) buildClient() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
@@ -219,6 +190,7 @@ func (app *CompiledApp) buildClientJs() error {
 
 	app.ClientJs = bundle.JS
 	app.ClientMetafile = bundle.Metafile
+	app.Html = bundle.Html
 
 	return nil
 }
