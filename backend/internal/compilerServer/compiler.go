@@ -200,7 +200,7 @@ func getResolverPlugins(appConfig project.RobinAppConfig, pageSourceUrl *url.URL
 				build.OnResolve(es.OnResolveOptions{Filter: "^[^/\\.]"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					// If we're resolving a module from the virtual toolkit, we should assume that the extension
 					// itself asked for it
-					if args.Namespace == "robin-toolkit" {
+					if args.Namespace == toolkit.Namespace {
 						args.Importer = pageSourceUrl.String()
 					}
 

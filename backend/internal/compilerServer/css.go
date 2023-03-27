@@ -9,6 +9,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/project"
 )
 
@@ -29,7 +30,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 				build.OnLoad(es.OnLoadOptions{
 					Filter: "\\.css",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					if args.Namespace == "robin-toolkit" {
+					if args.Namespace == toolkit.Namespace {
 						return es.OnLoadResult{}, nil
 					}
 
@@ -66,7 +67,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 				build.OnLoad(es.OnLoadOptions{
 					Filter: "\\.scss(\\?bundle)?$",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					if args.Namespace == "robin-toolkit" {
+					if args.Namespace == toolkit.Namespace {
 						return es.OnLoadResult{}, nil
 					}
 
