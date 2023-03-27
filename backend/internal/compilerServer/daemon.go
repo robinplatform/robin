@@ -18,6 +18,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
@@ -186,7 +187,7 @@ func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig) erro
 	}
 
 	// Extract the daemon runner onto disk
-	daemonRunnerSourceFile, err := toolkitFS.Open("internal/app-daemon.js")
+	daemonRunnerSourceFile, err := toolkit.ToolkitFS.Open("internal/app-daemon.js")
 	if err != nil {
 		return fmt.Errorf("failed to start app server: could not find daemon runner: %w", err)
 	}

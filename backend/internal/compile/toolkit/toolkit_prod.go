@@ -1,6 +1,6 @@
 //go:build toolkit && prod
 
-package compilerServer
+package toolkit
 
 import (
 	"embed"
@@ -21,7 +21,7 @@ func (e toolkitFsWrapper) Open(name string) (fs.File, error) {
 //go:generate rsync -rv --exclude=node_modules --exclude=robin.servers.json ../../../toolkit toolkit
 //go:embed all:toolkit
 var embedToolkitFS embed.FS
-var toolkitFS fs.FS = toolkitFsWrapper(embedToolkitFS)
+var ToolkitFS fs.FS = toolkitFsWrapper(embedToolkitFS)
 
 var initToolkit = func() {
 	logger.Debug("Using embedded toolkit", log.Ctx{})
