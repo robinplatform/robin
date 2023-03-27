@@ -3,11 +3,9 @@ package compilerServer
 import (
 	"bytes"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -16,6 +14,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/plugins"
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
@@ -189,37 +188,6 @@ func (compiler *Compiler) GetClientMetaFile(id string) (map[string]any, error) {
 	return app.ClientMetafile, nil
 }
 
-func getFileExports(input *es.StdinOptions) ([]string, error) {
-	result := es.Build(es.BuildOptions{
-		Stdin:    input,
-		Platform: es.PlatformNeutral,
-		Target:   es.ESNext,
-		Write:    false,
-		Metafile: true,
-	})
-	if len(result.Errors) > 0 {
-		return nil, fmt.Errorf("failed to build: %w", buildError.BuildError(result))
-	}
-
-	var metafile struct {
-		Outputs map[string]struct {
-			Exports []string
-		}
-	}
-	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {
-		return nil, fmt.Errorf("failed to analyze %s: %w", input.Sourcefile, err)
-	}
-	if len(metafile.Outputs) != 1 {
-		return nil, fmt.Errorf("failed to analyze %s: expected exactly one output, got %d", input.Sourcefile, len(metafile.Outputs))
-	}
-
-	for _, meta := range metafile.Outputs {
-		return meta.Exports, nil
-	}
-
-	panic(fmt.Errorf("unreachable code"))
-}
-
 func (app *CompiledApp) GetConfig() (project.RobinAppConfig, error) {
 	return project.LoadRobinAppById(app.Id)
 }
@@ -232,75 +200,26 @@ func (app *CompiledApp) getEnvConstants() map[string]string {
 }
 
 func (app *CompiledApp) buildClientJs() error {
-	appConfig, err := project.LoadRobinAppById(app.Id)
+	app.builderMux.Lock()
+	defer app.builderMux.Unlock()
+
+	if app.ClientJs != "" {
+		return nil
+	}
+
+	input := compileClient.ClientJSInput{
+		AppId:           app.Id,
+		HttpClient:      httpClient,
+		DefineConstants: app.getEnvConstants(),
+	}
+	bundle, err := compileClient.BuildClientBundle(input)
 	if err != nil {
 		return err
 	}
 
-	pagePath, content, err := appConfig.ReadFile(httpClient, appConfig.Page)
-	if err != nil {
-		return err
-	}
+	app.ClientJs = bundle.JS
+	app.ClientMetafile = bundle.Metafile
 
-	stdinOptions := es.StdinOptions{
-		Contents:   string(content),
-		Sourcefile: pagePath.String(),
-		Loader:     es.LoaderTSX,
-	}
-	if pagePath.Scheme == "file" {
-		stdinOptions.ResolveDir = path.Dir(pagePath.Path)
-	}
-
-	app.serverExports = make(map[string][]string)
-	result := es.Build(es.BuildOptions{
-		Stdin:    &stdinOptions,
-		Bundle:   true,
-		Platform: es.PlatformBrowser,
-		Target:   es.ESNext,
-		Write:    false,
-		Loader: map[string]es.Loader{
-			".png":  es.LoaderBase64,
-			".jpg":  es.LoaderBase64,
-			".jpeg": es.LoaderBase64,
-		},
-		Metafile: true,
-		Define:   app.getEnvConstants(),
-		Plugins: concat(
-			getExtractServerPlugins(appConfig, app),
-			toolkit.Plugin(appConfig),
-			resolve.HttpPlugin(httpClient),
-			plugins.ResolverPlugin(appConfig, httpClient, pagePath),
-			plugins.CssLoaderPlugins(appConfig, httpClient),
-
-			[]es.Plugin{
-				{
-					Name: "catch-all",
-					Setup: func(build es.PluginBuild) {
-						// A catch all if we miss anything
-						build.OnResolve(es.OnResolveOptions{Filter: ".", Namespace: "http"}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-							return es.OnResolveResult{}, fmt.Errorf("unexpected import of %s from http resource %s", args.Path, args.Importer)
-						})
-					},
-				},
-			},
-		),
-	})
-
-	if len(result.Errors) != 0 {
-		return fmt.Errorf("failed to build client: %w", buildError.BuildError(result))
-	}
-
-	var metafile map[string]any
-	if err := json.Unmarshal([]byte(result.Metafile), &metafile); err != nil {
-		metafile = map[string]any{
-			"error": err.Error(),
-		}
-	}
-
-	output := result.OutputFiles[0]
-
-	app.ClientJs = string(output.Contents)
-	app.ClientMetafile = metafile
 	return nil
 }
 
