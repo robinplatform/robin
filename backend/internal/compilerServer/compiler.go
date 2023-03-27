@@ -1,4 +1,4 @@
-package compile
+package compilerServer
 
 import (
 	"bytes"
@@ -16,6 +16,7 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
+	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
@@ -294,7 +295,7 @@ func getFileExports(input *es.StdinOptions) ([]string, error) {
 		Metafile: true,
 	})
 	if len(result.Errors) > 0 {
-		return nil, fmt.Errorf("failed to build: %w", BuildError(result))
+		return nil, fmt.Errorf("failed to build: %w", buildError.BuildError(result))
 	}
 
 	var metafile struct {
@@ -383,7 +384,7 @@ func (app *CompiledApp) buildClientJs() error {
 	})
 
 	if len(result.Errors) != 0 {
-		return fmt.Errorf("failed to build client: %w", BuildError(result))
+		return fmt.Errorf("failed to build client: %w", buildError.BuildError(result))
 	}
 
 	var metafile map[string]any
@@ -475,7 +476,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		),
 	})
 	if len(result.Errors) != 0 {
-		return fmt.Errorf("failed to build server: %w", BuildError(result))
+		return fmt.Errorf("failed to build server: %w", buildError.BuildError(result))
 	}
 	if len(result.OutputFiles) != 1 {
 		return fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))

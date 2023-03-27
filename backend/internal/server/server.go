@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
-	"robinplatform.dev/internal/compile"
+	"robinplatform.dev/internal/compilerServer"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/project"
 )
@@ -23,7 +23,7 @@ type Server struct {
 	router      *httprouter.Router
 	pprofRouter http.Handler
 	webRouter   http.Handler
-	compiler    compile.Compiler
+	compiler    compilerServer.Compiler
 }
 
 var logger log.Logger = log.New("server")
@@ -127,7 +127,7 @@ func (server *Server) Run() error {
 	// Start precompiling apps, and ignore the errors for now
 	// The errors will get handled when the app is requested
 	go func() {
-		if compile.CacheEnabled {
+		if compilerServer.CacheEnabled {
 			apps, err := project.GetAllProjectApps()
 			if err != nil {
 				return

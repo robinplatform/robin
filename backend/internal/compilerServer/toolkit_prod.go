@@ -1,6 +1,6 @@
 //go:build toolkit && prod
 
-package compile
+package compilerServer
 
 import (
 	"embed"
