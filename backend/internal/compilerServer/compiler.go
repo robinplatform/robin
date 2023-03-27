@@ -17,6 +17,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/plugins"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
@@ -366,9 +367,9 @@ func (app *CompiledApp) buildClientJs() error {
 		Plugins: concat(
 			getExtractServerPlugins(appConfig, app),
 			toolkit.Plugins(appConfig),
-			[]es.Plugin{esbuildPluginLoadHttp},
+			plugins.LoadHttp(httpClient),
 			getResolverPlugins(appConfig, pagePath),
-			getCssLoaderPlugins(appConfig),
+			plugins.LoadCSS(appConfig, httpClient),
 
 			[]es.Plugin{
 				{
@@ -457,7 +458,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
 			[]es.Plugin{esbuildPluginMarkBuiltinsAsExternal},
-			[]es.Plugin{esbuildPluginLoadHttp},
+			plugins.LoadHttp(httpClient),
 			[]es.Plugin{
 				{
 					Name: "resolve-abs-paths",
