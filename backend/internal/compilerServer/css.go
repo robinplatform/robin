@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
+	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/project"
 )
 
@@ -121,7 +122,7 @@ func buildSass(srcPath, sass string) (string, error) {
 		},
 	})
 	if len(result.Errors) > 0 {
-		return "", BuildError(result)
+		return "", buildError.BuildError(result)
 	}
 	if len(result.OutputFiles) != 1 {
 		return "", fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))

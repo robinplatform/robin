@@ -1,4 +1,4 @@
-package compilerServer
+package buildError
 
 import (
 	"fmt"
