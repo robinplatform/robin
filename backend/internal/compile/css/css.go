@@ -1,4 +1,4 @@
-package compilerServer
+package css
 
 import (
 	"bytes"
@@ -11,10 +11,11 @@ import (
 	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
+	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/project"
 )
 
-func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
+func CssLoaderPlugins(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient) []es.Plugin {
 	return []es.Plugin{
 		{
 			Name: "load-css",
@@ -37,7 +38,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 					var css []byte
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, css, err = appConfig.ReadFile(&httpClient, args.Path)
+						_, css, err = appConfig.ReadFile(httpClient, args.Path)
 					} else {
 						css, err = os.ReadFile(args.Path)
 					}
@@ -67,7 +68,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, sass, err = appConfig.ReadFile(&httpClient, args.Path)
+						_, sass, err = appConfig.ReadFile(httpClient, args.Path)
 					} else {
 						sass, err = os.ReadFile(args.Path)
 					}
@@ -75,7 +76,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 						return es.OnLoadResult{}, fmt.Errorf("failed to read sass file %s: %w", args.Path, err)
 					}
 
-					script, err := buildSass(args.Path, string(sass))
+					script, err := buildSass(httpClient, args.Path, string(sass))
 					if err != nil {
 						return es.OnLoadResult{}, fmt.Errorf("failed to build sass file %s: %w", args.Path, err)
 					}
@@ -90,7 +91,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 	}
 }
 
-func buildSass(srcPath, sass string) (string, error) {
+func buildSass(httpClient httpcache.CacheClient, srcPath, sass string) (string, error) {
 	result := es.Build(es.BuildOptions{
 		Stdin: &es.StdinOptions{
 			Contents: fmt.Sprintf(`

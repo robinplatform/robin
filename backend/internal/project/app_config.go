@@ -110,7 +110,7 @@ func (appConfig *RobinAppConfig) resolvePath(filePath string) *url.URL {
 	return appConfig.ConfigPath.ResolveReference(&url.URL{Path: filepath.ToSlash(targetPath)})
 }
 
-func (appConfig *RobinAppConfig) ReadFile(httpClient *httpcache.CacheClient, targetPath string) (*url.URL, []byte, error) {
+func (appConfig *RobinAppConfig) ReadFile(httpClient httpcache.CacheClient, targetPath string) (*url.URL, []byte, error) {
 	fileUrl := appConfig.resolvePath(targetPath)
 
 	if fileUrl.Scheme == "file" {

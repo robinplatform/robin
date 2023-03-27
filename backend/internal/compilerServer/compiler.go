@@ -17,6 +17,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/css"
 	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/identity"
@@ -241,7 +242,7 @@ func getResolverPlugins(appConfig project.RobinAppConfig, pageSourceUrl *url.URL
 					//
 					// However, `esm.sh` takes care of most of this anyways, so we really just need to perform lookups for modules that
 					// are immediately imported by the app. So we'll just look in the package.json of the immediate importer.
-					packageJsonPath, rawPackageJson, err := appConfig.ReadFile(&httpClient, "package.json")
+					packageJsonPath, rawPackageJson, err := appConfig.ReadFile(httpClient, "package.json")
 					if err != nil {
 						return es.OnResolveResult{}, err
 					}
@@ -261,7 +262,7 @@ func getResolverPlugins(appConfig project.RobinAppConfig, pageSourceUrl *url.URL
 						return es.OnResolveResult{}, fmt.Errorf("cannot resolve module '%s' (not found in package.json)", moduleName)
 					}
 
-					reqPath, _, err := appConfig.ReadFile(&httpClient, fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
+					reqPath, _, err := appConfig.ReadFile(httpClient, fmt.Sprintf("/%s@%s/%s", moduleName, moduleVersion, moduleSourceFilePath))
 					if err != nil {
 						return es.OnResolveResult{}, fmt.Errorf("failed to get module %s@%s/%s: %w", moduleName, moduleVersion, moduleSourceFilePath, err)
 					}
@@ -336,7 +337,7 @@ func (app *CompiledApp) buildClientJs() error {
 		return err
 	}
 
-	pagePath, content, err := appConfig.ReadFile(&httpClient, appConfig.Page)
+	pagePath, content, err := appConfig.ReadFile(httpClient, appConfig.Page)
 	if err != nil {
 		return err
 	}
@@ -369,7 +370,7 @@ func (app *CompiledApp) buildClientJs() error {
 			toolkit.Plugin(appConfig),
 			resolve.HttpPlugin(httpClient),
 			getResolverPlugins(appConfig, pagePath),
-			getCssLoaderPlugins(appConfig),
+			css.CssLoaderPlugins(appConfig, httpClient),
 
 			[]es.Plugin{
 				{
@@ -409,7 +410,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
 	}
 
-	pagePath, _, err := appConfig.ReadFile(&httpClient, appConfig.Page)
+	pagePath, _, err := appConfig.ReadFile(httpClient, appConfig.Page)
 	if err != nil {
 		return err
 	}

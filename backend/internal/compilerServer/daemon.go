@@ -45,7 +45,7 @@ func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp)
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, source, err = appConfig.ReadFile(&httpClient, args.Path)
+						_, source, err = appConfig.ReadFile(httpClient, args.Path)
 					} else {
 						source, err = os.ReadFile(args.Path)
 					}
@@ -228,7 +228,7 @@ func (app *CompiledApp) copyAppFiles(appConfig project.RobinAppConfig, appDir st
 	}
 
 	for _, appFilePath := range appConfig.Files {
-		_, buf, err := appConfig.ReadFile(&httpClient, appFilePath)
+		_, buf, err := appConfig.ReadFile(httpClient, appFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to setup app files: failed to read %s: %w", appFilePath, err)
 		}
