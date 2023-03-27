@@ -14,15 +14,6 @@ import (
 	"robinplatform.dev/internal/project"
 )
 
-func wrapWithCssLoader(path string, css string) string {
-	return fmt.Sprintf(`!function(){
-		let style = document.createElement('style')
-		style.setAttribute('data-path', '%s')
-		style.innerText = %q
-		document.body.appendChild(style)
-	}()`, path, css)
-}
-
 func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 	return []es.Plugin{
 		{
@@ -54,7 +45,7 @@ func getCssLoaderPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 						return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
 					}
 
-					script := wrapWithCssLoader(args.Path, string(css))
+					script := resolve.WrapWithCssLoader(args.Path, string(css))
 					return es.OnLoadResult{
 						Contents: &script,
 						Loader:   es.LoaderJS,
