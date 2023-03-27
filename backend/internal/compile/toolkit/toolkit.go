@@ -22,7 +22,7 @@ func DisableEmbeddedToolkit() {
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func Plugin(appConfig project.RobinAppConfig) []es.Plugin {
+func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 	toolkitInit.Do(initToolkit)
 
 	if ToolkitFS == nil {
