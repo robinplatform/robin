@@ -16,6 +16,7 @@ import (
 	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
+	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
@@ -363,7 +364,7 @@ func (app *CompiledApp) buildClientJs() error {
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
 			getExtractServerPlugins(appConfig, app),
-			getToolkitPlugins(appConfig),
+			toolkit.Plugin(appConfig),
 			[]es.Plugin{esbuildPluginLoadHttp},
 			getResolverPlugins(appConfig, pagePath),
 			getCssLoaderPlugins(appConfig),
@@ -470,7 +471,7 @@ func (app *CompiledApp) buildServerBundle() error {
 					},
 				},
 			},
-			getToolkitPlugins(appConfig),
+			toolkit.Plugin(appConfig),
 			getResolverPlugins(appConfig, pagePath),
 		),
 	})

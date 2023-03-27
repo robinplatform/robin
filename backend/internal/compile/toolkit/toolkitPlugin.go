@@ -1,4 +1,4 @@
-package compilerServer
+package toolkit
 
 import (
 	"fmt"
@@ -12,22 +12,23 @@ import (
 	"robinplatform.dev/internal/project"
 )
 
+var logger = log.New("compile.toolkit")
 var toolkitInit = sync.Once{}
 
 func DisableEmbeddedToolkit() {
-	toolkitFS = nil
+	ToolkitFS = nil
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
+func Plugin(appConfig project.RobinAppConfig) []es.Plugin {
 	toolkitInit.Do(initToolkit)
 
-	if toolkitFS == nil {
+	if ToolkitFS == nil {
 		return nil
 	}
 
 	resolver := resolve.Resolver{
-		FS: toolkitFS,
+		FS: ToolkitFS,
 	}
 
 	// The first set of plugins aim to resolve the toolkit source itself, and immediately give up on any
