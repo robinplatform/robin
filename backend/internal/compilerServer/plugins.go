@@ -2,19 +2,16 @@ package compilerServer
 
 import (
 	"fmt"
-	"net/url"
 	"path/filepath"
 	"strings"
 
 	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/log"
 )
 
 var httpClient httpcache.CacheClient
-var esmSHResolver *resolve.Resolver
 
 func init() {
 	robinPath := config.GetRobinPath()
@@ -29,11 +26,6 @@ func init() {
 			"path":  cacheFilename,
 		})
 	}
-
-	esmSHResolver = resolve.NewHttpResolver(&url.URL{
-		Scheme: "https",
-		Host:   "esm.sh",
-	}, httpClient)
 }
 
 func concat[T any](lists ...[]T) []T {
