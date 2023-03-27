@@ -9,6 +9,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/project"
 )
@@ -118,9 +119,7 @@ func buildSass(srcPath, sass string) (string, error) {
 		Define: map[string]string{
 			"process.stdout.isTTY": "false",
 		},
-		Plugins: []es.Plugin{
-			esbuildPluginLoadHttp,
-		},
+		Plugins: resolve.HttpPlugin(httpClient),
 	})
 	if len(result.Errors) > 0 {
 		return "", buildError.BuildError(result)
