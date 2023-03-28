@@ -7,12 +7,20 @@ onAppStart(async () => {
 	console.log('Server started for my-ext');
 });
 
-export async function getSelfSource({ filename }: { filename: string }) {
+export async function getSelfSource({
+	filename,
+}: {
+	filename: string;
+}): Promise<{ data: string }> {
 	// Random lodash code to test modules
 	_.each([1, 2, 3], () => {});
 
-	return fs.promises.readFile(
-		path.resolve(process.env.ROBIN_PROJECT_PATH, filename),
-		'utf8',
-	);
+	return {
+		data: await fs.promises.readFile(
+			path.resolve(process.env.ROBIN_PROJECT_PATH ?? '', filename),
+			'utf8',
+		),
+	};
 }
+
+// export async function getData({ filename });
