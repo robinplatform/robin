@@ -16,10 +16,10 @@ import (
 
 func wrapWithCssLoader(path string, css string) string {
 	return fmt.Sprintf(`!function(){
-			let style = document.createElement('style')
-			style.setAttribute('data-path', '%s')
-			style.innerText = %q
-			document.body.appendChild(style)
+		let style = document.createElement('style')
+		style.setAttribute('data-path', '%s')
+		style.innerText = %q
+		document.body.appendChild(style)
 		}()`, path, css)
 }
 
