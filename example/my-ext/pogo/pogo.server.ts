@@ -105,5 +105,6 @@ export async function refreshDex() {
 		}
 	});
 
+	// We get a crash during JSON parsing if we don't return something here.
 	return {};
 }
