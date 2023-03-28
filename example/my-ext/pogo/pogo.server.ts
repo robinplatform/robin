@@ -9,10 +9,7 @@ import fetch from 'node-fetch';
 // because the PoGo API has some interesting behaviors
 // like built-in endpoint hashing, so we want to eventually
 // cache stuff.
-function pogoApiEndpointGET<T>(
-	path: string,
-	shape: z.ZodSchema<T>,
-): () => Promise<T> {
+function pogoApiGET<T>(path: string, shape: z.ZodSchema<T>): () => Promise<T> {
 	return async () => {
 		// TODO: handle caching, etc.
 		const resp = await fetch(`https://pogoapi.net/api${path}`);
@@ -21,7 +18,7 @@ function pogoApiEndpointGET<T>(
 	};
 }
 
-export const getPreviousCommDays = pogoApiEndpointGET(
+export const getPreviousCommDays = pogoApiGET(
 	'/v1/community_days.json',
 	z.array(
 		z.object({
@@ -41,10 +38,7 @@ export const getPreviousCommDays = pogoApiEndpointGET(
 	),
 );
 
-function scrapeDuckEndpointGET<T>(
-	path: string,
-	shape: z.ZodSchema<T>,
-): () => Promise<T> {
+function leekDuckGET<T>(path: string, shape: z.ZodSchema<T>): () => Promise<T> {
 	return async () => {
 		const resp = await fetch(
 			`https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data${path}`,
@@ -54,7 +48,7 @@ function scrapeDuckEndpointGET<T>(
 	};
 }
 
-export const getUpcomingCommDays = scrapeDuckEndpointGET(
+export const getUpcomingCommDays = leekDuckGET(
 	'/events.min.json',
 	z.array(
 		z.object({
