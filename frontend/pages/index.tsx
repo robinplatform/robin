@@ -249,7 +249,7 @@ export default function Home() {
 						className={'full robin-rounded robin-pad'}
 						style={{ maxWidth: '30rem', backgroundColor: 'Gray' }}
 					>
-						<a href="/debug/pprof" style={{ color: 'inherit' }}>
+						<a href="/debug/pprof/" style={{ color: 'inherit' }}>
 							Profiler endpoint
 						</a>
 					</div>
