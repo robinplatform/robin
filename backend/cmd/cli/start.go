@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"runtime"
 
-	"robinplatform.dev/internal/compile"
+	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/project"
 	"robinplatform.dev/internal/server"
@@ -58,7 +58,7 @@ func (cmd *StartCommand) Run() error {
 	}
 
 	if cmd.forceStableToolkit {
-		compile.DisableEmbeddedToolkit()
+		toolkit.DisableEmbeddedToolkit()
 	}
 
 	app := server.Server{

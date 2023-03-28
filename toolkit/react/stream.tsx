@@ -29,24 +29,14 @@ export function useStreamMethod<State, Output>({
 
 	const [state, dispatch] = React.useReducer(cb, initialState);
 
-	// Skip is an extra dependency so that the stream gets reset when
-	// the stream is turned off/on again.
-	// initialData JSON is also here, so that when you change the information
-	// in the parameters, you get a new stream.
-	const id = React.useMemo(
-		() => `${methodName}-${Math.random()}`,
-		[methodName, stableStringify(initialData), skip],
-	);
-
-	const stream = React.useMemo(
-		() => new Stream(methodName, id),
-		[methodName, id],
-	);
-
 	React.useEffect(() => {
 		if (skip) {
 			return;
 		}
+
+		const id = `${methodName}-${Math.random()}`;
+
+		const stream = new Stream(methodName, id);
 
 		stream.onmessage = (message) => {
 			const { kind, data } = message as { kind: string; data: string };
@@ -54,7 +44,7 @@ export function useStreamMethod<State, Output>({
 				return;
 			}
 
-			const res = resultType.safeParse(JSON.parse(data));
+			const res = resultType.safeParse(data);
 			if (!res.success) {
 				// TODO: handle the error
 				stream.onerror(res.error);
@@ -69,7 +59,10 @@ export function useStreamMethod<State, Output>({
 		return () => {
 			stream.close();
 		};
-	}, [skip, stream, stableStringify(initialData)]);
+
+		// initialData JSON is here, so that when you change the information
+		// in the parameters, you get a new stream.
+	}, [skip, methodName, stableStringify(initialData)]);
 
 	return { state, dispatch };
 }

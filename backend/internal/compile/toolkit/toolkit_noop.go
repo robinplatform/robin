@@ -1,10 +1,10 @@
 //go:build !toolkit && prod
 
-package compile
+package toolkit
 
 import (
 	"io/fs"
 )
 
-var toolkitFS fs.FS
+var ToolkitFS fs.FS
 var initToolkit = func() {}

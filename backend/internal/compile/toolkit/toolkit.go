@@ -1,4 +1,4 @@
-package compile
+package toolkit
 
 import (
 	"fmt"
@@ -12,22 +12,25 @@ import (
 	"robinplatform.dev/internal/project"
 )
 
+var logger = log.New("compile.toolkit")
 var toolkitInit = sync.Once{}
 
+const Namespace = "robin-toolkit"
+
 func DisableEmbeddedToolkit() {
-	toolkitFS = nil
+	ToolkitFS = nil
 	logger.Warn("Embedded toolkit disabled", log.Ctx{})
 }
 
-func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
+func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 	toolkitInit.Do(initToolkit)
 
-	if toolkitFS == nil {
+	if ToolkitFS == nil {
 		return nil
 	}
 
 	resolver := resolve.Resolver{
-		FS: toolkitFS,
+		FS: ToolkitFS,
 	}
 
 	// The first set of plugins aim to resolve the toolkit source itself, and immediately give up on any
@@ -39,7 +42,7 @@ func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 			Setup: func(build es.PluginBuild) {
 				build.OnResolve(es.OnResolveOptions{
 					Filter:    "^\\.",
-					Namespace: "robin-toolkit",
+					Namespace: Namespace,
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					resolvedPath, err := resolver.ResolveFrom(args.Importer, args.Path)
 					if err != nil {
@@ -51,7 +54,7 @@ func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
-						Namespace: "robin-toolkit",
+						Namespace: Namespace,
 						Path:      resolvedPath,
 					}, nil
 				})
@@ -71,7 +74,7 @@ func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
-						Namespace: "robin-toolkit",
+						Namespace: Namespace,
 						Path:      resolvedPath,
 					}, nil
 				})
@@ -82,7 +85,7 @@ func getToolkitPlugins(appConfig project.RobinAppConfig) []es.Plugin {
 			Setup: func(build es.PluginBuild) {
 				build.OnLoad(es.OnLoadOptions{
 					Filter:    ".",
-					Namespace: "robin-toolkit",
+					Namespace: Namespace,
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
 					contents, ok := resolver.ReadFile(args.Path)
 					if !ok {

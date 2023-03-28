@@ -6,7 +6,11 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sync"
 )
+
+// NOTE: Every public function takes the lock, and every private function assumes it already
+// has the lock.
 
 type resolverResult struct {
 	exists  bool
@@ -14,6 +18,7 @@ type resolverResult struct {
 }
 
 type Resolver struct {
+	m               sync.Mutex
 	FS              fs.FS
 	Extensions      []string
 	EnableDebugLogs bool
@@ -43,7 +48,7 @@ func (resolver *Resolver) resolveLocal(target string) (string, error) {
 	target = filepath.Clean(target)
 
 	// Check if the file exists exactly
-	if _, ok := resolver.ReadFile(target); ok {
+	if _, ok := resolver.readFile(target); ok {
 		return target, nil
 	}
 
@@ -54,7 +59,7 @@ func (resolver *Resolver) resolveLocal(target string) (string, error) {
 
 	// Otherwise check if it exists with any of the extensions, in priority order
 	for _, ext := range searchExtensions {
-		if _, ok := resolver.ReadFile(target + ext); ok {
+		if _, ok := resolver.readFile(target + ext); ok {
 			return target + ext, nil
 		}
 	}
@@ -63,7 +68,7 @@ func (resolver *Resolver) resolveLocal(target string) (string, error) {
 	// of the extensions, in priority order
 	for _, ext := range searchExtensions {
 		targetWithExt := filepath.Clean(filepath.Join(target, "index"+ext))
-		if _, ok := resolver.ReadFile(targetWithExt); ok {
+		if _, ok := resolver.readFile(targetWithExt); ok {
 			return targetWithExt, nil
 		}
 	}
@@ -88,6 +93,9 @@ func (resolver *Resolver) resolveModule(source, target string) (string, error) {
 }
 
 func (resolver *Resolver) ResetCache() {
+	resolver.m.Lock()
+	defer resolver.m.Unlock()
+
 	resolver.resolveCache = nil
 }
 
@@ -96,6 +104,13 @@ func (resolver *Resolver) ResetCache() {
 // This is preferable to reading the file directly from the given FS, because during
 // module resolution, the cache will be populated with file contents.
 func (resolver *Resolver) ReadFile(target string) ([]byte, bool) {
+	resolver.m.Lock()
+	defer resolver.m.Unlock()
+
+	return resolver.readFile(target)
+}
+
+func (resolver *Resolver) readFile(target string) ([]byte, bool) {
 	if res, ok := resolver.resolveCache[target]; ok {
 		return res.content, res.exists
 	}
@@ -122,6 +137,13 @@ func (resolver *Resolver) ReadFile(target string) ([]byte, bool) {
 // Resolve searches for a file relative to the root of the filesystem, and fails
 // if a module is requested to be resolved.
 func (resolver *Resolver) Resolve(target string) (string, error) {
+	resolver.m.Lock()
+	defer resolver.m.Unlock()
+
+	return resolver.resolve(target)
+}
+
+func (resolver *Resolver) resolve(target string) (string, error) {
 	// If the path does not start with a dot, it's referring to a node module
 	if target[0] != '.' {
 		return resolver.resolveModule("./index.js", target)
@@ -132,6 +154,9 @@ func (resolver *Resolver) Resolve(target string) (string, error) {
 // ResolveFrom searches for a file at the target path, relative to the source filepath.
 // Canonically, this means `source` is the file that is trying to import from `target`.
 func (resolver *Resolver) ResolveFrom(source, target string) (string, error) {
+	resolver.m.Lock()
+	defer resolver.m.Unlock()
+
 	if source == "" {
 		return "", fmt.Errorf("source path is empty")
 	}
@@ -150,7 +175,7 @@ func (resolver *Resolver) ResolveFrom(source, target string) (string, error) {
 	}
 
 	targetRelPath := "." + string(filepath.Separator) + filepath.Join(filepath.Dir(source), target)
-	resolved, err := resolver.Resolve(targetRelPath)
+	resolved, err := resolver.resolve(targetRelPath)
 	if err != nil {
 		return "", fmt.Errorf("could not resolve: %s", target)
 	}

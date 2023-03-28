@@ -24,7 +24,7 @@ type CacheEntry struct {
 
 type httpCache struct {
 	filename string
-	mux      *sync.RWMutex
+	mux      *sync.Mutex
 	maxSize  int
 
 	Size   int
@@ -45,7 +45,7 @@ type Cache interface {
 func New(filename string, maxSize int) (Cache, error) {
 	cache := &httpCache{
 		filename: filename,
-		mux:      &sync.RWMutex{},
+		mux:      &sync.Mutex{},
 		maxSize:  maxSize,
 		Values:   make(map[string]*CacheEntry),
 	}
@@ -88,12 +88,12 @@ func (cache *httpCache) open() error {
 }
 
 func (cache *httpCache) Save() error {
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	if cache.filename == "" {
 		return fmt.Errorf("cannot save cache without a filename")
 	}
-
-	cache.mux.Lock()
-	defer cache.mux.Unlock()
 
 	cache.compact()
 
@@ -116,6 +116,9 @@ func (cache *httpCache) Save() error {
 }
 
 func (cache *httpCache) GetSize() int {
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	return cache.Size
 }
 
@@ -175,19 +178,20 @@ func (cache *httpCache) compact() {
 
 func (cache *httpCache) Delete(key string) {
 	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	cache.delete(key)
-	cache.mux.Unlock()
 }
 
 func (cache *httpCache) Get(key string) (CacheEntry, bool) {
-	cache.mux.RLock()
-	node, ok := cache.Values[key]
-	cache.mux.RUnlock()
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
 
+	node, ok := cache.Values[key]
 	if ok {
 		// If the entry has expired, delete and pretend it wasn't found
 		if node.Deadline != nil && *node.Deadline < time.Now().UnixNano() {
-			cache.Delete(key)
+			cache.delete(key)
 			return CacheEntry{}, false
 		}
 
@@ -199,6 +203,9 @@ func (cache *httpCache) Get(key string) (CacheEntry, bool) {
 }
 
 func (cache *httpCache) Set(key string, entry CacheEntry) {
+	cache.mux.Lock()
+	defer cache.mux.Unlock()
+
 	// do not allow single resources that are larger than the cache
 	if len(entry.Value) >= cache.maxSize {
 		logger.Debug("Refusing to cache large resource", log.Ctx{
@@ -208,9 +215,6 @@ func (cache *httpCache) Set(key string, entry CacheEntry) {
 		})
 		return
 	}
-
-	cache.mux.Lock()
-	defer cache.mux.Unlock()
 
 	cache.delete(key)
 
