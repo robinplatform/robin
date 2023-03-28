@@ -203,6 +203,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		AppId:           app.Id,
 		HttpClient:      httpClient,
 		DefineConstants: app.getEnvConstants(),
+		ServerExports:   app.serverExports,
 	})
 
 	if err != nil {
