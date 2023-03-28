@@ -250,7 +250,7 @@ func (app *CompiledApp) buildServerBundle() error {
 		Define:   app.getEnvConstants(),
 		Plugins: concat(
 			[]es.Plugin{esbuildPluginMarkBuiltinsAsExternal},
-			resolve.HttpPlugin(httpClient),
+			plugins.LoadHttp(httpClient),
 			[]es.Plugin{
 				{
 					Name: "resolve-abs-paths",

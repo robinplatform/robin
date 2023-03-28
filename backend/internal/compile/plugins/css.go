@@ -111,7 +111,7 @@ func buildSass(httpClient httpcache.CacheClient, srcPath, sass string) (string, 
 		Define: map[string]string{
 			"process.stdout.isTTY": "false",
 		},
-		Plugins: resolve.HttpPlugin(httpClient),
+		Plugins: LoadHttp(httpClient),
 	})
 	if len(result.Errors) > 0 {
 		return "", buildError.BuildError(result)

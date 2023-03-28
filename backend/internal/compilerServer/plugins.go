@@ -26,7 +26,6 @@ func init() {
 			"path":  cacheFilename,
 		})
 	}
-
 }
 
 func concat[T any](lists ...[]T) []T {
