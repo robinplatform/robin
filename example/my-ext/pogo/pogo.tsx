@@ -1,8 +1,7 @@
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { getUpcomingCommDays } from './page.server';
+import { getUpcomingCommDays } from './pogo.server';
 import '@robinplatform/toolkit/styles.css';
-import './ext.scss';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 

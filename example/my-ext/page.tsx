@@ -6,7 +6,7 @@ import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
-import { Pogo } from './pogo';
+import { Pogo } from './pogo/pogo';
 
 function Main() {
 	const { data: settings, error: errFetchingSettings } = useRpcQuery(
