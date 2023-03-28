@@ -12,8 +12,10 @@ import (
 	"robinplatform.dev/internal/project"
 )
 
-var logger = log.New("compile/toolkit")
+var logger = log.New("compile.toolkit")
 var toolkitInit = sync.Once{}
+
+const Namespace = "robin-toolkit"
 
 func DisableEmbeddedToolkit() {
 	ToolkitFS = nil
@@ -40,7 +42,7 @@ func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 			Setup: func(build es.PluginBuild) {
 				build.OnResolve(es.OnResolveOptions{
 					Filter:    "^\\.",
-					Namespace: "robin-toolkit",
+					Namespace: Namespace,
 				}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
 					resolvedPath, err := resolver.ResolveFrom(args.Importer, args.Path)
 					if err != nil {
@@ -52,7 +54,7 @@ func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
-						Namespace: "robin-toolkit",
+						Namespace: Namespace,
 						Path:      resolvedPath,
 					}, nil
 				})
@@ -72,7 +74,7 @@ func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 						"resolvedPath": resolvedPath,
 					})
 					return es.OnResolveResult{
-						Namespace: "robin-toolkit",
+						Namespace: Namespace,
 						Path:      resolvedPath,
 					}, nil
 				})
@@ -83,7 +85,7 @@ func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 			Setup: func(build es.PluginBuild) {
 				build.OnLoad(es.OnLoadOptions{
 					Filter:    ".",
-					Namespace: "robin-toolkit",
+					Namespace: Namespace,
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
 					contents, ok := resolver.ReadFile(args.Path)
 					if !ok {

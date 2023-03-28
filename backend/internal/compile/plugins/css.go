@@ -9,6 +9,7 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
+	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/project"
 )
@@ -30,7 +31,7 @@ func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient)
 				build.OnLoad(es.OnLoadOptions{
 					Filter: "\\.css",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					if args.Namespace == "robin-toolkit" {
+					if args.Namespace == toolkit.Namespace {
 						return es.OnLoadResult{}, nil
 					}
 
@@ -45,7 +46,7 @@ func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient)
 					var css []byte
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, css, err = appConfig.ReadFile(&httpClient, args.Path)
+						_, css, err = appConfig.ReadFile(httpClient, args.Path)
 					} else {
 						css, err = os.ReadFile(args.Path)
 					}
@@ -67,7 +68,7 @@ func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient)
 				build.OnLoad(es.OnLoadOptions{
 					Filter: "\\.scss(\\?bundle)?$",
 				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					if args.Namespace == "robin-toolkit" {
+					if args.Namespace == toolkit.Namespace {
 						return es.OnLoadResult{}, nil
 					}
 
@@ -75,7 +76,7 @@ func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient)
 					var err error
 
 					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, sass, err = appConfig.ReadFile(&httpClient, args.Path)
+						_, sass, err = appConfig.ReadFile(httpClient, args.Path)
 					} else {
 						sass, err = os.ReadFile(args.Path)
 					}

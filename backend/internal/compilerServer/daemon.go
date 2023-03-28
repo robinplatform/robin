@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -23,8 +22,6 @@ import (
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
-
-	es "github.com/evanw/esbuild/pkg/api"
 )
 
 var (
@@ -32,58 +29,6 @@ var (
 	// need to use our own mutex
 	daemonProcessMux = &sync.Mutex{}
 )
-
-func getExtractServerPlugins(appConfig project.RobinAppConfig, app *CompiledApp) []es.Plugin {
-	return []es.Plugin{
-		{
-			Name: "extract-server-ts",
-			Setup: func(build es.PluginBuild) {
-				build.OnLoad(es.OnLoadOptions{
-					Filter: "\\.server\\.[jt]s$",
-				}, func(args es.OnLoadArgs) (es.OnLoadResult, error) {
-					var source []byte
-					var err error
-
-					if strings.HasPrefix(args.Path, "http://") || strings.HasPrefix(args.Path, "https://") {
-						_, source, err = appConfig.ReadFile(&httpClient, args.Path)
-					} else {
-						source, err = os.ReadFile(args.Path)
-					}
-					if err != nil {
-						return es.OnLoadResult{}, fmt.Errorf("failed to read server file %s: %w", args.Path, err)
-					}
-
-					exports, err := getFileExports(&es.StdinOptions{
-						Contents:   string(source),
-						Sourcefile: args.Path,
-						Loader:     es.LoaderTS,
-					})
-					if err != nil {
-						return es.OnLoadResult{}, fmt.Errorf("failed to get exports for %s: %w", args.Path, err)
-					}
-
-					serverPolyfill := "import { createRpcMethod } from '@robinplatform/toolkit/internal/rpc';\n\n"
-					for _, export := range exports {
-						serverPolyfill += fmt.Sprintf(
-							"export const %s = createRpcMethod(%q, %q, %q);\n",
-							export,
-							appConfig.Id,
-							args.Path,
-							export,
-						)
-					}
-
-					app.serverExports[args.Path] = exports
-
-					return es.OnLoadResult{
-						Contents: &serverPolyfill,
-						Loader:   es.LoaderJS,
-					}, nil
-				})
-			},
-		},
-	}
-}
 
 func (app *CompiledApp) IsAlive() bool {
 	process, err := process.Manager.FindById(app.ProcessId)
@@ -228,7 +173,7 @@ func (app *CompiledApp) copyAppFiles(appConfig project.RobinAppConfig, appDir st
 	}
 
 	for _, appFilePath := range appConfig.Files {
-		_, buf, err := appConfig.ReadFile(&httpClient, appFilePath)
+		_, buf, err := appConfig.ReadFile(httpClient, appFilePath)
 		if err != nil {
 			return fmt.Errorf("failed to setup app files: failed to read %s: %w", appFilePath, err)
 		}
