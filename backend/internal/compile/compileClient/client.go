@@ -33,9 +33,10 @@ type ClientJSInput struct {
 }
 
 type ClientBundle struct {
-	JS       string
-	Metafile map[string]any
-	Html     string
+	JS            string
+	Metafile      map[string]any
+	Html          string
+	ServerExports map[string][]string
 }
 
 func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
@@ -107,7 +108,6 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 	output := result.OutputFiles[0]
 
 	js := string(output.Contents)
-	fmt.Println(js)
 	htmlOutput := bytes.NewBuffer(nil)
 	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
 		"AppConfig":    appConfig,
@@ -117,9 +117,10 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 	}
 
 	bundle := ClientBundle{
-		JS:       js,
-		Metafile: metafile,
-		Html:     htmlOutput.String(),
+		JS:            js,
+		Metafile:      metafile,
+		Html:          htmlOutput.String(),
+		ServerExports: serverExports,
 	}
 	return bundle, nil
 }
