@@ -22,5 +22,3 @@ export async function getSelfSource({
 		),
 	};
 }
-
-// export async function getData({ filename });

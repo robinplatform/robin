@@ -6,8 +6,9 @@ import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
+import { Pogo } from './pogo/pogo';
 
-function Page() {
+function Main() {
 	const { data: settings, error: errFetchingSettings } = useRpcQuery(
 		getAppSettings,
 		z.object({ filename: z.string().optional() }),
@@ -38,4 +39,31 @@ function Page() {
 	);
 }
 
-renderApp(<Page />);
+const AppPages = {
+	Main,
+	Pogo,
+} as const;
+
+function App() {
+	const [page, setPage] = React.useState<keyof typeof AppPages>('Pogo');
+	const Component = AppPages[page];
+
+	return (
+		<div>
+			<div>
+				{Object.keys(AppPages).map((key) => (
+					<button
+						key={key}
+						onClick={() => setPage(key as keyof typeof AppPages)}
+					>
+						{key}
+					</button>
+				))}
+			</div>
+
+			<Component />
+		</div>
+	);
+}
+
+renderApp(<App />);
