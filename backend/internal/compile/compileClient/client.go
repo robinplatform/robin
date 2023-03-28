@@ -5,11 +5,11 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"os"
 	"path"
 	"strings"
 	"sync"
+	"text/template"
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
@@ -107,6 +107,7 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 	output := result.OutputFiles[0]
 
 	js := string(output.Contents)
+	fmt.Println(js)
 	htmlOutput := bytes.NewBuffer(nil)
 	if err := clientHtmlTemplate.Execute(htmlOutput, map[string]any{
 		"AppConfig":    appConfig,
