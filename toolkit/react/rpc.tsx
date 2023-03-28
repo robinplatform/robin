@@ -3,6 +3,8 @@ import {
 	QueryClient,
 	useQuery,
 	UseQueryOptions,
+	UseMutationOptions,
+	useMutation,
 } from '@tanstack/react-query';
 import React from 'react';
 import { z } from 'zod';
@@ -53,6 +55,29 @@ export function useRpcQuery<Input, Output>(
 	return useQuery({
 		queryKey: rpcMethod.getQueryKey(data) as unknown[],
 		queryFn: () => method(data),
+		...overrides,
+	});
+}
+
+export function useRpcMutation<Input, Output>(
+	method: (data: Input) => Promise<Output>,
+	overrides?: Omit<
+		UseMutationOptions<Output, unknown, Input, unknown[]>,
+		'mutationKey' | 'mutationFn'
+	>,
+) {
+	const rpcMethod = method as RpcMethod<Input, Output>;
+	if (typeof rpcMethod.getQueryKey !== 'function') {
+		throw new Error(
+			`Invalid RPC method passed to useRpcQuery. Make sure you are importing from a '.server.ts' file.`,
+		);
+	}
+
+	return useMutation({
+		mutationKey: rpcMethod.getQueryKey(
+			undefined as unknown as Input,
+		) as unknown[],
+		mutationFn: method,
 		...overrides,
 	});
 }
