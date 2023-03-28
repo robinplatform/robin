@@ -244,6 +244,15 @@ export default function Home() {
 					<div className={'full'} style={{ maxWidth: '30rem' }}>
 						<Topics />
 					</div>
+
+					<div
+						className={'full robin-rounded robin-pad'}
+						style={{ maxWidth: '30rem', backgroundColor: 'Gray' }}
+					>
+						<a href="/debug/pprof" style={{ color: 'inherit' }}>
+							Profiler endpoint
+						</a>
+					</div>
 				</div>
 			</div>
 		</div>
