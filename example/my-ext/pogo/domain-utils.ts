@@ -17,6 +17,12 @@ export const MegaWaitDays = {
 	3: 3,
 } as const;
 
+export const MegaWaitTime = {
+	1: 7 * 24 * 60 * 60 * 1000,
+	2: 5 * 24 * 60 * 60 * 1000,
+	3: 3 * 24 * 60 * 60 * 1000,
+} as const;
+
 export function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
 	switch (true) {
 		case count >= 30:
@@ -35,8 +41,8 @@ export function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
 
 export function nextMegaDeadline(count: number, lastMega: Date): Date {
 	const date = new Date(lastMega);
-	const offsetDays = MegaWaitDays[megaLevelFromCount(count)] ?? 0;
-	date.setTime(date.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+	const offset = MegaWaitTime[megaLevelFromCount(count)] ?? 0;
+	date.setTime(date.getTime() + offset);
 
 	return date;
 }

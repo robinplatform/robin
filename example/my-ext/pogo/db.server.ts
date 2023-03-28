@@ -54,14 +54,37 @@ onAppStart(async () => {
 	}
 });
 
+let dbAccessActive = false;
+let dbDirty = false;
+const mutexQueue: ((u: unknown) => void)[] = [];
+
 export async function withDb(mut: (db: PogoDb) => void) {
+	if (dbAccessActive) {
+		await new Promise((res) => mutexQueue.push(res));
+	} else {
+		dbAccessActive = true;
+	}
+
 	const newDb = produce(DB, mut);
 
 	if (newDb !== DB) {
 		console.log('DB access caused mutation');
+		dbDirty = true;
 		DB = newDb;
-		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
 	}
+
+	const waiter = mutexQueue.shift();
+	if (waiter) {
+		waiter(null);
+		return newDb;
+	}
+
+	if (dbDirty) {
+		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+		dbDirty = false;
+	}
+
+	dbAccessActive = false;
 
 	return newDb;
 }
@@ -99,7 +122,7 @@ export async function setPokemonMegaCountRpc({
 			return;
 		}
 
-		pokemon.megaCount = Math.max(count, 0);
+		pokemon.megaCount = Math.min(Math.max(count, 0), 30);
 		if (lastMega) {
 			pokemon.lastMega = lastMega;
 		}

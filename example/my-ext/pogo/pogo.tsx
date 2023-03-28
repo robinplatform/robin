@@ -12,66 +12,12 @@ import {
 import {
 	megaLevelFromCount,
 	MegaRequirements,
-	nextMegaDeadline,
+	MegaWaitTime,
 	TypeColors,
 } from './domain-utils';
-import { create } from 'zustand';
+import { CountdownTimer } from './CountdownTimer';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
-
-const useCurrentSecond = create<{ now: Date }>((set) => {
-	const now = new Date();
-
-	function updateTime() {
-		set({ now: new Date() });
-		setTimeout(updateTime, 1000);
-	}
-
-	setTimeout(updateTime, 1000 - now.getMilliseconds());
-
-	return { now };
-});
-
-// This is a component because otherwise it'd be very easy to re-render things that shouldn't need
-// to re-render.
-function CountdownText({
-	deadline,
-	doneText,
-}: {
-	deadline: Date;
-	doneText: string;
-}) {
-	const { now } = useCurrentSecond();
-
-	if (now > deadline) {
-		return <>{doneText}</>;
-	}
-
-	const difference = deadline.getTime() - now.getTime();
-	const seconds = difference / 1000;
-	const minutes = seconds / 60;
-	const hours = minutes / 60;
-	const days = hours / 24;
-	const weeks = days / 7;
-
-	if (weeks > 2) {
-		return <>{`${Math.floor(weeks)} weeks, ${Math.floor(days % 7)} days`}</>;
-	}
-
-	if (days >= 1) {
-		return <>{`${Math.floor(days)} days, ${Math.floor(hours % 24)} hours`}</>;
-	}
-
-	if (hours >= 1) {
-		return (
-			<>{`${Math.floor(hours)} hours, ${Math.floor(minutes % 60)} minutes`}</>
-		);
-	}
-
-	return (
-		<>{`${Math.floor(minutes)} minutes, ${Math.floor(seconds % 60)} seconds`}</>
-	);
-}
 
 function SelectPokemon({
 	submit,
@@ -128,7 +74,11 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 		<div
 			key={pokemon.id}
 			className={'robin-rounded col robin-pad'}
-			style={{ backgroundColor: 'white', border: '1px solid black' }}
+			style={{
+				backgroundColor: 'white',
+				border: '1px solid black',
+				gap: '0.5rem',
+			}}
 		>
 			<div className={'row'} style={{ justifyContent: 'space-between' }}>
 				<div className={'row robin-gap'}>
@@ -149,10 +99,42 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 							</div>
 						))}
 					</div>
+
+					{!!pokemon.megaCount && (
+						<CountdownTimer
+							doneText="now"
+							disableEditing={setMegaCountLoading}
+							setDeadline={(deadline) =>
+								setMegaCount({
+									id: pokemon.id,
+									count: pokemon.megaCount,
+									lastMega: new Date(
+										deadline.getTime() - MegaWaitTime[megaLevel],
+									).toISOString(),
+								})
+							}
+							deadline={
+								new Date(
+									new Date(pokemon.lastMega).getTime() +
+										MegaWaitTime[megaLevel],
+								)
+							}
+						/>
+					)}
 				</div>
 
 				<div className={'row'}>
-					<button onClick={() => {}}>Evolve!</button>
+					<button
+						onClick={() =>
+							setMegaCount({
+								id: pokemon.id,
+								count: pokemon.megaCount + 1,
+								lastMega: new Date().toISOString(),
+							})
+						}
+					>
+						Evolve!
+					</button>
 				</div>
 			</div>
 
@@ -187,19 +169,6 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						</button>
 					</div>
 				</div>
-
-				{!!pokemon.megaCount && (
-					<p>
-						Next Free Mega:{' '}
-						<CountdownText
-							doneText="now"
-							deadline={nextMegaDeadline(
-								pokemon.megaCount,
-								new Date(pokemon.lastMega),
-							)}
-						/>
-					</p>
-				)}
 			</div>
 		</div>
 	);
@@ -216,13 +185,6 @@ export function Pogo() {
 	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {
 		onSuccess: () => refetchDb(),
 	});
-
-	const upcomingEvents = React.useMemo(() => {
-		const now = new Date();
-		return events?.filter((day) => {
-			return new Date(day.end) > now;
-		});
-	}, [events]);
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
