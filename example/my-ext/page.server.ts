@@ -1,5 +1,5 @@
 import { onAppStart } from '@robinplatform/toolkit/daemon';
-import { z } from 'zod';
+import { z, ZodTypeDef } from 'zod';
 import * as fs from 'fs';
 import _ from 'lodash';
 import * as path from 'path';
@@ -27,7 +27,7 @@ function pogoApiEndpointGET<T>(
 	};
 }
 
-export const getCommunityDays = pogoApiEndpointGET(
+export const getPreviousCommDays = pogoApiEndpointGET(
 	'/v1/community_days.json',
 	z.array(
 		z.object({
@@ -43,6 +43,38 @@ export const getCommunityDays = pogoApiEndpointGET(
 					pokemon: z.string(),
 				}),
 			),
+		}),
+	),
+);
+
+function scrapeDuckEndpointGET<T>(
+	path: string,
+	shape: z.ZodSchema<T>,
+): () => Promise<T> {
+	return async () => {
+		// TODO: handle caching, etc.
+
+		const resp = await fetch(
+			`https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data${path}`,
+		);
+		const data = await resp.json();
+		return shape.parse(data);
+	};
+}
+
+export const getUpcomingCommDays = scrapeDuckEndpointGET(
+	'/events.min.json',
+	z.array(
+		z.object({
+			eventID: z.string(),
+			name: z.string(),
+			eventType: z.string(),
+			heading: z.string(),
+			link: z.string(),
+			image: z.string(),
+			start: z.string(),
+			end: z.string(),
+			extraData: z.unknown(),
 		}),
 	),
 );

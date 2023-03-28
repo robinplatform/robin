@@ -2,7 +2,7 @@ import { getAppSettings } from '@robinplatform/toolkit';
 import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { getCommunityDays, getSelfSource } from './page.server';
+import { getSelfSource } from './page.server';
 import '@robinplatform/toolkit/styles.css';
 import './ext.scss';
 import { z } from 'zod';
@@ -45,7 +45,7 @@ const AppPages = {
 } as const;
 
 function App() {
-	const [page, setPage] = React.useState<keyof typeof AppPages>('Main');
+	const [page, setPage] = React.useState<keyof typeof AppPages>('Pogo');
 	const Component = AppPages[page];
 
 	return (
