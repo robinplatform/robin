@@ -14,7 +14,6 @@ import (
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/compile/plugins"
-	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/project"
@@ -76,9 +75,9 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 		Plugins: concat(
 			getExtractServerPlugins(appConfig, input.HttpClient, serverExports),
 			toolkit.Plugins(appConfig),
-			resolve.HttpPlugin(input.HttpClient),
+			plugins.LoadHttp(input.HttpClient),
 			plugins.ResolverPlugin(appConfig, input.HttpClient, pagePath),
-			plugins.CssLoaderPlugins(appConfig, input.HttpClient),
+			plugins.LoadCSS(appConfig, input.HttpClient),
 
 			[]es.Plugin{
 				{

@@ -105,7 +105,12 @@ func Plugins(appConfig project.RobinAppConfig) []es.Plugin {
 					str := string(contents)
 
 					if strings.HasSuffix(args.Path, ".css") {
-						script := resolve.WrapWithCssLoader(args.Path, str)
+						script := fmt.Sprintf(`!function(){
+							let style = document.createElement('style')
+							style.setAttribute('data-path', '%s')
+							style.innerText = %q
+							document.body.appendChild(style)
+						}()`, args.Path, str)
 						return es.OnLoadResult{
 							Contents: &script,
 							Loader:   es.LoaderJS,

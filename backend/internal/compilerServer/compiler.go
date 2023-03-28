@@ -13,7 +13,6 @@ import (
 	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/plugins"
-	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"

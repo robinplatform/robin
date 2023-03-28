@@ -9,13 +9,21 @@ import (
 
 	es "github.com/evanw/esbuild/pkg/api"
 	"robinplatform.dev/internal/compile/buildError"
-	"robinplatform.dev/internal/compile/resolve"
 	"robinplatform.dev/internal/compile/toolkit"
 	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/project"
 )
 
-func CssLoaderPlugins(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient) []es.Plugin {
+func wrapWithCssLoader(path string, css string) string {
+	return fmt.Sprintf(`!function(){
+			let style = document.createElement('style')
+			style.setAttribute('data-path', '%s')
+			style.innerText = %q
+			document.body.appendChild(style)
+		}()`, path, css)
+}
+
+func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient) []es.Plugin {
 	return []es.Plugin{
 		{
 			Name: "load-css",
@@ -46,7 +54,7 @@ func CssLoaderPlugins(appConfig project.RobinAppConfig, httpClient httpcache.Cac
 						return es.OnLoadResult{}, fmt.Errorf("failed to read css file %s: %w", args.Path, err)
 					}
 
-					script := resolve.WrapWithCssLoader(args.Path, string(css))
+					script := wrapWithCssLoader(args.Path, string(css))
 					return es.OnLoadResult{
 						Contents: &script,
 						Loader:   es.LoaderJS,
