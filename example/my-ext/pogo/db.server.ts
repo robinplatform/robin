@@ -10,25 +10,33 @@ export type Species = z.infer<typeof Species>;
 export const Species = z.object({
 	number: z.number(),
 	name: z.string(),
-	megaEnergy: z.number(),
-	initialMegaEnergy: z.number(),
+	megaEnergyAvailable: z.number(),
+
+	initialMegaCost: z.number(),
+	megaLevel1Cost: z.number(),
+	megaLevel2Cost: z.number(),
+	megaLevel3Cost: z.number(),
+
 	megaType: z.array(z.string()),
 });
 
 export type Pokemon = z.infer<typeof Pokemon>;
 export const Pokemon = z.object({
-	id: z.number(),
+	id: z.string(),
+	pokemonId: z.number(),
+	lastMega: z.string(),
+	megaCount: z.number(),
 });
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
-	pokemon: z.array(Pokemon),
+	pokemon: z.record(z.string(), Pokemon),
 });
 
 const EmptyDb: PogoDb = {
 	pokedex: {},
-	pokemon: [],
+	pokemon: {},
 };
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
@@ -60,4 +68,18 @@ export async function withDb(mut: (db: PogoDb) => void) {
 
 export async function fetchDb() {
 	return withDb((db) => {});
+}
+
+export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
+	const id = `${pokemonId}-${Math.random()}`;
+	await withDb((db) => {
+		db.pokemon[id] = {
+			id,
+			pokemonId,
+			lastMega: new Date().toISOString(),
+			megaCount: 0,
+		};
+	});
+
+	return {};
 }

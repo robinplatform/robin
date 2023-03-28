@@ -49,7 +49,7 @@ function App() {
 	const Component = AppPages[page];
 
 	return (
-		<div>
+		<div className={'full col'}>
 			<div>
 				{Object.keys(AppPages).map((key) => (
 					<button

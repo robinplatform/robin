@@ -89,7 +89,7 @@ export const getUpcomingCommDays = leekDuckGET(
 	),
 );
 
-export async function refreshDex() {
+export async function refreshDexRpc() {
 	const pokemon = await getMegaPokemon();
 
 	withDb((db) => {
@@ -98,9 +98,12 @@ export async function refreshDex() {
 				...db.pokedex[entry.pokemon_id],
 				number: entry.pokemon_id,
 				name: entry.pokemon_name,
-				initialMegaEnergy: entry.first_time_mega_energy_required,
-				megaEnergy: entry.mega_energy_required,
 				megaType: entry.type,
+
+				initialMegaCost: entry.first_time_mega_energy_required,
+				megaLevel1Cost: entry.mega_energy_required,
+				megaLevel2Cost: entry.mega_energy_required / 2,
+				megaLevel3Cost: entry.mega_energy_required / 4,
 			};
 		}
 	});
