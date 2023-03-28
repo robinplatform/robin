@@ -20,7 +20,6 @@ function pogoApiEndpointGET<T>(
 ): () => Promise<T> {
 	return async () => {
 		// TODO: handle caching, etc.
-
 		const resp = await fetch(`https://pogoapi.net/api${path}`);
 		const data = await resp.json();
 		return shape.parse(data);
@@ -52,8 +51,6 @@ function scrapeDuckEndpointGET<T>(
 	shape: z.ZodSchema<T>,
 ): () => Promise<T> {
 	return async () => {
-		// TODO: handle caching, etc.
-
 		const resp = await fetch(
 			`https://raw.githubusercontent.com/bigfoott/ScrapedDuck/data${path}`,
 		);
