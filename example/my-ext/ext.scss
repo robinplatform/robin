@@ -10,6 +10,17 @@ div#root {
 	width: 100%;
 }
 
+.row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	// flex-wrap: nowrap; Don't know whether or now rows should wrap yet
+
+	& > * {
+		margin: 0px;
+	}
+}
+
 .col {
 	display: flex;
 	flex-direction: column;
