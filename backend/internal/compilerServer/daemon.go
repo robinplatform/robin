@@ -93,6 +93,11 @@ func (app *CompiledApp) GetAppDir() (string, error) {
 }
 
 func (app *CompiledApp) setupJsDaemon(processConfig *process.ProcessConfig) error {
+	// Ensure that the client is always built first
+	if err := app.buildClient(); err != nil {
+		return err
+	}
+
 	appDir, err := app.GetAppDir()
 	if err != nil {
 		return fmt.Errorf("failed to start app server: %w", err)
