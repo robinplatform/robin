@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import * as fs from 'fs';
-import _ from 'lodash';
+import _, { last } from 'lodash';
 import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
@@ -79,6 +79,49 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 			lastMega: new Date().toISOString(),
 			megaCount: 0,
 		};
+	});
+
+	return {};
+}
+
+export async function setPokemonMegaCountRpc({
+	id,
+	count,
+	lastMega,
+}: {
+	id: string;
+	count: number;
+	lastMega?: string;
+}) {
+	await withDb((db) => {
+		const pokemon = db.pokemon[id];
+		if (!pokemon) {
+			return;
+		}
+
+		pokemon.megaCount = Math.max(count, 0);
+		if (lastMega) {
+			pokemon.lastMega = lastMega;
+		}
+	});
+
+	return {};
+}
+
+export async function setPokemonMegaEnergyRpc({
+	pokemonId,
+	megaEnergy,
+}: {
+	pokemonId: number;
+	megaEnergy: number;
+}) {
+	await withDb((db) => {
+		const dexEntry = db.pokedex[pokemonId];
+		if (!dexEntry) {
+			return;
+		}
+
+		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);
 	});
 
 	return {};

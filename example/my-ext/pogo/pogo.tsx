@@ -3,8 +3,18 @@ import React from 'react';
 import { getUpcomingCommDays, refreshDexRpc } from './pogo.server';
 import { ScrollWindow } from './ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
-import { addPokemonRpc, fetchDb, Pokemon } from './db.server';
-import { TypeColors } from './typings';
+import {
+	addPokemonRpc,
+	fetchDb,
+	Pokemon,
+	setPokemonMegaCountRpc,
+} from './db.server';
+import {
+	megaLevelFromCount,
+	MegaRequirements,
+	nextMegaDeadline,
+	TypeColors,
+} from './domain-utils';
 import { create } from 'zustand';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
@@ -45,18 +55,22 @@ function CountdownText({
 	const weeks = days / 7;
 
 	if (weeks > 2) {
-		return <>{`${Math.floor(weeks)} weeks, ${days % 7} days`}</>;
+		return <>{`${Math.floor(weeks)} weeks, ${Math.floor(days % 7)} days`}</>;
 	}
 
 	if (days >= 1) {
-		return <>{`${Math.floor(days)} days, ${hours % 24} hours`}</>;
+		return <>{`${Math.floor(days)} days, ${Math.floor(hours % 24)} hours`}</>;
 	}
 
 	if (hours >= 1) {
-		return <>{`${Math.floor(hours)} hours, ${minutes % 60} minutes`}</>;
+		return (
+			<>{`${Math.floor(hours)} hours, ${Math.floor(minutes % 60)} minutes`}</>
+		);
 	}
 
-	return <>{`${Math.floor(minutes)} minutes, ${seconds % 60} seconds`}</>;
+	return (
+		<>{`${Math.floor(minutes)} minutes, ${Math.floor(seconds % 60)} seconds`}</>
+	);
 }
 
 function SelectPokemon({
@@ -96,44 +110,19 @@ function SelectPokemon({
 	);
 }
 
-function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
-	switch (true) {
-		case count >= 30:
-			return 3;
-
-		case count >= 7:
-			return 2;
-
-		case count >= 1:
-			return 1;
-
-		default:
-			return 0;
-	}
-}
-
-function nextMegaDeadline(count: number, lastMega: Date): Date {
-	const date = new Date(lastMega);
-	switch (megaLevelFromCount(count)) {
-		case 0:
-			break;
-		case 1:
-			date.setDate(lastMega.getDate() + 7);
-		case 2:
-			date.setDate(lastMega.getDate() + 5);
-		case 3:
-			date.setDate(lastMega.getDate() + 3);
-	}
-
-	return date;
-}
-
 function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
-	const { data: db } = useRpcQuery(fetchDb, {});
+	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDb, {});
+	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
+		useRpcMutation(setPokemonMegaCountRpc, {
+			onSuccess: () => refreshDb(),
+		});
+
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {
 		return null;
 	}
+
+	const megaLevel = megaLevelFromCount(pokemon.megaCount);
 
 	return (
 		<div
@@ -141,28 +130,63 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 			className={'robin-rounded col robin-pad'}
 			style={{ backgroundColor: 'white', border: '1px solid black' }}
 		>
-			<div className={'row robin-gap'}>
-				<h3>{dexEntry.name}</h3>
+			<div className={'row'} style={{ justifyContent: 'space-between' }}>
+				<div className={'row robin-gap'}>
+					<h3>{dexEntry.name}</h3>
 
-				<div className={'row'} style={{ gap: '0.5rem' }}>
-					{dexEntry.megaType.map((t) => (
-						<div
-							key={t}
-							className={'robin-rounded'}
-							style={{
-								padding: '0.25rem 0.5rem 0.25rem 0.5rem',
-								backgroundColor: TypeColors[t.toLowerCase()],
-								color: 'white',
-							}}
-						>
-							{t}
-						</div>
-					))}
+					<div className={'row'} style={{ gap: '0.5rem' }}>
+						{dexEntry.megaType.map((t) => (
+							<div
+								key={t}
+								className={'robin-rounded'}
+								style={{
+									padding: '0.25rem 0.5rem 0.25rem 0.5rem',
+									backgroundColor: TypeColors[t.toLowerCase()],
+									color: 'white',
+								}}
+							>
+								{t}
+							</div>
+						))}
+					</div>
+				</div>
+
+				<div className={'row'}>
+					<button onClick={() => {}}>Evolve!</button>
 				</div>
 			</div>
 
 			<div>
-				<p>Mega Level: {megaLevelFromCount(pokemon.megaCount)}</p>
+				<div className={'row'}>
+					<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
+						<p>Mega Level: {megaLevel}</p>
+						{megaLevel < 3 && (
+							<p>
+								Level up in:{' '}
+								{MegaRequirements[megaLevel + 1] - pokemon.megaCount} evolutions
+							</p>
+						)}
+					</div>
+
+					<div className={'row'}>
+						<button
+							disabled={setMegaCountLoading}
+							onClick={() =>
+								setMegaCount({ id: pokemon.id, count: pokemon.megaCount + 1 })
+							}
+						>
+							+
+						</button>
+						<button
+							disabled={setMegaCountLoading}
+							onClick={() =>
+								setMegaCount({ id: pokemon.id, count: pokemon.megaCount - 1 })
+							}
+						>
+							-
+						</button>
+					</div>
+				</div>
 
 				{!!pokemon.megaCount && (
 					<p>

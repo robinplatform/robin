@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import { withDb } from './db.server';
+import { Species, withDb } from './db.server';
 import { getMegaPokemon, getRegisteredPokemon } from './pogoapi.server';
 
 // Going to start by making a mega evolution planner.
@@ -94,8 +94,10 @@ export async function refreshDexRpc() {
 
 	withDb((db) => {
 		for (const entry of pokemon) {
+			const prev: Species | undefined = db.pokedex[entry.pokemon_id];
 			db.pokedex[entry.pokemon_id] = {
-				...db.pokedex[entry.pokemon_id],
+				megaEnergyAvailable: prev?.megaEnergyAvailable ?? 0,
+
 				number: entry.pokemon_id,
 				name: entry.pokemon_name,
 				megaType: entry.type,
