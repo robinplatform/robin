@@ -33,7 +33,7 @@ function Page() {
 				borderRadius: 'var(--robin-border-radius)',
 			}}
 		>
-			<code>{error ? String(error) : data ? String(data) : 'Loading ...'}</code>
+			<code>{error ? String(error) : data ? data.data : 'Loading ...'}</code>
 		</pre>
 	);
 }
