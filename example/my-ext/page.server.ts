@@ -71,7 +71,63 @@ export const getUpcomingCommDays = scrapeDuckEndpointGET(
 			image: z.string(),
 			start: z.string(),
 			end: z.string(),
-			extraData: z.unknown(),
+			extraData: z
+				.object({
+					spotlight: z.object({
+						name: z.string(),
+						canBeShiny: z.boolean(),
+						image: z.string(),
+						bonus: z.string(),
+					}),
+
+					spawns: z.array(
+						z.object({
+							name: z.string(),
+							image: z.string(),
+						}),
+					),
+
+					bonuses: z.array(
+						z.object({
+							text: z.string(),
+							image: z.string(),
+						}),
+					),
+
+					bonusDisclaimers: z.array(z.string()),
+
+					shinies: z.array(
+						z.object({
+							name: z.string(),
+							image: z.string(),
+						}),
+					),
+
+					specialresearch: z.array(
+						z.object({
+							name: z.string(),
+							step: z.number(),
+							tasks: z.array(
+								z.object({
+									text: z.string(),
+									reward: z.object({
+										text: z.string(),
+										image: z.string(),
+									}),
+								}),
+							),
+
+							rewards: z.array(
+								z.object({
+									text: z.string(),
+									image: z.string(),
+								}),
+							),
+						}),
+					),
+				})
+				.partial()
+				.nullable(),
 		}),
 	),
 );
