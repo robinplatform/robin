@@ -93,7 +93,6 @@ func createErrorJs(errMessage string) string {
 
 func (server *Server) ServeHTTP(res http.ResponseWriter, req *http.Request) {
 	if server.EnablePprof && strings.HasPrefix(req.URL.Path, "/debug/pprof/") {
-		logger.Print("pprof endpoint", log.Ctx{})
 		server.pprofRouter.ServeHTTP(res, req)
 	} else if strings.HasPrefix(req.URL.Path, "/api") {
 		server.router.ServeHTTP(res, req)
