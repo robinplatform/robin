@@ -1,51 +1,7 @@
 import { z } from 'zod';
-import * as fs from 'fs';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import * as path from 'path';
-import * as os from 'os';
-import { onAppStart } from '@robinplatform/toolkit/daemon';
-
-type Species = z.infer<typeof Species>;
-const Species = z.object({
-	number: z.number(),
-	name: z.string(),
-	megaEnergy: z.number(),
-});
-
-type Pokemon = z.infer<typeof Pokemon>;
-const Pokemon = z.object({
-	pokemon: z.number(),
-});
-
-type PogoDb = z.infer<typeof PogoDb>;
-const PogoDb = z.object({
-	pokedex: z.array(Species),
-	pokemon: z.array(Pokemon),
-});
-
-const EmptyDb: PogoDb = {
-	pokedex: [],
-	pokemon: [],
-};
-
-let DB: PogoDb = EmptyDb;
-
-onAppStart(async () => {
-	const home = os.homedir();
-
-	try {
-		const text = await fs.promises.readFile(
-			path.join(home, '.robin-pogo-db'),
-			'utf8',
-		);
-		const data = JSON.parse(text);
-		DB = PogoDb.parse(data);
-	} catch (e) {
-		// TODO: better error handling
-		DB = EmptyDb;
-	}
-});
+import { withDb } from './db.server';
 
 // Going to start by making a mega evolution planner.
 

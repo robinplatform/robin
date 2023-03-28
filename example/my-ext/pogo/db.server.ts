@@ -44,7 +44,11 @@ onAppStart(async () => {
 });
 
 export async function withDb(mut: (PogoDb) => void) {
-	DB = produce(DB, mut);
+	const newDb = produce(DB, mut);
 
-	await fs.promises.writeFile(JSON.stringify(DB), DB_FILE);
+	if (newDb !== DB) {
+		console.log('DB access caused mutation');
+		DB = newDb;
+		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+	}
 }
