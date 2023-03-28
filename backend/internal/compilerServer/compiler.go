@@ -5,15 +5,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 
-	es "github.com/evanw/esbuild/pkg/api"
-	"robinplatform.dev/internal/compile/buildError"
 	"robinplatform.dev/internal/compile/compileClient"
-	"robinplatform.dev/internal/compile/plugins"
-	"robinplatform.dev/internal/compile/toolkit"
+	"robinplatform.dev/internal/compile/compileDaemon"
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
@@ -190,91 +186,31 @@ func (app *CompiledApp) buildClient() error {
 	app.ClientJs = bundle.JS
 	app.ClientMetafile = bundle.Metafile
 	app.Html = bundle.Html
+	app.serverExports = bundle.ServerExports
 
 	return nil
 }
 
 func (app *CompiledApp) buildServerBundle() error {
-	appConfig, err := project.LoadRobinAppById(app.Id)
-	if err != nil {
-		return fmt.Errorf("failed to load app config for %s: %w", app.Id, err)
+	app.builderMux.Lock()
+	defer app.builderMux.Unlock()
+
+	if app.ServerJs != "" {
+		return nil
 	}
 
-	pagePath, _, err := appConfig.ReadFile(httpClient, appConfig.Page)
+	bundle, err := compileDaemon.BuildServerBundle(compileDaemon.ServerBundleInput{
+		AppId:           app.Id,
+		HttpClient:      httpClient,
+		DefineConstants: app.getEnvConstants(),
+		ServerExports:   app.serverExports,
+	})
+
 	if err != nil {
 		return err
 	}
 
-	// Generate a bundle entrypoint that pulls all the server files into
-	// a single file, and re-exports the RPC methods as a consumable map.
+	app.ServerJs = bundle.ServerJS
 
-	serverRpcMethodsSource := ""
-	for serverFile, exports := range app.serverExports {
-		serverRpcMethodsSource += fmt.Sprintf(
-			"import { %s } from '%s';\n",
-			strings.Join(exports, ", "),
-			serverFile,
-		)
-	}
-
-	serverRpcMethodsSource += "\nexport const serverRpcMethods = {\n"
-	for serverFile, exports := range app.serverExports {
-		serverRpcMethodsSource += fmt.Sprintf(
-			"\t'%s': {\n",
-			serverFile,
-		)
-		for _, export := range exports {
-			serverRpcMethodsSource += fmt.Sprintf(
-				"\t\t%s,\n",
-				export,
-			)
-		}
-		serverRpcMethodsSource += "\t},\n"
-	}
-	serverRpcMethodsSource += "};\n"
-
-	// Build the bundle via esbuild
-	// TODO: Maybe support 'external' packages somehow, or all external packages. It'll speed up builds, but
-	// more importantly, it is necessary to support native deps.
-	result := es.Build(es.BuildOptions{
-		Stdin: &es.StdinOptions{
-			Contents:   serverRpcMethodsSource,
-			Sourcefile: "server-rpc-methods.ts",
-			Loader:     es.LoaderJS,
-		},
-		Platform: es.PlatformNode,
-		Format:   es.FormatCommonJS,
-		Bundle:   true,
-		Write:    false,
-		Define:   app.getEnvConstants(),
-		Plugins: concat(
-			[]es.Plugin{esbuildPluginMarkBuiltinsAsExternal},
-			plugins.LoadHttp(httpClient),
-			[]es.Plugin{
-				{
-					Name: "resolve-abs-paths",
-					Setup: func(build es.PluginBuild) {
-						build.OnResolve(es.OnResolveOptions{
-							Filter: "^/",
-						}, func(args es.OnResolveArgs) (es.OnResolveResult, error) {
-							return es.OnResolveResult{
-								Path: args.Path,
-							}, nil
-						})
-					},
-				},
-			},
-			toolkit.Plugins(appConfig),
-			plugins.ResolverPlugin(appConfig, httpClient, pagePath),
-		),
-	})
-	if len(result.Errors) != 0 {
-		return fmt.Errorf("failed to build server: %w", buildError.BuildError(result))
-	}
-	if len(result.OutputFiles) != 1 {
-		return fmt.Errorf("expected 1 output file, got %d", len(result.OutputFiles))
-	}
-
-	app.ServerJs = string(result.OutputFiles[0].Contents)
 	return nil
 }
