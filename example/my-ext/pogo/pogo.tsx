@@ -5,6 +5,8 @@ import '@robinplatform/toolkit/styles.css';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
+// "PoGo" is an abbreviation for Pokemon Go which is well-known in the
+// PoGo community.
 export function Pogo() {
 	const { data: events } = useRpcQuery(getUpcomingCommDays, {});
 
