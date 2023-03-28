@@ -20,7 +20,7 @@ func wrapWithCssLoader(path string, css string) string {
 		style.setAttribute('data-path', '%s')
 		style.innerText = %q
 		document.body.appendChild(style)
-		}()`, path, css)
+	}()`, path, css)
 }
 
 func LoadCSS(appConfig project.RobinAppConfig, httpClient httpcache.CacheClient) []es.Plugin {
