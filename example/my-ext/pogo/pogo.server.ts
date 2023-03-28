@@ -1,11 +1,8 @@
-import { onAppStart } from '@robinplatform/toolkit/daemon';
 import { z } from 'zod';
 import _ from 'lodash';
 import fetch from 'node-fetch';
 
-onAppStart(async () => {
-	console.log('Server started for my-ext');
-});
+// Going to start by making a mega evolution planner.
 
 // Simple code to perform GET endpoint calls
 // This is being done server-side instead of client-side
