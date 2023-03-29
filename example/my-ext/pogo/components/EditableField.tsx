@@ -101,7 +101,7 @@ export function EditField<T>({
 						value={valueState}
 						onChange={(evt) => setValueState(evt.target.value)}
 						style={{
-							display: editing ? 'unset' : 'none',
+							display: editing ? undefined : 'none',
 							padding: '2px',
 							border: '2px solid gray',
 							height: '100%',
@@ -110,7 +110,13 @@ export function EditField<T>({
 					/>
 				</div>
 
-				{children}
+				{/* We use `visibility` here to ensure that layout still happens, so that
+					the box doesn't change shape during editing, but that the
+					stuff underneath doesn't overlap visually in the process.
+				 */}
+				<div style={{ visibility: editing ? 'hidden' : undefined }}>
+					{children}
+				</div>
 			</div>
 
 			<button

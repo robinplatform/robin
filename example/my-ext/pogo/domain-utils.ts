@@ -20,7 +20,8 @@ export const Pokemon = z.object({
 	id: z.string(),
 	pokemonId: z.number(),
 	name: z.string().optional(),
-	lastMega: z.string(),
+	lastMegaStart: z.string(),
+	lastMegaEnd: z.string(),
 	megaCount: z.number(),
 });
 
@@ -28,7 +29,7 @@ export const TypeColors: Record<string, string> = {
 	normal: 'gray',
 	steel: 'darkslategray',
 	ground: 'chocolate',
-	dark: 'darkslateblue',
+	dark: 'midnightblue',
 	fire: 'orange',
 	grass: 'green',
 	poison: 'purple',
@@ -42,6 +43,7 @@ export const TypeColors: Record<string, string> = {
 	fighting: 'Maroon',
 	electric: 'gold',
 	ice: 'deepskyblue',
+	ghost: 'darkslateblue',
 };
 
 export const TypeTextColors: Record<string, string> = {
@@ -62,6 +64,7 @@ export const TypeTextColors: Record<string, string> = {
 	fighting: 'white',
 	electric: 'black',
 	ice: 'white',
+	ghost: 'white',
 };
 
 export const MegaRequirements = {

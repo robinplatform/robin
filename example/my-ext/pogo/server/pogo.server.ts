@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import { withDb } from './db.server';
-import { getMegaPokemon, getRegisteredPokemon } from './pogoapi.server';
-import { Species } from './domain-utils';
+import { getDB, withDb } from './db.server';
+import { getMegaPokemon } from './pogoapi.server';
+import { nextMegaDeadline, Species } from '../domain-utils';
 
 // Going to start by making a mega evolution planner.
 
@@ -113,4 +113,45 @@ export async function refreshDexRpc() {
 
 	// We get a crash during JSON parsing if we don't return something here.
 	return {};
+}
+
+export async function searchPokemonRpc({
+	sort,
+}: {
+	sort: 'name' | 'pokemonId' | 'megaTime';
+}) {
+	const db = await getDB();
+
+	const out = Object.values(db.pokemon);
+	const now = new Date();
+	switch (sort) {
+		case 'name':
+			out.sort((a, b) => {
+				const aName = a.name ?? db.pokedex[a.pokemonId]?.name ?? '';
+				const bName = b.name ?? db.pokedex[b.pokemonId]?.name ?? '';
+
+				return aName.localeCompare(bName);
+			});
+			break;
+		case 'pokemonId':
+			out.sort((a, b) => {
+				return a.pokemonId - b.pokemonId;
+			});
+			break;
+		case 'megaTime':
+			out.sort((a, b) => {
+				const aDeadline = nextMegaDeadline(
+					a.megaCount,
+					new Date(a.lastMegaEnd),
+				).getTime();
+				const bDeadline = nextMegaDeadline(
+					b.megaCount,
+					new Date(b.lastMegaEnd),
+				).getTime();
+
+				return aDeadline - bDeadline;
+			});
+	}
+
+	return out.map((pokemon) => pokemon.id);
 }
