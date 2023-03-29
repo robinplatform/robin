@@ -325,9 +325,7 @@ export function Pogo() {
 	const [sort, setSort] = React.useState<'name' | 'pokemonId'>('name');
 	const { data: pokemon, refetch: refetchQuery } = useRpcQuery(
 		searchPokemonRpc,
-		{
-			sort,
-		},
+		{ sort },
 	);
 	const { data: db, refetch: refetchDb } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc, {
