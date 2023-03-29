@@ -13,6 +13,8 @@ import { getUpcomingEventsRpc, PogoEvent } from '../server/leekduck.server';
 // View mega pokemon evolutions in line with events; time moves
 // downwards from today, and mega evolution projections are shown speculatively.
 
+// Step 1 is just to do mega evolutions, and some kind of format for planned activities
+
 function Event({ event }: { event: PogoEvent }) {
 	return (
 		<div
