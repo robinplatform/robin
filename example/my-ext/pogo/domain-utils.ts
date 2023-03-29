@@ -1,8 +1,41 @@
 export const TypeColors: Record<string, string> = {
-	steel: 'gray',
+	normal: 'gray',
+	steel: 'darkslategray',
 	ground: 'chocolate',
 	dark: 'darkslateblue',
 	fire: 'orange',
+	grass: 'green',
+	poison: 'purple',
+	flying: 'aqua',
+	bug: 'chartreuse',
+	psychic: 'lightcoral',
+	fairy: 'lightpink',
+	rock: 'peru',
+	water: 'royalblue',
+	dragon: 'SlateBlue',
+	fighting: 'Maroon',
+	electric: 'gold',
+	ice: 'deepskyblue',
+};
+
+export const TypeTextColors: Record<string, string> = {
+	normal: 'white',
+	steel: 'white',
+	ground: 'white',
+	dark: 'white',
+	fire: 'white',
+	grass: 'white',
+	poison: 'white',
+	flying: 'black',
+	bug: 'black',
+	psychic: 'black',
+	fairy: 'black',
+	rock: 'white',
+	water: 'white',
+	dragon: 'white',
+	fighting: 'white',
+	electric: 'black',
+	ice: 'white',
 };
 
 export const MegaRequirements = {

@@ -14,6 +14,7 @@ import {
 	MegaRequirements,
 	MegaWaitTime,
 	TypeColors,
+	TypeTextColors,
 } from './domain-utils';
 import { CountdownTimer } from './CountdownTimer';
 
@@ -92,7 +93,7 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 								style={{
 									padding: '0.25rem 0.5rem 0.25rem 0.5rem',
 									backgroundColor: TypeColors[t.toLowerCase()],
-									color: 'white',
+									color: TypeTextColors[t.toLowerCase()],
 								}}
 							>
 								{t}
@@ -144,8 +145,9 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						<p>Mega Level: {megaLevel}</p>
 						{megaLevel < 3 && (
 							<p>
-								Level up in:{' '}
-								{MegaRequirements[megaLevel + 1] - pokemon.megaCount} evolutions
+								{pokemon.megaCount} done,{' '}
+								{MegaRequirements[megaLevel + 1] - pokemon.megaCount} to level{' '}
+								{megaLevel + 1}
 							</p>
 						)}
 					</div>
@@ -159,6 +161,7 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						>
 							+
 						</button>
+
 						<button
 							disabled={setMegaCountLoading}
 							onClick={() =>
@@ -189,14 +192,11 @@ export function Pogo() {
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div>
+				{Object.keys(db?.pokedex ?? {}).length === 0 && (
+					<div>Pokedex is empty!</div>
+				)}
 				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
 			</div>
-
-			<ScrollWindow className={'full'} style={{ backgroundColor: 'white' }}>
-				<pre style={{ wordBreak: 'break-all' }}>
-					{JSON.stringify(db?.pokedex, undefined, 2)}
-				</pre>
-			</ScrollWindow>
 
 			<ScrollWindow
 				className={'full'}
