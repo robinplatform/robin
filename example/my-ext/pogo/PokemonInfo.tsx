@@ -22,15 +22,34 @@ import {
 } from './server/db.server';
 import React from 'react';
 
+function isCurrentMega(
+	currentMega: string | undefined,
+	pokemon: Pokemon,
+	now: Date,
+) {
+	if (!currentMega) {
+		return false;
+	}
+
+	if (currentMega !== pokemon.id) {
+		return false;
+	}
+
+	if (new Date(pokemon.lastMegaEnd) < now) {
+		return false;
+	}
+
+	return true;
+}
+
 function EvolvePokemonButton({
 	dexEntry,
 	pokemon,
-	refreshDb,
 }: {
 	dexEntry: Species;
 	pokemon: Pokemon;
-	refreshDb: () => void;
 }) {
+	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDbRpc, {});
 	const { now } = useCurrentSecond();
 	const megaLevel = megaLevelFromCount(pokemon.megaCount);
 	const megaCost = megaCostForSpecies(
@@ -45,7 +64,11 @@ function EvolvePokemonButton({
 
 	return (
 		<button
-			disabled={megaEvolveLoading || megaCost > dexEntry.megaEnergyAvailable}
+			disabled={
+				megaEvolveLoading ||
+				isCurrentMega(db?.currentMega?.id, pokemon, now) ||
+				megaCost > dexEntry.megaEnergyAvailable
+			}
 			onClick={() => megaEvolve({ id: pokemon.id })}
 		>
 			Evolve for {megaCost}
@@ -56,16 +79,7 @@ function EvolvePokemonButton({
 function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 	const { now } = useCurrentSecond();
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const currentMega = db?.currentMega;
-	if (!currentMega) {
-		return null;
-	}
-
-	if (currentMega.id !== pokemon.id) {
-		return null;
-	}
-
-	if (new Date(pokemon.lastMegaEnd) < now) {
+	if (!isCurrentMega(db?.currentMega?.id, pokemon, now)) {
 		return null;
 	}
 
@@ -199,11 +213,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					</div>
 
 					<div className={'row'}>
-						<EvolvePokemonButton
-							dexEntry={dexEntry}
-							pokemon={pokemon}
-							refreshDb={refreshDb}
-						/>
+						<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
 					</div>
 				</div>
 
