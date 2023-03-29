@@ -2,42 +2,10 @@ import { z } from 'zod';
 import _ from 'lodash';
 import fetch from 'node-fetch';
 import { withDb } from './db.server';
+import { getMegaPokemon, getRegisteredPokemon } from './pogoapi.server';
+import { Species } from './domain-utils';
 
 // Going to start by making a mega evolution planner.
-
-// Simple code to perform GET endpoint calls
-// This is being done server-side instead of client-side
-// because the PoGo API has some interesting behaviors
-// like built-in endpoint hashing, so we want to eventually
-// cache stuff.
-function pogoApiGET<T>(path: string, shape: z.ZodSchema<T>): () => Promise<T> {
-	return async () => {
-		// TODO: handle caching, etc.
-		const resp = await fetch(`https://pogoapi.net/api${path}`);
-		const data = await resp.json();
-		return shape.parse(data);
-	};
-}
-
-export const getPreviousCommDays = pogoApiGET(
-	'/v1/community_days.json',
-	z.array(
-		z.object({
-			bonuses: z.array(z.string()),
-			boosted_pokemon: z.array(z.string()),
-			community_day_number: z.number(),
-			end_date: z.string(),
-			start_date: z.string(),
-			event_moves: z.array(
-				z.object({
-					move: z.string(),
-					move_type: z.string(),
-					pokemon: z.string(),
-				}),
-			),
-		}),
-	),
-);
 
 function leekDuckGET<T>(path: string, shape: z.ZodSchema<T>): () => Promise<T> {
 	return async () => {
@@ -121,3 +89,28 @@ export const getUpcomingCommDays = leekDuckGET(
 		}),
 	),
 );
+
+export async function refreshDexRpc() {
+	const pokemon = await getMegaPokemon();
+
+	withDb((db) => {
+		for (const entry of pokemon) {
+			const prev: Species | undefined = db.pokedex[entry.pokemon_id];
+			db.pokedex[entry.pokemon_id] = {
+				megaEnergyAvailable: prev?.megaEnergyAvailable ?? 0,
+
+				number: entry.pokemon_id,
+				name: entry.pokemon_name,
+				megaType: entry.type,
+
+				initialMegaCost: entry.first_time_mega_energy_required,
+				megaLevel1Cost: entry.mega_energy_required,
+				megaLevel2Cost: entry.mega_energy_required / 2,
+				megaLevel3Cost: entry.mega_energy_required / 4,
+			};
+		}
+	});
+
+	// We get a crash during JSON parsing if we don't return something here.
+	return {};
+}
