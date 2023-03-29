@@ -1,9 +1,6 @@
 import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
-import {
-	useCurrentSecond,
-	CountdownTimer,
-} from '../../components/CountdownTimer';
-import { EditField } from '../../components/EditableField';
+import { useCurrentSecond, CountdownTimer } from './CountdownTimer';
+import { EditField } from './EditableField';
 import {
 	Species,
 	Pokemon,
@@ -14,7 +11,7 @@ import {
 	MegaWaitTime,
 	MegaRequirements,
 	isCurrentMega,
-} from '../../domain-utils';
+} from '../domain-utils';
 import {
 	evolvePokemonRpc,
 	fetchDbRpc,
@@ -23,7 +20,7 @@ import {
 	setPokemonMegaEnergyRpc,
 	deletePokemonRpc,
 	setNameRpc,
-} from '../../server/db.server';
+} from '../server/db.server';
 import React from 'react';
 
 function EvolvePokemonButton({

@@ -1,11 +1,11 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { refreshDexRpc, searchPokemonRpc } from '../../server/pogo.server';
-import { ScrollWindow } from '../../components/ScrollWindow';
+import { refreshDexRpc, searchPokemonRpc } from '../server/pogo.server';
+import { ScrollWindow } from '../components/ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
-import { addPokemonRpc, fetchDbRpc } from '../../server/db.server';
-import { PokemonInfo } from './PokemonInfo';
-import { SelectPage } from '../../components/SelectPage';
+import { addPokemonRpc, fetchDbRpc } from '../server/db.server';
+import { PokemonInfo } from '../components/PokemonInfo';
+import { SelectPage } from '../components/SelectPage';
 
 // TODO: planner for upcoming events
 // TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
