@@ -82,6 +82,7 @@ export function getDB() {
 
 export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 	const id = `${pokemonId}-${Math.random()}`;
+	const now = new Date().toISOString();
 	await withDb((db) => {
 		db.pokemon[id] = {
 			id,
@@ -89,7 +90,8 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 			megaCount: 0,
 
 			// This causes some strange behavior but... it's probably fine.
-			lastMega: new Date().toISOString(),
+			lastMegaStart: now,
+			lastMegaEnd: now,
 		};
 	});
 
@@ -107,14 +109,19 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		const megaCost = megaCostForSpecies(
 			dexEntry,
 			megaLevel,
-			new Date().getTime() - new Date(pokemon.lastMega).getTime(),
+			new Date().getTime() - new Date(pokemon.lastMegaEnd).getTime(),
 		);
 
 		const prevEnergy = dexEntry.megaEnergyAvailable;
 		dexEntry.megaEnergyAvailable = Math.max(0, prevEnergy - megaCost);
 
 		pokemon.megaCount = Math.min(pokemon.megaCount + 1, 30);
-		pokemon.lastMega = new Date().toISOString();
+
+		const now = new Date();
+		pokemon.lastMegaStart = now.toISOString();
+
+		now.setTime(now.getTime() + 8 * 60 * 60 * 1000);
+		pokemon.lastMegaEnd = now.toISOString();
 	});
 
 	return {};
@@ -131,7 +138,10 @@ export async function setPokemonEvolveTimeRpc({
 		const pokemon = db.pokemon[id];
 		if (!pokemon) return;
 
-		pokemon.lastMega = lastMega;
+		pokemon.lastMegaEnd = lastMega;
+		if (new Date(lastMega) < new Date(pokemon.lastMegaStart)) {
+			pokemon.lastMegaStart = lastMega;
+		}
 	});
 
 	return {};

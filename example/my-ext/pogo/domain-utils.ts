@@ -20,7 +20,8 @@ export const Pokemon = z.object({
 	id: z.string(),
 	pokemonId: z.number(),
 	name: z.string().optional(),
-	lastMega: z.string(),
+	lastMegaStart: z.string(),
+	lastMegaEnd: z.string(),
 	megaCount: z.number(),
 });
 

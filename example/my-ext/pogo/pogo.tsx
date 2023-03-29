@@ -79,7 +79,7 @@ function EvolvePokemonButton({
 	const megaCost = megaCostForSpecies(
 		dexEntry,
 		megaLevel,
-		now.getTime() - new Date(pokemon.lastMega ?? 0).getTime(),
+		now.getTime() - new Date(pokemon.lastMegaEnd ?? 0).getTime(),
 	);
 	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
 		evolvePokemonRpc,
@@ -180,7 +180,7 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 							}
 							deadline={
 								new Date(
-									new Date(pokemon.lastMega).getTime() +
+									new Date(pokemon.lastMegaEnd).getTime() +
 										MegaWaitTime[megaLevel],
 								)
 							}
