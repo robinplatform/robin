@@ -138,3 +138,23 @@ export function megaCostForSpecies(
 	);
 	return Math.ceil(megaCostProrated);
 }
+
+export function isCurrentMega(
+	currentMega: string | undefined,
+	pokemon: Pokemon,
+	now: Date,
+) {
+	if (!currentMega) {
+		return false;
+	}
+
+	if (currentMega !== pokemon.id) {
+		return false;
+	}
+
+	if (new Date(pokemon.lastMegaEnd) < now) {
+		return false;
+	}
+
+	return true;
+}

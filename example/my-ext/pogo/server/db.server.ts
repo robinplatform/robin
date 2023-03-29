@@ -5,6 +5,7 @@ import produce from 'immer';
 import * as os from 'os';
 import { onAppStart } from '@robinplatform/toolkit/daemon';
 import {
+	isCurrentMega,
 	megaCostForSpecies,
 	megaLevelFromCount,
 	Pokemon,
@@ -111,6 +112,13 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
 		if (!pokemon || !dexEntry) return;
 
+		const now = new Date();
+
+		if (isCurrentMega(db.currentMega?.id, pokemon, now)) {
+			console.log('Tried to evolve the currently evolved pokemon');
+			return;
+		}
+
 		const megaLevel = megaLevelFromCount(pokemon.megaCount);
 		const megaCost = megaCostForSpecies(
 			dexEntry,
@@ -121,44 +129,55 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		const prevEnergy = dexEntry.megaEnergyAvailable;
 		dexEntry.megaEnergyAvailable = Math.max(0, prevEnergy - megaCost);
 
-		pokemon.megaCount = Math.min(pokemon.megaCount + 1, 30);
+		const prevMegaStart = new Date(pokemon.lastMegaStart);
 
-		const now = new Date();
+		const eightHoursFromNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+
 		pokemon.lastMegaStart = now.toISOString();
-
-		const eightHoursFromNow = new Date(now);
-		eightHoursFromNow.setTime(now.getTime() + 8 * 60 * 60 * 1000);
 		pokemon.lastMegaEnd = eightHoursFromNow.toISOString();
 
 		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
 		if (currentMega) {
 			currentMega.lastMegaEnd = new Date(
-				Math.min(now.getTime(), new Date(currentMega.lastMegaEnd).getTime()),
+				Math.min(now.getTime(), eightHoursFromNow.getTime()),
 			).toISOString();
 		}
 
-		db.currentMega = {
-			id,
-		};
+		db.currentMega = { id };
+
+		// You can only level up once a day
+		if (prevMegaStart.toDateString() !== now.toDateString()) {
+			pokemon.megaCount = Math.min(pokemon.megaCount + 1, 30);
+		}
 	});
 
 	return {};
 }
 
-export async function setPokemonEvolveTimeRpc({
+export async function setPokemonMegaEndRpc({
 	id,
-	lastMega,
+	newMegaEnd,
 }: {
 	id: string;
-	lastMega: string;
+	newMegaEnd: string;
 }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
 		if (!pokemon) return;
 
-		pokemon.lastMegaEnd = lastMega;
-		if (new Date(lastMega) < new Date(pokemon.lastMegaStart)) {
-			pokemon.lastMegaStart = lastMega;
+		pokemon.lastMegaEnd = newMegaEnd;
+		const newMegaDate = new Date(newMegaEnd);
+
+		const newMegaDateEightHoursBefore = new Date(
+			newMegaDate.getTime() - 8 * 60 * 60 * 1000,
+		);
+
+		const lastMegaStartDate = new Date(pokemon.lastMegaStart);
+		if (newMegaDate < lastMegaStartDate) {
+			pokemon.lastMegaStart = newMegaEnd;
+		}
+		if (newMegaDateEightHoursBefore > lastMegaStartDate) {
+			pokemon.lastMegaStart = newMegaEnd;
 		}
 	});
 

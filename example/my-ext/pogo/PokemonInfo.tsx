@@ -10,37 +10,18 @@ import {
 	TypeTextColors,
 	MegaWaitTime,
 	MegaRequirements,
+	isCurrentMega,
 } from './domain-utils';
 import {
 	evolvePokemonRpc,
 	fetchDbRpc,
 	setPokemonMegaCountRpc,
-	setPokemonEvolveTimeRpc,
+	setPokemonMegaEndRpc,
 	setPokemonMegaEnergyRpc,
 	deletePokemonRpc,
 	setNameRpc,
 } from './server/db.server';
 import React from 'react';
-
-function isCurrentMega(
-	currentMega: string | undefined,
-	pokemon: Pokemon,
-	now: Date,
-) {
-	if (!currentMega) {
-		return false;
-	}
-
-	if (currentMega !== pokemon.id) {
-		return false;
-	}
-
-	if (new Date(pokemon.lastMegaEnd) < now) {
-		return false;
-	}
-
-	return true;
-}
 
 function EvolvePokemonButton({
 	dexEntry,
@@ -63,16 +44,25 @@ function EvolvePokemonButton({
 	);
 
 	return (
-		<button
-			disabled={
-				megaEvolveLoading ||
-				isCurrentMega(db?.currentMega?.id, pokemon, now) ||
-				megaCost > dexEntry.megaEnergyAvailable
-			}
-			onClick={() => megaEvolve({ id: pokemon.id })}
-		>
-			Evolve for {megaCost}
-		</button>
+		<div className={'row'} style={{ gap: '0.5rem' }}>
+			{new Date(pokemon.lastMegaStart).toDateString() === now.toDateString() &&
+				megaLevel !== 3 && (
+					<p style={{ color: 'red', fontWeight: 'bold' }}>
+						Can't level up again today!
+					</p>
+				)}
+
+			<button
+				disabled={
+					megaEvolveLoading ||
+					isCurrentMega(db?.currentMega?.id, pokemon, now) ||
+					megaCost > dexEntry.megaEnergyAvailable
+				}
+				onClick={() => megaEvolve({ id: pokemon.id })}
+			>
+				Evolve for {megaCost}
+			</button>
+		</div>
 	);
 }
 
@@ -91,7 +81,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
 		useRpcMutation(setPokemonMegaCountRpc, { onSuccess: () => refreshDb() });
 	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
-		useRpcMutation(setPokemonEvolveTimeRpc, { onSuccess: () => refreshDb() });
+		useRpcMutation(setPokemonMegaEndRpc, { onSuccess: () => refreshDb() });
 	const { mutate: setEnergy, isLoading: setEneryLoading } = useRpcMutation(
 		setPokemonMegaEnergyRpc,
 		{ onSuccess: () => refreshDb() },
@@ -197,7 +187,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 								setDeadline={(deadline) =>
 									setMegaEvolveTime({
 										id: pokemon.id,
-										lastMega: new Date(
+										newMegaEnd: new Date(
 											deadline.getTime() - MegaWaitTime[megaLevel],
 										).toISOString(),
 									})
@@ -212,9 +202,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						)}
 					</div>
 
-					<div className={'row'}>
-						<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
-					</div>
+					<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
 				</div>
 
 				<div className={'row'}>
