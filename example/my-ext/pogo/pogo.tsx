@@ -6,6 +6,9 @@ import '@robinplatform/toolkit/styles.css';
 import { addPokemonRpc, fetchDbRpc } from './server/db.server';
 import { PokemonInfo } from './PokemonInfo';
 
+// TODO: planner for upcoming events
+// TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
+
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
 function SelectPokemon({
