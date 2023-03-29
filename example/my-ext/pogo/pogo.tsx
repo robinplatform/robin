@@ -45,7 +45,7 @@ function SelectPokemon({
 	);
 }
 
-const Sorts = ['name', 'pokemonId', 'megaTime'] as const;
+const Sorts = ['name', 'pokemonId', 'megaTime', 'megaLevelUp'] as const;
 
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.

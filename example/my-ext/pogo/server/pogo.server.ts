@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import _ from 'lodash';
 import fetch from 'node-fetch';
-import { getDB, withDb } from './db.server';
+import { getDB, PogoDb, withDb } from './db.server';
 import { getMegaPokemon } from './pogoapi.server';
-import { nextMegaDeadline, Species } from '../domain-utils';
+import { nextMegaDeadline, Pokemon, Species } from '../domain-utils';
 
 // Going to start by making a mega evolution planner.
 
@@ -115,23 +115,39 @@ export async function refreshDexRpc() {
 	return {};
 }
 
+const compareNames = (db: PogoDb, a: Pokemon, b: Pokemon) => {
+	const aName = a.name ?? db.pokedex[a.pokemonId]?.name ?? '';
+	const bName = b.name ?? db.pokedex[b.pokemonId]?.name ?? '';
+
+	return aName.localeCompare(bName);
+};
+
+const compareMegaTimes = (nowTime: number, a: Pokemon, b: Pokemon) => {
+	const aDeadline = nextMegaDeadline(
+		a.megaCount,
+		new Date(a.lastMegaEnd),
+	).getTime();
+	const bDeadline = nextMegaDeadline(
+		b.megaCount,
+		new Date(b.lastMegaEnd),
+	).getTime();
+
+	return Math.max(aDeadline, nowTime) - Math.max(bDeadline, nowTime);
+};
+
 export async function searchPokemonRpc({
 	sort,
 }: {
-	sort: 'name' | 'pokemonId' | 'megaTime';
+	sort: 'name' | 'pokemonId' | 'megaTime' | 'megaLevelUp';
 }) {
-	const db = await getDB();
+	const db = getDB();
 
 	const out = Object.values(db.pokemon);
 	const now = new Date();
+	const nowTime = now.getTime();
 	switch (sort) {
 		case 'name':
-			out.sort((a, b) => {
-				const aName = a.name ?? db.pokedex[a.pokemonId]?.name ?? '';
-				const bName = b.name ?? db.pokedex[b.pokemonId]?.name ?? '';
-
-				return aName.localeCompare(bName);
-			});
+			out.sort((a, b) => compareNames(db, a, b));
 			break;
 		case 'pokemonId':
 			out.sort((a, b) => {
@@ -140,16 +156,28 @@ export async function searchPokemonRpc({
 			break;
 		case 'megaTime':
 			out.sort((a, b) => {
-				const aDeadline = nextMegaDeadline(
-					a.megaCount,
-					new Date(a.lastMegaEnd),
-				).getTime();
-				const bDeadline = nextMegaDeadline(
-					b.megaCount,
-					new Date(b.lastMegaEnd),
-				).getTime();
+				const diff = compareMegaTimes(nowTime, a, b);
+				if (diff !== 0) {
+					return diff;
+				}
 
-				return aDeadline - bDeadline;
+				return compareNames(db, a, b);
+			});
+		case 'megaLevelUp':
+			out.sort((a, b) => {
+				if (a.megaCount < 30 && b.megaCount >= 30) {
+					return -1;
+				}
+				if (a.megaCount >= 30 && b.megaCount < 30) {
+					return 1;
+				}
+
+				const diff = compareMegaTimes(nowTime, a, b);
+				if (diff !== 0) {
+					return diff;
+				}
+
+				return compareNames(db, a, b);
 			});
 	}
 
