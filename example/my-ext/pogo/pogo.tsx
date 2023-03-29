@@ -1,13 +1,13 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { refreshDexRpc } from './pogo.server';
+import { refreshDexRpc, searchPokemonRpc } from './pogo.server';
 import { ScrollWindow } from './ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
 import {
 	addPokemonRpc,
 	deletePokemonRpc,
 	evolvePokemonRpc,
-	fetchDb,
+	fetchDbRpc,
 	setNameRpc,
 	setPokemonEvolveTimeRpc,
 	setPokemonMegaCountRpc,
@@ -35,7 +35,7 @@ function SelectPokemon({
 	submit: (data: { pokemonId: number }) => unknown;
 	buttonText: string;
 }) {
-	const { data: db } = useRpcQuery(fetchDb, {});
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const [selected, setSelected] = React.useState<number>(NaN);
 
 	return (
@@ -97,7 +97,7 @@ function EvolvePokemonButton({
 }
 
 function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
-	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDb, {});
+	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
 		useRpcMutation(setPokemonMegaCountRpc, { onSuccess: () => refreshDb() });
 	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
@@ -266,12 +266,22 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
 export function Pogo() {
-	const { data: db, refetch: refetchDb } = useRpcQuery(fetchDb, {});
+	const [sort, setSort] = React.useState<'name' | 'pokemonId'>('name');
+	const { data: pokemon, refetch: refetchQuery } = useRpcQuery(
+		searchPokemonRpc,
+		{
+			sort,
+		},
+	);
+	const { data: db, refetch: refetchDb } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc, {
 		onSuccess: () => refetchDb(),
 	});
 	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {
-		onSuccess: () => refetchDb(),
+		onSuccess: () => {
+			refetchQuery();
+			refetchDb();
+		},
 	});
 
 	return (
@@ -281,6 +291,13 @@ export function Pogo() {
 					<div>Pokedex is empty!</div>
 				)}
 				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
+				<button
+					onClick={() =>
+						setSort((prev) => (prev === 'name' ? 'pokemonId' : 'name'))
+					}
+				>
+					Sort is {sort}
+				</button>
 			</div>
 
 			<ScrollWindow
@@ -296,9 +313,15 @@ export function Pogo() {
 					<SelectPokemon submit={addPokemon} buttonText={'Add Pokemon'} />
 				</div>
 
-				{Object.entries(db?.pokemon ?? {}).map(([id, pokemon]) => (
-					<PokemonInfo key={id} pokemon={pokemon} />
-				))}
+				{!!db &&
+					pokemon?.map((id) => {
+						const pokemon = db.pokemon[id];
+						if (!pokemon) {
+							return null;
+						}
+
+						return <PokemonInfo key={id} pokemon={pokemon} />;
+					})}
 			</ScrollWindow>
 		</div>
 	);

@@ -28,7 +28,7 @@ export const TypeColors: Record<string, string> = {
 	normal: 'gray',
 	steel: 'darkslategray',
 	ground: 'chocolate',
-	dark: 'darkslateblue',
+	dark: 'midnightblue',
 	fire: 'orange',
 	grass: 'green',
 	poison: 'purple',
@@ -42,6 +42,7 @@ export const TypeColors: Record<string, string> = {
 	fighting: 'Maroon',
 	electric: 'gold',
 	ice: 'deepskyblue',
+	ghost: 'darkslateblue',
 };
 
 export const TypeTextColors: Record<string, string> = {
@@ -62,6 +63,7 @@ export const TypeTextColors: Record<string, string> = {
 	fighting: 'white',
 	electric: 'black',
 	ice: 'white',
+	ghost: 'white',
 };
 
 export const MegaRequirements = {

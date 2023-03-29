@@ -72,8 +72,12 @@ export async function withDb(mut: (db: PogoDb) => void) {
 	return newDb;
 }
 
-export async function fetchDb() {
-	return withDb((db) => {});
+export async function fetchDbRpc() {
+	return DB;
+}
+
+export function getDB() {
+	return DB;
 }
 
 export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
