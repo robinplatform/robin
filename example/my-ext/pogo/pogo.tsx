@@ -8,6 +8,7 @@ import {
 	deletePokemonRpc,
 	evolvePokemonRpc,
 	fetchDb,
+	setNameRpc,
 	setPokemonEvolveTimeRpc,
 	setPokemonMegaCountRpc,
 	setPokemonMegaEnergyRpc,
@@ -23,7 +24,7 @@ import {
 	TypeTextColors,
 } from './domain-utils';
 import { CountdownTimer, useCurrentSecond } from './CountdownTimer';
-import { EditableInt } from './EditableField';
+import { EditField } from './EditableField';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
@@ -78,7 +79,7 @@ function EvolvePokemonButton({
 	const megaCost = megaCostForSpecies(
 		dexEntry,
 		megaLevel,
-		now.getTime() - new Date(pokemon.lastMega).getTime(),
+		now.getTime() - new Date(pokemon.lastMega ?? 0).getTime(),
 	);
 	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
 		evolvePokemonRpc,
@@ -107,6 +108,10 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	);
 	const { mutate: deletePokemon, isLoading: deletePokemonLoading } =
 		useRpcMutation(deletePokemonRpc, { onSuccess: () => refreshDb() });
+	const { mutate: setName, isLoading: setNameLoading } = useRpcMutation(
+		setNameRpc,
+		{ onSuccess: () => refreshDb() },
+	);
 
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {
@@ -125,9 +130,25 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 				gap: '0.5rem',
 			}}
 		>
-			<div className={'row'} style={{ justifyContent: 'space-between' }}>
+			<div
+				className={'row'}
+				style={{ justifyContent: 'space-between', height: '3rem' }}
+			>
 				<div className={'row robin-gap'}>
-					<h3>{dexEntry.name}</h3>
+					<EditField
+						disabled={setNameLoading}
+						value={pokemon.name ?? dexEntry.name}
+						setValue={(value) => setName({ id: pokemon.id, name: value })}
+						parseFunc={(val) => {
+							if (!val.trim()) {
+								return undefined;
+							}
+
+							return val;
+						}}
+					>
+						<h3>{pokemon.name ?? dexEntry.name}</h3>
+					</EditField>
 
 					<div className={'row'} style={{ gap: '0.5rem' }}>
 						{dexEntry.megaType.map((t) => (
@@ -211,13 +232,23 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 
 			<div className={'row'} style={{ gap: '0.5rem' }}>
 				Mega Energy:{' '}
-				<EditableInt
+				<EditField
 					disabled={setEneryLoading}
 					value={dexEntry.megaEnergyAvailable}
 					setValue={(value) =>
 						setEnergy({ pokemonId: dexEntry.number, megaEnergy: value })
 					}
-				/>
+					parseFunc={(val) => {
+						const parsed = Number.parseInt(val);
+						if (Number.isNaN(parsed)) {
+							return undefined;
+						}
+
+						return parsed;
+					}}
+				>
+					<p style={{ width: '10rem' }}>{dexEntry.megaEnergyAvailable}</p>
+				</EditField>
 			</div>
 
 			<div className={'row'} style={{ justifyContent: 'flex-end' }}>

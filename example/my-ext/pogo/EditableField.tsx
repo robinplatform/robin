@@ -2,20 +2,20 @@ import React from 'react';
 import '@robinplatform/toolkit/styles.css';
 import './timer.scss';
 
-export function EditableInt({
+export function EditableString({
 	value,
 	setValue,
 	disabled,
 }: {
 	disabled?: boolean;
-	value: number;
-	setValue: (n: number) => void;
+	value: string;
+	setValue: (n: string) => void;
 }) {
 	const [editing, setEditing] = React.useState<boolean>(false);
-	const [valueState, setValueState] = React.useState<string>(`${value}`);
+	const [valueState, setValueState] = React.useState<string>(value);
 
 	React.useEffect(() => {
-		setValueState(`${value}`);
+		setValueState(value);
 	}, [value]);
 
 	return (
@@ -28,20 +28,101 @@ export function EditableInt({
 		>
 			{editing ? (
 				<input
-					style={{ width: '3rem', textAlign: 'right' }}
+					style={{ width: '10rem' }}
 					value={valueState}
 					onChange={(evt) => setValueState(evt.target.value)}
 				/>
 			) : (
-				<p style={{ width: '3rem', textAlign: 'right' }}>{value}</p>
+				<p style={{ width: '10rem' }}>{value}</p>
 			)}
 
 			<button
-				disabled={disabled || Number.isNaN(Number.parseInt(valueState))}
+				disabled={disabled || value === ''}
 				style={{ fontSize: '0.75rem' }}
 				onClick={() => {
 					if (editing) {
-						setValue(Number.parseInt(valueState));
+						setValue(valueState);
+						setEditing(false);
+					} else {
+						setEditing(true);
+					}
+				}}
+			>
+				{editing ? 'Done' : 'Edit'}
+			</button>
+		</div>
+	);
+}
+
+type EditFieldProps<T> = {
+	value: T;
+	setValue: (t: T) => void;
+	parseFunc: (t: string) => T | undefined;
+	disabled?: boolean;
+	children?: React.ReactNode;
+};
+
+export function EditField<T>({
+	value,
+	setValue,
+	disabled,
+	parseFunc,
+	children,
+}: EditFieldProps<T>) {
+	const [editing, setEditing] = React.useState<boolean>(false);
+	const [valueState, setValueState] = React.useState<string>(`${value}`);
+
+	React.useEffect(() => {
+		setValueState(`${value}`);
+	}, [value]);
+
+	const parseFuncRef = React.useRef(parseFunc);
+	parseFuncRef.current = parseFunc;
+
+	const valueParsed = React.useMemo(
+		() => parseFuncRef.current(valueState),
+		[valueState],
+	);
+
+	return (
+		<div className={'row'} style={{ gap: '0.25rem' }}>
+			<div className={'row'} style={{ position: 'relative', padding: '4px' }}>
+				<div
+					style={{
+						position: 'absolute',
+						left: 0,
+						top: 0,
+						bottom: 0,
+						right: 0,
+					}}
+				>
+					<input
+						type="text"
+						value={valueState}
+						onChange={(evt) => setValueState(evt.target.value)}
+						style={{
+							display: editing ? 'unset' : 'none',
+							padding: '2px',
+							border: '2px solid gray',
+							height: '100%',
+							width: '100%',
+						}}
+					/>
+				</div>
+
+				{children}
+			</div>
+
+			<button
+				disabled={disabled || valueParsed === undefined}
+				style={{ fontSize: '0.75rem', width: '2.3rem', textAlign: 'center' }}
+				onClick={() => {
+					if (editing) {
+						if (valueParsed === undefined) {
+							return;
+						}
+
+						setValue(valueParsed);
 						setEditing(false);
 					} else {
 						setEditing(true);

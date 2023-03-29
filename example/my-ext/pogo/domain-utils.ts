@@ -19,6 +19,7 @@ export type Pokemon = z.infer<typeof Pokemon>;
 export const Pokemon = z.object({
 	id: z.string(),
 	pokemonId: z.number(),
+	name: z.string().optional(),
 	lastMega: z.string(),
 	megaCount: z.number(),
 });

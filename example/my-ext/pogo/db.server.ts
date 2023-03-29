@@ -82,8 +82,10 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 		db.pokemon[id] = {
 			id,
 			pokemonId,
-			lastMega: new Date().toISOString(),
 			megaCount: 0,
+
+			// This causes some strange behavior but... it's probably fine.
+			lastMega: new Date().toISOString(),
 		};
 	});
 
@@ -169,6 +171,17 @@ export async function deletePokemonRpc({ id }: { id: string }) {
 	await withDb((db) => {
 		// rome-ignore lint/performance/noDelete: fucking idiot rule
 		delete db.pokemon[id];
+	});
+
+	return {};
+}
+
+export async function setNameRpc({ id, name }: { id: string; name: string }) {
+	await withDb((db) => {
+		const mon = db.pokemon[id];
+		if (!mon) return;
+
+		mon.name = name;
 	});
 
 	return {};
