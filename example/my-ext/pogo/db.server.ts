@@ -5,29 +5,12 @@ import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
 import { onAppStart } from '@robinplatform/toolkit/daemon';
-import { megaLevelFromCount } from './domain-utils';
-
-export type Species = z.infer<typeof Species>;
-export const Species = z.object({
-	number: z.number(),
-	name: z.string(),
-
-	megaEnergyAvailable: z.number(),
-	initialMegaCost: z.number(),
-	megaLevel1Cost: z.number(),
-	megaLevel2Cost: z.number(),
-	megaLevel3Cost: z.number(),
-
-	megaType: z.array(z.string()),
-});
-
-export type Pokemon = z.infer<typeof Pokemon>;
-export const Pokemon = z.object({
-	id: z.string(),
-	pokemonId: z.number(),
-	lastMega: z.string(),
-	megaCount: z.number(),
-});
+import {
+	megaCostForSpecies,
+	megaLevelFromCount,
+	Pokemon,
+	Species,
+} from './domain-utils';
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
@@ -116,21 +99,11 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		if (!pokemon || !dexEntry) return;
 
 		const megaLevel = megaLevelFromCount(pokemon.megaCount);
-		let megaCost = 0;
-		switch (megaLevel) {
-			case 0:
-				megaCost = dexEntry.initialMegaCost;
-				break;
-			case 1:
-				megaCost = dexEntry.megaLevel1Cost;
-				break;
-			case 2:
-				megaCost = dexEntry.megaLevel2Cost;
-				break;
-			case 3:
-				megaCost = dexEntry.megaLevel3Cost;
-				break;
-		}
+		const megaCost = megaCostForSpecies(
+			dexEntry,
+			megaLevel,
+			new Date().getTime() - new Date(pokemon.lastMega).getTime(),
+		);
 
 		const prevEnergy = dexEntry.megaEnergyAvailable;
 		dexEntry.megaEnergyAvailable = Math.max(0, prevEnergy - megaCost);

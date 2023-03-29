@@ -7,18 +7,21 @@ import {
 	addPokemonRpc,
 	evolvePokemonRpc,
 	fetchDb,
-	Pokemon,
 	setPokemonEvolveTimeRpc,
 	setPokemonMegaCountRpc,
+	setPokemonMegaEnergyRpc,
 } from './db.server';
 import {
+	megaCostForSpecies,
 	megaLevelFromCount,
 	MegaRequirements,
 	MegaWaitTime,
+	Pokemon,
 	TypeColors,
 	TypeTextColors,
 } from './domain-utils';
 import { CountdownTimer } from './CountdownTimer';
+import { EditableInt } from './EditableField';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
@@ -69,6 +72,10 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 		evolvePokemonRpc,
 		{ onSuccess: () => refreshDb() },
 	);
+	const { mutate: setEnergy, isLoading: setEneryLoading } = useRpcMutation(
+		setPokemonMegaEnergyRpc,
+		{ onSuccess: () => refreshDb() },
+	);
 
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {
@@ -110,7 +117,7 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					{!!pokemon.megaCount && (
 						<CountdownTimer
 							doneText="now"
-							disableEditing={setMegaCountLoading}
+							disableEditing={setMegaEvolveTimeLoading}
 							setDeadline={(deadline) =>
 								setMegaEvolveTime({
 									id: pokemon.id,
@@ -130,45 +137,62 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 				</div>
 
 				<div className={'row'}>
-					<button onClick={() => megaEvolve({ id: pokemon.id })}>
-						Evolve!
+					<button
+						disabled={megaEvolveLoading}
+						onClick={() => megaEvolve({ id: pokemon.id })}
+					>
+						Evolve for{' '}
+						{megaCostForSpecies(
+							dexEntry,
+							megaLevel,
+							new Date().getTime() - new Date(pokemon.lastMega).getTime(),
+						)}
 					</button>
 				</div>
 			</div>
 
-			<div>
-				<div className={'row'}>
-					<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
-						<p>Mega Level: {megaLevel}</p>
-						{megaLevel < 3 && (
-							<p>
-								{pokemon.megaCount} done,{' '}
-								{MegaRequirements[megaLevel + 1] - pokemon.megaCount} to level{' '}
-								{megaLevel + 1}
-							</p>
-						)}
-					</div>
-
-					<div className={'row'}>
-						<button
-							disabled={setMegaCountLoading}
-							onClick={() =>
-								setMegaCount({ id: pokemon.id, count: pokemon.megaCount + 1 })
-							}
-						>
-							+
-						</button>
-
-						<button
-							disabled={setMegaCountLoading}
-							onClick={() =>
-								setMegaCount({ id: pokemon.id, count: pokemon.megaCount - 1 })
-							}
-						>
-							-
-						</button>
-					</div>
+			<div className={'row'}>
+				<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
+					<p>Mega Level: {megaLevel}</p>
+					{megaLevel < 3 && (
+						<p>
+							{pokemon.megaCount} done,{' '}
+							{MegaRequirements[megaLevel + 1] - pokemon.megaCount} to level{' '}
+							{megaLevel + 1}
+						</p>
+					)}
 				</div>
+
+				<div className={'row'}>
+					<button
+						disabled={setMegaCountLoading}
+						onClick={() =>
+							setMegaCount({ id: pokemon.id, count: pokemon.megaCount + 1 })
+						}
+					>
+						+
+					</button>
+
+					<button
+						disabled={setMegaCountLoading}
+						onClick={() =>
+							setMegaCount({ id: pokemon.id, count: pokemon.megaCount - 1 })
+						}
+					>
+						-
+					</button>
+				</div>
+			</div>
+
+			<div className={'row'} style={{ gap: '0.5rem' }}>
+				Mega Energy:{' '}
+				<EditableInt
+					disabled={setEneryLoading}
+					value={dexEntry.megaEnergyAvailable}
+					setValue={(value) =>
+						setEnergy({ pokemonId: dexEntry.number, megaEnergy: value })
+					}
+				/>
 			</div>
 		</div>
 	);
@@ -178,7 +202,6 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 // PoGo community.
 export function Pogo() {
 	const { data: db, refetch: refetchDb } = useRpcQuery(fetchDb, {});
-	const { data: events } = useRpcQuery(getUpcomingCommDays, {});
 	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc, {
 		onSuccess: () => refetchDb(),
 	});

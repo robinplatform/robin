@@ -1,3 +1,28 @@
+import { z } from 'zod';
+import { lerp } from './math';
+
+export type Species = z.infer<typeof Species>;
+export const Species = z.object({
+	number: z.number(),
+	name: z.string(),
+
+	megaEnergyAvailable: z.number(),
+	initialMegaCost: z.number(),
+	megaLevel1Cost: z.number(),
+	megaLevel2Cost: z.number(),
+	megaLevel3Cost: z.number(),
+
+	megaType: z.array(z.string()),
+});
+
+export type Pokemon = z.infer<typeof Pokemon>;
+export const Pokemon = z.object({
+	id: z.string(),
+	pokemonId: z.number(),
+	lastMega: z.string(),
+	megaCount: z.number(),
+});
+
 export const TypeColors: Record<string, string> = {
 	normal: 'gray',
 	steel: 'darkslategray',
@@ -78,4 +103,34 @@ export function nextMegaDeadline(count: number, lastMega: Date): Date {
 	date.setTime(date.getTime() + offset);
 
 	return date;
+}
+
+export function megaCostForSpecies(
+	dexEntry: Species,
+	megaLevel: 0 | 1 | 2 | 3,
+	timeSinceLastMega: number,
+): number {
+	if (megaLevel === 0) {
+		return dexEntry.initialMegaCost;
+	}
+
+	let megaCost = 0;
+	switch (megaLevel) {
+		case 1:
+			megaCost = dexEntry.megaLevel1Cost;
+			break;
+		case 2:
+			megaCost = dexEntry.megaLevel2Cost;
+			break;
+		case 3:
+			megaCost = dexEntry.megaLevel3Cost;
+			break;
+	}
+
+	const megaCostProrated = lerp(
+		0,
+		megaCost,
+		Math.min(1, Math.max(0, 1 - timeSinceLastMega / MegaWaitTime[megaLevel])),
+	);
+	return Math.ceil(megaCostProrated);
 }
