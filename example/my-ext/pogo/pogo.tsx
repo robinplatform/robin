@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCurrentPage } from './components/SelectPage';
-import { PokemonManager } from './PokemonManager';
+import { PokemonManager } from './pages/pokemon/PokemonManager';
 
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
