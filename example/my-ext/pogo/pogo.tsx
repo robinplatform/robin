@@ -1,10 +1,11 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { getUpcomingCommDays, refreshDexRpc } from './pogo.server';
+import { refreshDexRpc } from './pogo.server';
 import { ScrollWindow } from './ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
 import {
 	addPokemonRpc,
+	deletePokemonRpc,
 	evolvePokemonRpc,
 	fetchDb,
 	setPokemonEvolveTimeRpc,
@@ -17,10 +18,11 @@ import {
 	MegaRequirements,
 	MegaWaitTime,
 	Pokemon,
+	Species,
 	TypeColors,
 	TypeTextColors,
 } from './domain-utils';
-import { CountdownTimer } from './CountdownTimer';
+import { CountdownTimer, useCurrentSecond } from './CountdownTimer';
 import { EditableInt } from './EditableField';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
@@ -62,20 +64,49 @@ function SelectPokemon({
 	);
 }
 
+function EvolvePokemonButton({
+	dexEntry,
+	pokemon,
+	refreshDb,
+}: {
+	dexEntry: Species;
+	pokemon: Pokemon;
+	refreshDb: () => void;
+}) {
+	const { now } = useCurrentSecond();
+	const megaLevel = megaLevelFromCount(pokemon.megaCount);
+	const megaCost = megaCostForSpecies(
+		dexEntry,
+		megaLevel,
+		now.getTime() - new Date(pokemon.lastMega).getTime(),
+	);
+	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
+		evolvePokemonRpc,
+		{ onSuccess: () => refreshDb() },
+	);
+
+	return (
+		<button
+			disabled={megaEvolveLoading || megaCost > dexEntry.megaEnergyAvailable}
+			onClick={() => megaEvolve({ id: pokemon.id })}
+		>
+			Evolve for {megaCost}
+		</button>
+	);
+}
+
 function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDb, {});
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
 		useRpcMutation(setPokemonMegaCountRpc, { onSuccess: () => refreshDb() });
 	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
 		useRpcMutation(setPokemonEvolveTimeRpc, { onSuccess: () => refreshDb() });
-	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
-		evolvePokemonRpc,
-		{ onSuccess: () => refreshDb() },
-	);
 	const { mutate: setEnergy, isLoading: setEneryLoading } = useRpcMutation(
 		setPokemonMegaEnergyRpc,
 		{ onSuccess: () => refreshDb() },
 	);
+	const { mutate: deletePokemon, isLoading: deletePokemonLoading } =
+		useRpcMutation(deletePokemonRpc, { onSuccess: () => refreshDb() });
 
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {
@@ -137,17 +168,11 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 				</div>
 
 				<div className={'row'}>
-					<button
-						disabled={megaEvolveLoading}
-						onClick={() => megaEvolve({ id: pokemon.id })}
-					>
-						Evolve for{' '}
-						{megaCostForSpecies(
-							dexEntry,
-							megaLevel,
-							new Date().getTime() - new Date(pokemon.lastMega).getTime(),
-						)}
-					</button>
+					<EvolvePokemonButton
+						dexEntry={dexEntry}
+						pokemon={pokemon}
+						refreshDb={refreshDb}
+					/>
 				</div>
 			</div>
 
@@ -193,6 +218,15 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						setEnergy({ pokemonId: dexEntry.number, megaEnergy: value })
 					}
 				/>
+			</div>
+
+			<div className={'row'} style={{ justifyContent: 'flex-end' }}>
+				<button
+					disabled={deletePokemonLoading}
+					onClick={() => deletePokemon({ id: pokemon.id })}
+				>
+					Delete
+				</button>
 			</div>
 		</div>
 	);

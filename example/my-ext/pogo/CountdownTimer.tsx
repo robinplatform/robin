@@ -5,7 +5,7 @@ import { create } from 'zustand';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
-const useCurrentSecond = create<{ now: Date }>((set) => {
+export const useCurrentSecond = create<{ now: Date }>((set) => {
 	const now = new Date();
 
 	function updateTime() {

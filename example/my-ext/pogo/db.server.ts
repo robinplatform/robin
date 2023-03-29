@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import * as fs from 'fs';
-import _, { last } from 'lodash';
 import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
@@ -161,6 +160,15 @@ export async function setPokemonMegaEnergyRpc({
 		if (!dexEntry) return;
 
 		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);
+	});
+
+	return {};
+}
+
+export async function deletePokemonRpc({ id }: { id: string }) {
+	await withDb((db) => {
+		// rome-ignore lint/performance/noDelete: fucking idiot rule
+		delete db.pokemon[id];
 	});
 
 	return {};
