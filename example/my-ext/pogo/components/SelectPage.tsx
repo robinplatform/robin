@@ -10,7 +10,7 @@ export const useCurrentPage = create<{
 }>((set, get) => {
 	return {
 		setPage: (a) => set({ page: a }),
-		page: 'pokemon',
+		page: 'planner',
 	};
 });
 
