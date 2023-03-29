@@ -5,13 +5,14 @@ import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
 import { onAppStart } from '@robinplatform/toolkit/daemon';
+import { megaLevelFromCount } from './domain-utils';
 
 export type Species = z.infer<typeof Species>;
 export const Species = z.object({
 	number: z.number(),
 	name: z.string(),
-	megaEnergyAvailable: z.number(),
 
+	megaEnergyAvailable: z.number(),
 	initialMegaCost: z.number(),
 	megaLevel1Cost: z.number(),
 	megaLevel2Cost: z.number(),
@@ -107,25 +108,69 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 	return {};
 }
 
-export async function setPokemonMegaCountRpc({
+export async function evolvePokemonRpc({ id }: { id: string }) {
+	await withDb((db) => {
+		const pokemon = db.pokemon[id];
+		const dexEntry = db.pokedex[pokemon.pokemonId];
+		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
+		if (!pokemon || !dexEntry) return;
+
+		const megaLevel = megaLevelFromCount(pokemon.megaCount);
+		let megaCost = 0;
+		switch (megaLevel) {
+			case 0:
+				megaCost = dexEntry.initialMegaCost;
+				break;
+			case 1:
+				megaCost = dexEntry.megaLevel1Cost;
+				break;
+			case 2:
+				megaCost = dexEntry.megaLevel2Cost;
+				break;
+			case 3:
+				megaCost = dexEntry.megaLevel3Cost;
+				break;
+		}
+
+		const prevEnergy = dexEntry.megaEnergyAvailable;
+		dexEntry.megaEnergyAvailable = Math.max(0, prevEnergy - megaCost);
+
+		pokemon.megaCount = Math.min(pokemon.megaCount + 1, 30);
+		pokemon.lastMega = new Date().toISOString();
+	});
+
+	return {};
+}
+
+export async function setPokemonEvolveTimeRpc({
 	id,
-	count,
 	lastMega,
 }: {
 	id: string;
-	count: number;
-	lastMega?: string;
+	lastMega: string;
 }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
-		if (!pokemon) {
-			return;
-		}
+		if (!pokemon) return;
+
+		pokemon.lastMega = lastMega;
+	});
+
+	return {};
+}
+
+export async function setPokemonMegaCountRpc({
+	id,
+	count,
+}: {
+	id: string;
+	count: number;
+}) {
+	await withDb((db) => {
+		const pokemon = db.pokemon[id];
+		if (!pokemon) return;
 
 		pokemon.megaCount = Math.min(Math.max(count, 0), 30);
-		if (lastMega) {
-			pokemon.lastMega = lastMega;
-		}
 	});
 
 	return {};
@@ -140,9 +185,7 @@ export async function setPokemonMegaEnergyRpc({
 }) {
 	await withDb((db) => {
 		const dexEntry = db.pokedex[pokemonId];
-		if (!dexEntry) {
-			return;
-		}
+		if (!dexEntry) return;
 
 		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);
 	});

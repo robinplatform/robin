@@ -5,8 +5,10 @@ import { ScrollWindow } from './ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
 import {
 	addPokemonRpc,
+	evolvePokemonRpc,
 	fetchDb,
 	Pokemon,
+	setPokemonEvolveTimeRpc,
 	setPokemonMegaCountRpc,
 } from './db.server';
 import {
@@ -60,9 +62,13 @@ function SelectPokemon({
 function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDb, {});
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
-		useRpcMutation(setPokemonMegaCountRpc, {
-			onSuccess: () => refreshDb(),
-		});
+		useRpcMutation(setPokemonMegaCountRpc, { onSuccess: () => refreshDb() });
+	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
+		useRpcMutation(setPokemonEvolveTimeRpc, { onSuccess: () => refreshDb() });
+	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
+		evolvePokemonRpc,
+		{ onSuccess: () => refreshDb() },
+	);
 
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {
@@ -106,9 +112,8 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 							doneText="now"
 							disableEditing={setMegaCountLoading}
 							setDeadline={(deadline) =>
-								setMegaCount({
+								setMegaEvolveTime({
 									id: pokemon.id,
-									count: pokemon.megaCount,
 									lastMega: new Date(
 										deadline.getTime() - MegaWaitTime[megaLevel],
 									).toISOString(),
@@ -125,15 +130,7 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 				</div>
 
 				<div className={'row'}>
-					<button
-						onClick={() =>
-							setMegaCount({
-								id: pokemon.id,
-								count: pokemon.megaCount + 1,
-								lastMega: new Date().toISOString(),
-							})
-						}
-					>
+					<button onClick={() => megaEvolve({ id: pokemon.id })}>
 						Evolve!
 					</button>
 				</div>
