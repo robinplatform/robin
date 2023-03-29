@@ -18,7 +18,6 @@ const PogoDb = z.object({
 	currentMega: z
 		.object({
 			id: z.string(),
-			startedAt: z.string(),
 		})
 		.optional(),
 });
@@ -140,7 +139,6 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 
 		db.currentMega = {
 			id,
-			startedAt: now.toISOString(),
 		};
 	});
 
@@ -212,10 +210,10 @@ export async function deletePokemonRpc({ id }: { id: string }) {
 
 export async function setNameRpc({ id, name }: { id: string; name: string }) {
 	await withDb((db) => {
-		const mon = db.pokemon[id];
-		if (!mon) return;
+		const pokemon = db.pokemon[id];
+		if (!pokemon) return;
 
-		mon.name = name;
+		pokemon.name = name;
 	});
 
 	return {};
