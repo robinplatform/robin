@@ -9,7 +9,7 @@ import {
 	megaLevelFromCount,
 	Pokemon,
 	Species,
-} from './domain-utils';
+} from '../domain-utils';
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({

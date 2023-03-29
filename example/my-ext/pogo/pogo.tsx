@@ -1,7 +1,7 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { refreshDexRpc, searchPokemonRpc } from './pogo.server';
-import { ScrollWindow } from './ScrollWindow';
+import { refreshDexRpc, searchPokemonRpc } from './server/pogo.server';
+import { ScrollWindow } from './components/ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
 import {
 	addPokemonRpc,
@@ -12,7 +12,7 @@ import {
 	setPokemonEvolveTimeRpc,
 	setPokemonMegaCountRpc,
 	setPokemonMegaEnergyRpc,
-} from './db.server';
+} from './server/db.server';
 import {
 	megaCostForSpecies,
 	megaLevelFromCount,
@@ -23,8 +23,8 @@ import {
 	TypeColors,
 	TypeTextColors,
 } from './domain-utils';
-import { CountdownTimer, useCurrentSecond } from './CountdownTimer';
-import { EditField } from './EditableField';
+import { CountdownTimer, useCurrentSecond } from './components/CountdownTimer';
+import { EditField } from './components/EditableField';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
