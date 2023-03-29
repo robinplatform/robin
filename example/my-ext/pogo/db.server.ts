@@ -15,6 +15,12 @@ export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
+	currentMega: z
+		.object({
+			id: z.string(),
+			startedAt: z.string(),
+		})
+		.optional(),
 });
 
 const EmptyDb: PogoDb = {
@@ -102,6 +108,7 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
 		const dexEntry = db.pokedex[pokemon.pokemonId];
+
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
 		if (!pokemon || !dexEntry) return;
 
@@ -120,8 +127,21 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		const now = new Date();
 		pokemon.lastMegaStart = now.toISOString();
 
-		now.setTime(now.getTime() + 8 * 60 * 60 * 1000);
-		pokemon.lastMegaEnd = now.toISOString();
+		const eightHoursFromNow = new Date(now);
+		eightHoursFromNow.setTime(now.getTime() + 8 * 60 * 60 * 1000);
+		pokemon.lastMegaEnd = eightHoursFromNow.toISOString();
+
+		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
+		if (currentMega) {
+			currentMega.lastMegaEnd = new Date(
+				Math.min(now.getTime(), new Date(currentMega.lastMegaEnd).getTime()),
+			).toISOString();
+		}
+
+		db.currentMega = {
+			id,
+			startedAt: now.toISOString(),
+		};
 	});
 
 	return {};
