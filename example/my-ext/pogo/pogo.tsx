@@ -319,10 +319,13 @@ function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	);
 }
 
+const Sorts = ['name', 'pokemonId', 'megaTime'] as const;
+
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
 export function Pogo() {
-	const [sort, setSort] = React.useState<'name' | 'pokemonId'>('name');
+	const [sortIndex, setSortIndex] = React.useState<number>(0);
+	const sort = Sorts[sortIndex] ?? 'name';
 	const { data: pokemon, refetch: refetchQuery } = useRpcQuery(
 		searchPokemonRpc,
 		{ sort },
@@ -346,9 +349,7 @@ export function Pogo() {
 				)}
 				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
 				<button
-					onClick={() =>
-						setSort((prev) => (prev === 'name' ? 'pokemonId' : 'name'))
-					}
+					onClick={() => setSortIndex((prev) => (prev + 1) % Sorts.length)}
 				>
 					Sort is {sort}
 				</button>

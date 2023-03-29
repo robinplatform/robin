@@ -3,7 +3,7 @@ import _ from 'lodash';
 import fetch from 'node-fetch';
 import { getDB, withDb } from './db.server';
 import { getMegaPokemon } from './pogoapi.server';
-import { Species } from '../domain-utils';
+import { nextMegaDeadline, Species } from '../domain-utils';
 
 // Going to start by making a mega evolution planner.
 
@@ -118,11 +118,12 @@ export async function refreshDexRpc() {
 export async function searchPokemonRpc({
 	sort,
 }: {
-	sort: 'name' | 'pokemonId';
+	sort: 'name' | 'pokemonId' | 'megaTime';
 }) {
 	const db = await getDB();
 
 	const out = Object.values(db.pokemon);
+	const now = new Date();
 	switch (sort) {
 		case 'name':
 			out.sort((a, b) => {
@@ -137,6 +138,19 @@ export async function searchPokemonRpc({
 				return a.pokemonId - b.pokemonId;
 			});
 			break;
+		case 'megaTime':
+			out.sort((a, b) => {
+				const aDeadline = nextMegaDeadline(
+					a.megaCount,
+					new Date(a.lastMegaEnd),
+				).getTime();
+				const bDeadline = nextMegaDeadline(
+					b.megaCount,
+					new Date(b.lastMegaEnd),
+				).getTime();
+
+				return aDeadline - bDeadline;
+			});
 	}
 
 	return out.map((pokemon) => pokemon.id);
