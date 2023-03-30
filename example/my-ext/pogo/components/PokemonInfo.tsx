@@ -45,8 +45,10 @@ function EvolvePokemonButton({
 
 	return (
 		<div className={'row'} style={{ gap: '0.5rem' }}>
-			{new Date(pokemon.lastMegaStart).toDateString() === now.toDateString() &&
-				megaLevel !== 3 && (
+			{megaLevel !== 0 &&
+				megaLevel !== 3 &&
+				new Date(pokemon.lastMegaStart).toDateString() ===
+					now.toDateString() && (
 					<p style={{ color: 'red', fontWeight: 'bold' }}>
 						Can't level up again today!
 					</p>

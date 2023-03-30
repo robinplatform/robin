@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import React from 'react';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
-const PageTypes = ['pokemon', 'planner'] as const;
+const PageTypes = ['pokemon', 'planner', 'tables'] as const;
 type PageType = typeof PageTypes[number];
 export const useCurrentPage = create<{
 	page: PageType;
@@ -10,7 +10,7 @@ export const useCurrentPage = create<{
 }>((set, get) => {
 	return {
 		setPage: (a) => set({ page: a }),
-		page: 'planner',
+		page: 'tables',
 	};
 });
 

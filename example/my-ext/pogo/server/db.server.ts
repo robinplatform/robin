@@ -11,6 +11,7 @@ import {
 	Pokemon,
 	Species,
 } from '../domain-utils';
+import { HOUR_MS } from '../math';
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
@@ -131,7 +132,7 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 
 		const prevMegaStart = new Date(pokemon.lastMegaStart);
 
-		const eightHoursFromNow = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+		const eightHoursFromNow = new Date(now.getTime() + 8 * HOUR_MS);
 
 		pokemon.lastMegaStart = now.toISOString();
 		pokemon.lastMegaEnd = eightHoursFromNow.toISOString();
@@ -169,7 +170,7 @@ export async function setPokemonMegaEndRpc({
 		const newMegaDate = new Date(newMegaEnd);
 
 		const newMegaDateEightHoursBefore = new Date(
-			newMegaDate.getTime() - 8 * 60 * 60 * 1000,
+			newMegaDate.getTime() - 8 * HOUR_MS,
 		);
 
 		const lastMegaStartDate = new Date(pokemon.lastMegaStart);

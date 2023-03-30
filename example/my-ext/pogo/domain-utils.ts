@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { lerp } from './math';
+import { DAY_MS, lerp } from './math';
 
 export type Species = z.infer<typeof Species>;
 export const Species = z.object({
@@ -80,9 +80,9 @@ export const MegaWaitDays = {
 } as const;
 
 export const MegaWaitTime = {
-	1: 7 * 24 * 60 * 60 * 1000,
-	2: 5 * 24 * 60 * 60 * 1000,
-	3: 3 * 24 * 60 * 60 * 1000,
+	1: 7 * DAY_MS,
+	2: 5 * DAY_MS,
+	3: 3 * DAY_MS,
 } as const;
 
 export function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
@@ -131,10 +131,18 @@ export function megaCostForSpecies(
 			break;
 	}
 
+	return megaCostForTime(megaCost, MegaWaitTime[megaLevel], timeSinceLastMega);
+}
+
+export function megaCostForTime(
+	megaCost: number,
+	waitTime: number,
+	timeSinceLastMega: number,
+) {
 	const megaCostProrated = lerp(
 		0,
 		megaCost,
-		Math.min(1, Math.max(0, 1 - timeSinceLastMega / MegaWaitTime[megaLevel])),
+		Math.min(1, Math.max(0, 1 - timeSinceLastMega / waitTime)),
 	);
 	return Math.ceil(megaCostProrated);
 }

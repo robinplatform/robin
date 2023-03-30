@@ -6,6 +6,7 @@ import '@robinplatform/toolkit/styles.css';
 import { addPokemonRpc, fetchDbRpc } from '../server/db.server';
 import { PokemonInfo } from '../components/PokemonInfo';
 import { SelectPage } from '../components/SelectPage';
+import { useSelectOption } from '../components/EditableField';
 
 // TODO: planner for upcoming events
 // TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
@@ -17,20 +18,17 @@ function SelectPokemon({
 	submit: (data: { pokemonId: number }) => unknown;
 	buttonText: string;
 }) {
-	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const [selected, setSelected] = React.useState<number>(NaN);
+	const { data: { pokedex = {} } = {} } = useRpcQuery(fetchDbRpc, {});
+	const { selected, ...selectMon } = useSelectOption(pokedex);
 
 	return (
 		<div className={'row robin-gap'}>
-			<select
-				value={`${selected}`}
-				onChange={(evt) => setSelected(Number.parseInt(evt.target.value))}
-			>
+			<select {...selectMon}>
 				<option>---</option>
 
-				{Object.entries(db?.pokedex ?? {}).map(([id, dexEntry]) => {
+				{Object.entries(pokedex).map(([id, dexEntry]) => {
 					return (
-						<option key={id} value={dexEntry.number}>
+						<option key={id} value={id}>
 							{dexEntry.name}
 						</option>
 					);
@@ -38,8 +36,8 @@ function SelectPokemon({
 			</select>
 
 			<button
-				disabled={Number.isNaN(selected)}
-				onClick={() => submit({ pokemonId: selected })}
+				disabled={!selected}
+				onClick={() => selected && submit({ pokemonId: selected.number })}
 			>
 				{buttonText}
 			</button>
