@@ -69,8 +69,6 @@ function DayBox({ children }: { children: React.ReactNode }) {
 				position: 'relative',
 				height: '1rem',
 				width: '1rem',
-				borderRadius: '1rem',
-				backgroundColor: 'blue',
 			}}
 		>
 			{children}
@@ -89,10 +87,10 @@ export function LevelUpPlanner() {
 
 			<ScrollWindow
 				className={'full'}
+				style={{ background: 'white' }}
 				innerClassName={'col robin-pad'}
 				innerStyle={{
 					alignItems: 'center',
-					background: 'white',
 					gap: '1.5rem',
 				}}
 			>
