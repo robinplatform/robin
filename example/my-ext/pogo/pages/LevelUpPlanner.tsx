@@ -8,5 +8,11 @@ import { HOUR_MS } from '../math';
 import { fetchDbRpc } from '../server/db.server';
 
 export function LevelUpPlanner() {
-	return null;
+	return (
+		<div className={'col full robin-rounded robin-gap robin-pad'}>
+			<div className={'row robin-gap'}>
+				<SelectPage />
+			</div>
+		</div>
+	);
 }
