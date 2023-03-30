@@ -21,7 +21,14 @@ export function Day({ date }: { date: Date }) {
 			<div
 				style={{
 					position: 'absolute',
-					right: '2rem',
+					right: '2.5rem',
+					top: '0',
+					bottom: '0',
+					width: '8rem',
+					display: 'flex',
+					flexDirection: 'column',
+					justifyContent: 'center',
+					textAlign: 'right',
 				}}
 			>
 				{date.toDateString()}
@@ -37,7 +44,11 @@ export function LevelUpPlanner() {
 				<SelectPage />
 			</div>
 
-			<ScrollWindow className={'full'} innerClassName={'col'}>
+			<ScrollWindow
+				className={'full'}
+				innerClassName={'col'}
+				innerStyle={{ alignItems: 'center' }}
+			>
 				<Day date={new Date()} />
 			</ScrollWindow>
 		</div>

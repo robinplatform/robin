@@ -4,7 +4,7 @@ import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
 import { SelectPage } from '../components/SelectPage';
 import { megaCostForTime, MegaWaitDays, MegaWaitTime } from '../domain-utils';
-import { HOUR_MS } from '../math';
+import { arrayOfN, HOUR_MS } from '../math';
 import { fetchDbRpc } from '../server/db.server';
 
 // Should be able to:
@@ -29,7 +29,7 @@ function EnergyCostTable({
 	const waitHours2 = MegaWaitDays[level] * 8;
 	const waitTime = MegaWaitTime[level];
 
-	const slots = Array.from(Array(waitHours2 + 1), (_, i) => {
+	const slots = arrayOfN(waitHours2 + 1).map((i) => {
 		const timeSinceLastMega = i * 3 * HOUR_MS;
 
 		return {
