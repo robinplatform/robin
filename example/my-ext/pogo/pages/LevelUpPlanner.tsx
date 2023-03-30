@@ -7,12 +7,39 @@ import { megaCostForTime, MegaWaitDays, MegaWaitTime } from '../domain-utils';
 import { HOUR_MS } from '../math';
 import { fetchDbRpc } from '../server/db.server';
 
+export function Day({ date }: { date: Date }) {
+	return (
+		<div
+			style={{
+				position: 'relative',
+				height: '2rem',
+				width: '2rem',
+				borderRadius: '2rem',
+				backgroundColor: 'blue',
+			}}
+		>
+			<div
+				style={{
+					position: 'absolute',
+					right: '2rem',
+				}}
+			>
+				{date.toDateString()}
+			</div>
+		</div>
+	);
+}
+
 export function LevelUpPlanner() {
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div className={'row robin-gap'}>
 				<SelectPage />
 			</div>
+
+			<ScrollWindow className={'full'} innerClassName={'col'}>
+				<Day date={new Date()} />
+			</ScrollWindow>
 		</div>
 	);
 }
