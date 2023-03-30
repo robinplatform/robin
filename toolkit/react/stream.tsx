@@ -27,6 +27,9 @@ export function useTopicQuery<State, Output>({
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
 }) {
+	/* TODO: This code is quite bad. I'm not convinced it is correct if e.g. the socket
+	   closes, or if something crashes, and I have not tested it in that situation.
+	*/
 	type StreamState =
 		| { kind: 'empty'; seenMessages: z.infer<typeof PubsubData>[] }
 		| {
