@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { lerp } from './math';
+import { DAY_MS, HOUR_MS, lerp } from './math';
 
 export type Species = z.infer<typeof Species>;
 export const Species = z.object({
@@ -24,6 +24,14 @@ export const Pokemon = z.object({
 	lastMegaEnd: z.string(),
 	megaCount: z.number(),
 });
+
+type PokemonMegaValues = {
+	megaEnergyAvailable: number;
+	megaCost: number;
+	megaCount: number;
+	lastMegaStart: string;
+	lastMegaEnd: string;
+};
 
 export const TypeColors: Record<string, string> = {
 	normal: 'gray',
@@ -80,9 +88,9 @@ export const MegaWaitDays = {
 } as const;
 
 export const MegaWaitTime = {
-	1: 7 * 24 * 60 * 60 * 1000,
-	2: 5 * 24 * 60 * 60 * 1000,
-	3: 3 * 24 * 60 * 60 * 1000,
+	1: 7 * DAY_MS,
+	2: 5 * DAY_MS,
+	3: 3 * DAY_MS,
 } as const;
 
 export function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
@@ -131,10 +139,65 @@ export function megaCostForSpecies(
 			break;
 	}
 
+	return megaCostForTime(megaCost, MegaWaitTime[megaLevel], timeSinceLastMega);
+}
+
+export function megaCostForTime(
+	megaCost: number,
+	waitTime: number,
+	timeSinceLastMega: number,
+) {
 	const megaCostProrated = lerp(
 		0,
 		megaCost,
-		Math.min(1, Math.max(0, 1 - timeSinceLastMega / MegaWaitTime[megaLevel])),
+		Math.min(1, Math.max(0, 1 - timeSinceLastMega / waitTime)),
 	);
 	return Math.ceil(megaCostProrated);
+}
+
+export function isCurrentMega(
+	currentMega: string | undefined,
+	pokemon: Pokemon,
+	now: Date,
+) {
+	if (!currentMega) {
+		return false;
+	}
+
+	if (currentMega !== pokemon.id) {
+		return false;
+	}
+
+	if (new Date(pokemon.lastMegaEnd) < now) {
+		return false;
+	}
+
+	return true;
+}
+
+export function computeEvolve(
+	now: Date,
+	pokemon: PokemonMegaValues,
+): Omit<PokemonMegaValues, 'megaCost'> {
+	const prevEnergy = pokemon.megaEnergyAvailable;
+	const megaEnergyAvailable = Math.max(0, prevEnergy - pokemon.megaCost);
+
+	const prevMegaStart = new Date(pokemon.lastMegaStart);
+	const eightHoursFromNow = new Date(now.getTime() + 8 * HOUR_MS);
+
+	const lastMegaStart = now.toISOString();
+	const lastMegaEnd = eightHoursFromNow.toISOString();
+
+	// You can only level up once a day
+	let megaCount = pokemon.megaCount;
+	if (prevMegaStart.toDateString() !== now.toDateString()) {
+		megaCount = Math.min(megaCount + 1, 30);
+	}
+
+	return {
+		megaEnergyAvailable,
+		megaCount,
+		lastMegaStart,
+		lastMegaEnd,
+	};
 }

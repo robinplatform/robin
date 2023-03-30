@@ -2,58 +2,6 @@ import React from 'react';
 import '@robinplatform/toolkit/styles.css';
 import './timer.scss';
 
-export function EditableString({
-	value,
-	setValue,
-	disabled,
-}: {
-	disabled?: boolean;
-	value: string;
-	setValue: (n: string) => void;
-}) {
-	const [editing, setEditing] = React.useState<boolean>(false);
-	const [valueState, setValueState] = React.useState<string>(value);
-
-	React.useEffect(() => {
-		setValueState(value);
-	}, [value]);
-
-	return (
-		<div
-			className={'row'}
-			style={{
-				height: '1.5rem',
-				gap: '1rem',
-			}}
-		>
-			{editing ? (
-				<input
-					style={{ width: '10rem' }}
-					value={valueState}
-					onChange={(evt) => setValueState(evt.target.value)}
-				/>
-			) : (
-				<p style={{ width: '10rem' }}>{value}</p>
-			)}
-
-			<button
-				disabled={disabled || value === ''}
-				style={{ fontSize: '0.75rem' }}
-				onClick={() => {
-					if (editing) {
-						setValue(valueState);
-						setEditing(false);
-					} else {
-						setEditing(true);
-					}
-				}}
-			>
-				{editing ? 'Done' : 'Edit'}
-			</button>
-		</div>
-	);
-}
-
 type EditFieldProps<T> = {
 	value: T;
 	setValue: (t: T) => void;
@@ -139,4 +87,15 @@ export function EditField<T>({
 			</button>
 		</div>
 	);
+}
+
+export function useSelectOption<T>(options: Partial<Record<number, T>>) {
+	const [selectedIndex, setSelected] = React.useState<number>(NaN);
+
+	return {
+		selected: options[selectedIndex],
+		value: `${selectedIndex}`,
+		onChange: (evt: React.ChangeEvent<HTMLSelectElement>) =>
+			setSelected(Number.parseInt(evt.target.value)),
+	};
 }
