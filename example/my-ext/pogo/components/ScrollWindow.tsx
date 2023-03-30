@@ -40,8 +40,12 @@ export const ScrollWindow = ({
     */
 	return (
 		<div className={className} style={{ ...style, ...wrapper }}>
-			<div className={innerClassName} style={{ ...innerStyle, ...inner }}>
-				{children}
+			<div style={{ ...inner }}>
+				{/* Maybe innerClassName and innerStyle aren't necessary, but I like them as a way to reduce
+					the indentation level of the caller's children */}
+				<div className={innerClassName} style={{ ...innerStyle }}>
+					{children}
+				</div>
 			</div>
 		</div>
 	);
