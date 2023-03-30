@@ -3,6 +3,7 @@ import { useCurrentPage } from './components/SelectPage';
 import { EventPlanner } from './pages/EventPlanner';
 import { PokemonManager } from './pages/PokemonManager';
 import { CostTables } from './pages/CostTables';
+import { LevelUpPlanner } from './pages/LevelUpPlanner';
 
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
@@ -16,5 +17,7 @@ export function Pogo(): JSX.Element {
 			return <EventPlanner />;
 		case 'tables':
 			return <CostTables />;
+		case 'levelup':
+			return <LevelUpPlanner />;
 	}
 }
