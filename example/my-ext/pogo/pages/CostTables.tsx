@@ -138,7 +138,7 @@ const TableRows: { megaCost: number; level: 1 | 2 | 3 }[] = [
 	{ megaCost: 20, level: 3 },
 ];
 
-export function Tables() {
+export function CostTables() {
 	const { data: { pokedex = {} } = {} } = useRpcQuery(fetchDbRpc, {});
 	const { selected: selectedPokemon, ...selectMon } = useSelectOption(pokedex);
 
