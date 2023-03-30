@@ -98,12 +98,12 @@ export function LevelUpPlanner() {
 			>
 				{days.map((d) => (
 					<DayBox>
+						<DateText date={d} />
 						{d.toDateString() === new Date().toDateString() ? (
 							<BigDot />
 						) : (
 							<SmallDot />
 						)}
-						<DateText date={d} />
 					</DayBox>
 				))}
 			</ScrollWindow>
