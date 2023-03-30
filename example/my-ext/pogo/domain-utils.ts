@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DAY_MS, lerp } from './math';
+import { DAY_MS, HOUR_MS, lerp } from './math';
 
 export type Species = z.infer<typeof Species>;
 export const Species = z.object({
@@ -24,6 +24,14 @@ export const Pokemon = z.object({
 	lastMegaEnd: z.string(),
 	megaCount: z.number(),
 });
+
+type PokemonMegaValues = {
+	megaEnergyAvailable: number;
+	megaCost: number;
+	megaCount: number;
+	lastMegaStart: string;
+	lastMegaEnd: string;
+};
 
 export const TypeColors: Record<string, string> = {
 	normal: 'gray',
@@ -165,4 +173,31 @@ export function isCurrentMega(
 	}
 
 	return true;
+}
+
+export function computeEvolve(
+	now: Date,
+	pokemon: PokemonMegaValues,
+): Omit<PokemonMegaValues, 'megaCost'> {
+	const prevEnergy = pokemon.megaEnergyAvailable;
+	const megaEnergyAvailable = Math.max(0, prevEnergy - pokemon.megaCost);
+
+	const prevMegaStart = new Date(pokemon.lastMegaStart);
+	const eightHoursFromNow = new Date(now.getTime() + 8 * HOUR_MS);
+
+	const lastMegaStart = now.toISOString();
+	const lastMegaEnd = eightHoursFromNow.toISOString();
+
+	// You can only level up once a day
+	let megaCount = pokemon.megaCount;
+	if (prevMegaStart.toDateString() !== now.toDateString()) {
+		megaCount = Math.min(megaCount + 1, 30);
+	}
+
+	return {
+		megaEnergyAvailable,
+		megaCount,
+		lastMegaStart,
+		lastMegaEnd,
+	};
 }

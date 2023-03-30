@@ -5,6 +5,7 @@ import produce from 'immer';
 import * as os from 'os';
 import { onAppStart } from '@robinplatform/toolkit/daemon';
 import {
+	computeEvolve,
 	isCurrentMega,
 	megaCostForSpecies,
 	megaLevelFromCount,
@@ -127,29 +128,28 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 			new Date().getTime() - new Date(pokemon.lastMegaEnd).getTime(),
 		);
 
-		const prevEnergy = dexEntry.megaEnergyAvailable;
-		dexEntry.megaEnergyAvailable = Math.max(0, prevEnergy - megaCost);
+		const nextData = computeEvolve(now, {
+			megaCost,
+			megaCount: pokemon.megaCount,
+			megaEnergyAvailable: dexEntry.megaEnergyAvailable,
+			lastMegaStart: pokemon.lastMegaStart,
+			lastMegaEnd: pokemon.lastMegaEnd,
+		});
 
-		const prevMegaStart = new Date(pokemon.lastMegaStart);
-
-		const eightHoursFromNow = new Date(now.getTime() + 8 * HOUR_MS);
-
-		pokemon.lastMegaStart = now.toISOString();
-		pokemon.lastMegaEnd = eightHoursFromNow.toISOString();
+		dexEntry.megaEnergyAvailable = nextData.megaEnergyAvailable;
+		pokemon.lastMegaStart = nextData.lastMegaStart;
+		pokemon.lastMegaEnd = nextData.lastMegaEnd;
+		pokemon.megaCount = nextData.megaCount;
 
 		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
 		if (currentMega) {
+			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
 			currentMega.lastMegaEnd = new Date(
-				Math.min(now.getTime(), eightHoursFromNow.getTime()),
+				Math.min(now.getTime(), prevMegaEnd.getTime()),
 			).toISOString();
 		}
 
 		db.currentMega = { id };
-
-		// You can only level up once a day
-		if (prevMegaStart.toDateString() !== now.toDateString()) {
-			pokemon.megaCount = Math.min(pokemon.megaCount + 1, 30);
-		}
 	});
 
 	return {};

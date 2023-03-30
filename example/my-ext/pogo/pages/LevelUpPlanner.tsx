@@ -79,9 +79,7 @@ function DayBox({ children }: { children: React.ReactNode }) {
 }
 
 export function LevelUpPlanner() {
-	const days = arrayOfN(10).map(
-		(i) => new Date(Date.now() + DAY_MS + i * DAY_MS),
-	);
+	const days = arrayOfN(10).map((i) => new Date(Date.now() + (i - 4) * DAY_MS));
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
@@ -92,21 +90,22 @@ export function LevelUpPlanner() {
 			<ScrollWindow
 				className={'full'}
 				innerClassName={'col robin-pad'}
-				innerStyle={{ alignItems: 'center', background: 'white', gap: '2rem' }}
+				innerStyle={{
+					alignItems: 'center',
+					background: 'white',
+					gap: '1.5rem',
+				}}
 			>
-				<DayBox>
-					<BigDot />
-					<DateText date={new Date()} />
-				</DayBox>
-
-				{days.map((d) => {
-					return (
-						<DayBox>
+				{days.map((d) => (
+					<DayBox>
+						{d.toDateString() === new Date().toDateString() ? (
+							<BigDot />
+						) : (
 							<SmallDot />
-							<DateText date={d} />
-						</DayBox>
-					);
-				})}
+						)}
+						<DateText date={d} />
+					</DayBox>
+				))}
 			</ScrollWindow>
 		</div>
 	);
