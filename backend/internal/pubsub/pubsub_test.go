@@ -52,7 +52,13 @@ func RunSubscriberMessages[T comparable](registry *Registry, topicId TopicId, co
 				failChannel <- fmt.Errorf("read too many messages")
 				return
 			}
-			if msg != messages[index] {
+
+			if msg.MessageId != int32(index) {
+				failChannel <- fmt.Errorf("skipped a message")
+				return
+			}
+
+			if msg.Data != messages[index] {
 				failChannel <- fmt.Errorf("read the wrong message")
 				return
 			}

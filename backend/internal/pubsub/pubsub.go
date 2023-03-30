@@ -42,6 +42,11 @@ func (topic TopicId) String() string {
 	return (identity.Id)(topic).String()
 }
 
+type Message[T any] struct {
+	MessageId int32 `json:"messageId"` // The counter value when this message was sent
+	Data      T     `json:"data"`      // The data associated with this message
+}
+
 type Topic[T any] struct {
 	// `id` is only set at creation time and isn't written to afterwards.
 	Id TopicId
@@ -52,22 +57,23 @@ type Topic[T any] struct {
 	// `subscribers` and `closed` fields.
 	m sync.Mutex
 
+	counter     int32
 	closed      bool
-	subscribers []chan T
+	subscribers []chan Message[T]
 }
 
 type anyTopic interface {
 	addAnySubscriber() (Subscription[any], error)
 	isClosed() bool
-	getInfo() TopicInfo
+	GetInfo() TopicInfo
 }
 
 type Subscription[T any] struct {
-	Out         <-chan T
+	Out         <-chan Message[T]
 	Unsubscribe func()
 }
 
-func (topic *Topic[T]) addSubscriber() (chan T, error) {
+func (topic *Topic[T]) addSubscriber() (chan Message[T], error) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -75,7 +81,7 @@ func (topic *Topic[T]) addSubscriber() (chan T, error) {
 		return nil, fmt.Errorf("%w: %s", ErrTopicClosed, topic.Id.String())
 	}
 
-	sub := make(chan T, 4)
+	sub := make(chan Message[T], 4)
 	topic.subscribers = append(topic.subscribers, sub)
 
 	if topic.metaChannel != nil {
@@ -98,7 +104,7 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 		return Subscription[any]{}, err
 	}
 
-	anyChannel := make(chan any)
+	anyChannel := make(chan Message[any])
 	go func() {
 		for {
 			val, ok := <-channel
@@ -107,7 +113,10 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 				return
 			}
 
-			anyChannel <- val
+			anyChannel <- Message[any]{
+				MessageId: val.MessageId,
+				Data:      val.Data,
+			}
 		}
 	}()
 
@@ -126,7 +135,7 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 	return sub, nil
 }
 
-func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
+func (topic *Topic[T]) removeSubscriber(sub <-chan Message[T]) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -155,12 +164,13 @@ func (topic *Topic[T]) removeSubscriber(sub <-chan T) {
 	}
 }
 
-func (topic *Topic[_]) getInfo() TopicInfo {
+func (topic *Topic[_]) GetInfo() TopicInfo {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
 	return TopicInfo{
 		Id:              topic.Id,
+		Counter:         topic.counter,
 		Closed:          topic.closed,
 		SubscriberCount: len(topic.subscribers),
 	}
@@ -182,8 +192,13 @@ func (topic *Topic[T]) Publish(message T) {
 	}
 
 	for _, sub := range topic.subscribers {
-		sub <- message
+		sub <- Message[T]{
+			MessageId: topic.counter,
+			Data:      message,
+		}
 	}
+
+	topic.counter += 1
 }
 
 func (topic *Topic[_]) Close() {
@@ -344,17 +359,29 @@ func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 type TopicInfo struct {
 	Id              TopicId `json:"id"`
 	Closed          bool    `json:"closed"`
+	Counter         int32   `json:"counter"`
 	SubscriberCount int     `json:"subscriberCount"`
 }
 
-func (r *Registry) GetTopicInfo() map[string]TopicInfo {
+type RegistryTopicInfo struct {
+	Counter int32                `json:"counter"`
+	Info    map[string]TopicInfo `json:"info"`
+}
+
+func (r *Registry) GetTopicInfo() RegistryTopicInfo {
 	r.m.Lock()
 	defer r.m.Unlock()
 
-	out := make(map[string]TopicInfo, len(r.topics))
+	out := RegistryTopicInfo{
+		Info: make(map[string]TopicInfo, len(r.topics)),
+	}
+
+	if t, ok := r.topics[MetaTopic.String()]; ok {
+		out.Counter = t.GetInfo().Counter
+	}
 
 	for key, topic := range r.topics {
-		out[key] = topic.getInfo()
+		out.Info[key] = topic.GetInfo()
 	}
 
 	return out

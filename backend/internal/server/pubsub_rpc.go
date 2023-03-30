@@ -7,9 +7,9 @@ import (
 type GetTopicsInput struct {
 }
 
-var GetTopics = AppsRpcMethod[GetTopicsInput, map[string]pubsub.TopicInfo]{
+var GetTopics = AppsRpcMethod[GetTopicsInput, pubsub.RegistryTopicInfo]{
 	Name: "GetTopics",
-	Run: func(req RpcRequest[GetTopicsInput]) (map[string]pubsub.TopicInfo, *HttpError) {
+	Run: func(req RpcRequest[GetTopicsInput]) (pubsub.RegistryTopicInfo, *HttpError) {
 		names := pubsub.Topics.GetTopicInfo()
 		return names, nil
 	},

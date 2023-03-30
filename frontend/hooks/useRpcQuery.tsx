@@ -8,18 +8,34 @@ import { z } from 'zod';
 import axios from 'axios';
 import React from 'react';
 
+type RpcQueryParams<R> = {
+	pathPrefix?: string;
+	method: string;
+	data: unknown;
+	result: z.Schema<R>;
+};
+
+export async function runRpcQuery<R>({
+	method,
+	data,
+	result,
+	pathPrefix = '/api/internal/rpc',
+}: RpcQueryParams<R>) {
+	const { data: resultData } = await axios.post(
+		`${pathPrefix}/${method}`,
+		data,
+	);
+	return result.parse(resultData);
+}
+
 export function useRpcQuery<R>({
 	method,
 	data,
 	result,
 	pathPrefix = '/api/internal/rpc',
 	...options
-}: Omit<UseQueryOptions<R, unknown, R, [string, unknown]>, 'queryKey'> & {
-	pathPrefix?: string;
-	method: string;
-	data: unknown;
-	result: z.Schema<R>;
-}) {
+}: Omit<UseQueryOptions<R, unknown, R, [string, unknown]>, 'queryKey'> &
+	RpcQueryParams<R>) {
 	return useQuery<R, unknown, R, [string, unknown]>({
 		onError: (err) => console.log(`Error in method ${method}`, err),
 
@@ -29,11 +45,12 @@ export function useRpcQuery<R>({
 			const rpcMethodName = queryKey[0] as string;
 			const rpcMethodData = queryKey[1] as unknown;
 
-			const { data } = await axios.post(
-				`${pathPrefix}/${rpcMethodName}`,
-				rpcMethodData,
-			);
-			return result.parse(data);
+			return runRpcQuery({
+				method: rpcMethodName,
+				data: rpcMethodData,
+				result,
+				pathPrefix,
+			});
 		},
 	});
 }
