@@ -46,6 +46,14 @@ export function useTopicQuery<State, Output>({
 		skip: skip || !topicId,
 		initialState: { kind: 'empty', seenMessages: [] },
 		onConnection: () => {
+			// This needs to run AFTER the connection completes so that there's no messages
+			// dropped after the state is fetched. If we did this the other way around,
+			// we might connect slowly and fetch state fast, and drop a message by the time
+			// we get the state, causing a mismatch between what we *should* have and what we do have.
+			//
+			// On an unrelated note, I don't have much confidence that the underlying stream is properly implemented,
+			// and so in theory it is enough to just run this after the connection finishes but I can't
+			// say for certain that this code works correctly in all edge cases.
 			fetchState().then((data) =>
 				rawDispatch({
 					kind: 'state',
