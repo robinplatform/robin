@@ -3,7 +3,7 @@ import React from 'react';
 import { z } from 'zod';
 import { runRpcQuery, useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { useStreamMethod, useTopicQuery } from '../../toolkit/react/stream';
+import { useTopicQuery } from '../../toolkit/react/stream';
 import { ScrollWindow } from '../components/ScrollWindow';
 
 // This is a temporary bit of code to just display what's in the processes DB

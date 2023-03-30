@@ -12,6 +12,8 @@ const PubsubData = z.object({
 	data: z.unknown(),
 });
 
+// Subscribe to a topic and track the messages received in relation
+// to state.
 export function useTopicQuery<State, Output>({
 	topicId,
 	fetchState,
