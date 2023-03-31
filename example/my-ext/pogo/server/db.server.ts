@@ -14,6 +14,32 @@ import {
 } from '../domain-utils';
 import { HOUR_MS } from '../math';
 
+class Mutex {
+	private lastLockWaiter = Promise.resolve();
+
+	// Uses an implicit chain of promises and control flow stuffs. IDK if I like it, but it is VERY short.
+	// https://stackoverflow.com/questions/51086688/mutex-in-javascript-does-this-look-like-a-correct-implementation
+	async lock(): Promise<() => void> {
+		const waitFor = this.lastLockWaiter;
+
+		let unlock: () => void;
+		this.lastLockWaiter = new Promise((res) => {
+			unlock = () => res();
+		});
+
+		return waitFor.then((r) => unlock);
+	}
+
+	async withLock<T>(f: () => Promise<T>): Promise<T> {
+		const unlock = await this.lock();
+		try {
+			return await f();
+		} finally {
+			unlock();
+		}
+	}
+}
+
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
@@ -31,6 +57,7 @@ const EmptyDb: PogoDb = {
 };
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
+let DBLock = new Mutex();
 let DB: PogoDb = EmptyDb;
 
 onAppStart(async () => {
