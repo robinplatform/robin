@@ -3,12 +3,63 @@ import React from 'react';
 import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
 import { SelectPage } from '../components/SelectPage';
-import { megaCostForTime, MegaWaitDays, MegaWaitTime } from '../domain-utils';
-import { arrayOfN, DAY_MS, HOUR_MS } from '../math';
+import {
+	computeEvolve,
+	nextMegaDeadline,
+	Pokemon,
+	PokemonMegaValues,
+	Species,
+} from '../domain-utils';
+import { arrayOfN, DAY_MS } from '../math';
 import { fetchDbRpc } from '../server/db.server';
 
 // Include cancel or not
 // Specify locks/planned actions
+
+// iterate forwards over lock points,
+// iterate backwards in time from each lock point
+// at the last lock point, iterate forwards in time
+
+type MegaEvolveEvent = PokemonMegaValues & {
+	date: Date;
+};
+
+// TODO: move this to server
+function naiveFreeMegaEvolve(
+	now: Date,
+	dexEntry: Species,
+	pokemon: Pick<Pokemon, 'lastMegaEnd' | 'lastMegaStart' | 'megaCount'>,
+): MegaEvolveEvent[] {
+	let { megaCount, lastMegaEnd, lastMegaStart } = pokemon;
+	const out: MegaEvolveEvent[] = [];
+
+	let currentState = { megaCount, lastMegaEnd, lastMegaStart };
+	while (currentState.megaCount < 30) {
+		const deadline = nextMegaDeadline(
+			currentState.megaCount,
+			new Date(currentState.lastMegaEnd),
+		);
+
+		// Move time forwards until the deadline; however, if the deadline is in the past,
+		// because its been a while since the last mega, don't accidentally go back in time.
+		now = new Date(Math.max(now.getTime(), deadline.getTime()));
+
+		const newState = computeEvolve(now, dexEntry, currentState);
+
+		out.push({
+			date: now,
+			...newState,
+		});
+
+		currentState = {
+			megaCount: newState.megaCount,
+			lastMegaEnd: newState.lastMegaEnd,
+			lastMegaStart: newState.lastMegaStart,
+		};
+	}
+
+	return out;
+}
 
 function DateText({ date }: { date: Date }) {
 	return (
@@ -18,7 +69,7 @@ function DateText({ date }: { date: Date }) {
 				right: '2rem',
 				top: '0',
 				bottom: '0',
-				width: '8rem',
+				width: '10rem',
 				display: 'flex',
 				flexDirection: 'column',
 				justifyContent: 'center',
@@ -26,6 +77,22 @@ function DateText({ date }: { date: Date }) {
 			}}
 		>
 			{date.toDateString()}
+		</div>
+	);
+}
+
+function EventText({ event }: { event: MegaEvolveEvent }) {
+	return (
+		<div
+			style={{
+				position: 'absolute',
+				left: '2rem',
+				top: '0',
+				bottom: '0',
+				width: '12rem',
+			}}
+		>
+			Evolve for {event.megaEnergySpent} to level up
 		</div>
 	);
 }
@@ -77,12 +144,61 @@ function DayBox({ children }: { children: React.ReactNode }) {
 }
 
 export function LevelUpPlanner() {
-	const days = arrayOfN(10).map((i) => new Date(Date.now() + (i - 4) * DAY_MS));
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
+	const pokemon = React.useMemo(
+		() => Object.values(db?.pokemon ?? {}),
+		[db?.pokemon],
+	);
+	const { selected, ...selectMon } = useSelectOption(pokemon);
+
+	const dexEntry = selected ? db?.pokedex?.[selected.pokemonId] : undefined;
+	const days = React.useMemo(() => {
+		// rome-ignore lint/complexity/useSimplifiedLogicExpression: shut up
+		if (!selected || !dexEntry) {
+			return undefined;
+		}
+
+		const now = new Date();
+
+		const events = naiveFreeMegaEvolve(now, dexEntry, selected);
+		if (events.length === 0) {
+			return undefined;
+		}
+
+		const timeToLastEvent =
+			events[events.length - 1].date.getTime() - now.getTime();
+		const daysToDisplay = Math.ceil(timeToLastEvent / DAY_MS) + 4;
+
+		return arrayOfN(daysToDisplay)
+			.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
+			.map((date) => {
+				const eventsToday = events.filter(
+					(e) => e.date.toDateString() === date.toDateString(),
+				);
+
+				return {
+					date,
+					eventsToday,
+				};
+			});
+	}, [selected, dexEntry]);
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div className={'row robin-gap'}>
 				<SelectPage />
+
+				<select {...selectMon}>
+					<option>Select a pokemon...</option>
+
+					{pokemon.map((mon, index) => (
+						<option key={mon.id} value={index}>
+							{mon.name
+								? `${mon.name} (${db?.pokedex?.[mon.pokemonId]?.name})`
+								: db?.pokedex?.[mon.pokemonId]?.name}
+						</option>
+					))}
+				</select>
 			</div>
 
 			<ScrollWindow
@@ -94,14 +210,19 @@ export function LevelUpPlanner() {
 					gap: '1.5rem',
 				}}
 			>
-				{days.map((d) => (
+				{days?.map(({ date, eventsToday }) => (
 					<DayBox>
-						<DateText date={d} />
-						{d.toDateString() === new Date().toDateString() ? (
+						<DateText date={date} />
+
+						{date.toDateString() === new Date().toDateString() ? (
 							<BigDot />
 						) : (
 							<SmallDot />
 						)}
+
+						{eventsToday.map((e) => (
+							<EventText event={e} />
+						))}
 					</DayBox>
 				))}
 			</ScrollWindow>

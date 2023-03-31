@@ -138,22 +138,13 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 			return;
 		}
 
-		const megaLevel = megaLevelFromCount(pokemon.megaCount);
-		const megaCost = megaCostForSpecies(
-			dexEntry,
-			megaLevel,
-			new Date().getTime() - new Date(pokemon.lastMegaEnd).getTime(),
+		const nextData = computeEvolve(now, dexEntry, pokemon);
+
+		dexEntry.megaEnergyAvailable -= Math.min(
+			dexEntry.megaEnergyAvailable,
+			nextData.megaEnergySpent,
 		);
 
-		const nextData = computeEvolve(now, {
-			megaCost,
-			megaCount: pokemon.megaCount,
-			megaEnergyAvailable: dexEntry.megaEnergyAvailable,
-			lastMegaStart: pokemon.lastMegaStart,
-			lastMegaEnd: pokemon.lastMegaEnd,
-		});
-
-		dexEntry.megaEnergyAvailable = nextData.megaEnergyAvailable;
 		pokemon.lastMegaStart = nextData.lastMegaStart;
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
