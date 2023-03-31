@@ -30,7 +30,7 @@ function EvolvePokemonButton({
 	dexEntry: Species;
 	pokemon: Pokemon;
 }) {
-	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDbRpc, {});
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const { now } = useCurrentSecond();
 	const megaLevel = megaLevelFromCount(pokemon.megaCount);
 	const megaCost = megaCostForSpecies(
@@ -38,10 +38,8 @@ function EvolvePokemonButton({
 		megaLevel,
 		now.getTime() - new Date(pokemon.lastMegaEnd ?? 0).getTime(),
 	);
-	const { mutate: megaEvolve, isLoading: megaEvolveLoading } = useRpcMutation(
-		evolvePokemonRpc,
-		{ onSuccess: () => refreshDb() },
-	);
+	const { mutate: megaEvolve, isLoading: megaEvolveLoading } =
+		useRpcMutation(evolvePokemonRpc);
 
 	return (
 		<div className={'row'} style={{ gap: '0.5rem' }}>
@@ -79,21 +77,18 @@ function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 }
 
 export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
-	const { data: db, refetch: refreshDb } = useRpcQuery(fetchDbRpc, {});
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
-		useRpcMutation(setPokemonMegaCountRpc, { onSuccess: () => refreshDb() });
+		useRpcMutation(setPokemonMegaCountRpc);
 	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
-		useRpcMutation(setPokemonMegaEndRpc, { onSuccess: () => refreshDb() });
+		useRpcMutation(setPokemonMegaEndRpc);
 	const { mutate: setEnergy, isLoading: setEneryLoading } = useRpcMutation(
 		setPokemonMegaEnergyRpc,
-		{ onSuccess: () => refreshDb() },
 	);
 	const { mutate: deletePokemon, isLoading: deletePokemonLoading } =
-		useRpcMutation(deletePokemonRpc, { onSuccess: () => refreshDb() });
-	const { mutate: setName, isLoading: setNameLoading } = useRpcMutation(
-		setNameRpc,
-		{ onSuccess: () => refreshDb() },
-	);
+		useRpcMutation(deletePokemonRpc);
+	const { mutate: setName, isLoading: setNameLoading } =
+		useRpcMutation(setNameRpc);
 
 	const dexEntry = db?.pokedex[pokemon.pokemonId];
 	if (!dexEntry) {

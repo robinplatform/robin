@@ -1,9 +1,9 @@
 import Head from 'next/head';
 import React from 'react';
 import { z } from 'zod';
-import { useRpcQuery } from '../hooks/useRpcQuery';
+import { runRpcQuery, useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { useStreamMethod } from '../../toolkit/react/stream';
+import { useTopicQuery } from '../../toolkit/react/stream';
 import { ScrollWindow } from '../components/ScrollWindow';
 
 // This is a temporary bit of code to just display what's in the processes DB
@@ -75,10 +75,6 @@ const TopicInfo = z.object({
 type MetaTopicInfo = z.infer<typeof MetaTopicInfo>;
 const MetaTopicInfo = z.discriminatedUnion('kind', [
 	z.object({
-		kind: z.literal('replace'),
-		data: z.record(z.string(), TopicInfo),
-	}),
-	z.object({
 		kind: z.literal('update'),
 		data: TopicInfo,
 	}),
@@ -93,20 +89,24 @@ function Topics() {
 		TopicInfo & { key: string }
 	>();
 
-	const { state: topics, dispatch } = useStreamMethod({
-		methodName: 'SubscribeTopic',
+	const { state: topics } = useTopicQuery({
 		resultType: MetaTopicInfo,
-		data: {
-			id: {
-				category: '/topics',
-				key: 'meta',
-			},
+		topicId: {
+			category: '/topics',
+			key: 'meta',
 		},
-		initialState: {} as Record<string, TopicInfo>,
+		fetchState: () =>
+			runRpcQuery({
+				method: 'GetTopics',
+				data: {},
+				result: z.object({
+					counter: z.number(),
+					info: z.record(z.string(), TopicInfo),
+				}),
+				pathPrefix: '/api/apps/rpc',
+			}).then(({ counter, info }) => ({ counter, state: info })),
 		reducer: (prev, packet) => {
 			switch (packet.kind) {
-				case 'replace':
-					return packet.data;
 				case 'update':
 					return {
 						...prev,
@@ -124,29 +124,14 @@ function Topics() {
 		},
 	});
 
-	useRpcQuery({
-		method: 'GetTopics',
-		data: {},
-		result: z.record(z.string(), TopicInfo),
-		pathPrefix: '/api/apps/rpc',
-		onSuccess: (data) =>
-			dispatch({
-				kind: 'replace',
-				data,
-			}),
-	});
-
-	const { state: topicMessages } = useStreamMethod<
+	const { state: topicMessages } = useTopicQuery<
 		Record<string, string[]>,
 		unknown
 	>({
-		methodName: 'SubscribeTopic',
 		resultType: z.unknown(),
 		skip: !selectedTopic?.id,
-		data: {
-			id: selectedTopic?.id,
-		},
-		initialState: {},
+		topicId: selectedTopic?.id,
+		fetchState: async () => ({ state: {}, counter: 0 }),
 		reducer: (prev, packet) => {
 			if (!selectedTopic) {
 				return prev;
@@ -211,7 +196,7 @@ function Topics() {
 				)}
 
 				<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>
-					{topicMessages[selectedTopic?.key ?? '']?.map((msg, idx) => (
+					{topicMessages?.[selectedTopic?.key ?? '']?.map((msg, idx) => (
 						<div key={`${msg} ${idx}`} style={{ wordBreak: 'break-word' }}>
 							{msg}
 						</div>

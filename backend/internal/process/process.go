@@ -44,7 +44,7 @@ type ProcessConfig struct {
 }
 
 func (m *ProcessManager) getLogFilePath(id ProcessId) string {
-	processLogsPath := filepath.Join(m.processLogsFolderPath, id.Category+"-"+id.Key+".log")
+	processLogsPath := filepath.Join(m.processLogsFolderPath, filepath.FromSlash(id.Category), id.Key+".log")
 	return processLogsPath
 }
 

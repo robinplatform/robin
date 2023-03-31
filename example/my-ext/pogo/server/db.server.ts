@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
-import { onAppStart } from '@robinplatform/toolkit/daemon';
+import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
@@ -13,6 +13,32 @@ import {
 	Species,
 } from '../domain-utils';
 import { HOUR_MS } from '../math';
+
+class Mutex {
+	private lastLockWaiter = Promise.resolve();
+
+	// Uses an implicit chain of promises and control flow stuffs. IDK if I like it, but it is VERY short.
+	// https://stackoverflow.com/questions/51086688/mutex-in-javascript-does-this-look-like-a-correct-implementation
+	async lock(): Promise<() => void> {
+		const waitFor = this.lastLockWaiter;
+
+		let unlock: () => void;
+		this.lastLockWaiter = new Promise((res) => {
+			unlock = () => res();
+		});
+
+		return waitFor.then((r) => unlock);
+	}
+
+	async withLock<T>(f: () => Promise<T>): Promise<T> {
+		const unlock = await this.lock();
+		try {
+			return await f();
+		} finally {
+			unlock();
+		}
+	}
+}
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
@@ -31,6 +57,7 @@ const EmptyDb: PogoDb = {
 };
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
+let DBLock = new Mutex();
 let DB: PogoDb = EmptyDb;
 
 onAppStart(async () => {
@@ -45,43 +72,33 @@ onAppStart(async () => {
 	}
 });
 
-let dbAccessActive = false;
-let dbDirty = false;
-const mutexQueue: ((u: unknown) => void)[] = [];
+let dbModifiedTopic = undefined as unknown as Topic<{}>;
+
+onAppStart(async () => {
+	dbModifiedTopic = await Topic.createTopic(['pogo'], 'db');
+});
 
 export async function withDb(mut: (db: PogoDb) => void) {
-	if (dbAccessActive) {
-		await new Promise((res) => mutexQueue.push(res));
-	} else {
-		dbAccessActive = true;
-	}
+	return await DBLock.withLock(async () => {
+		const newDb = produce(DB, mut);
+		if (newDb !== DB) {
+			console.log('DB access caused mutation');
 
-	const newDb = produce(DB, mut);
+			// TODO: don't do this on literally every write. Maybe do it once a second.
+			await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
 
-	if (newDb !== DB) {
-		console.log('DB access caused mutation');
-		dbDirty = true;
-		DB = newDb;
-	}
+			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
+			DB = newDb;
+		}
 
-	const waiter = mutexQueue.shift();
-	if (waiter) {
-		waiter(null);
 		return newDb;
-	}
-
-	if (dbDirty) {
-		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
-		dbDirty = false;
-	}
-
-	dbAccessActive = false;
-
-	return newDb;
+	});
 }
 
 export async function fetchDbRpc() {
-	return DB;
+	return await DBLock.withLock(async () => {
+		return DB;
+	});
 }
 
 export function getDB() {
