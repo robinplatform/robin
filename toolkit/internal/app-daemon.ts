@@ -69,7 +69,7 @@ async function handleRequest(
 		}
 
 		const result = await method(data);
-		res.end(JSON.stringify({ type: 'success', result }));
+		res.end(JSON.stringify(result));
 	} catch (err) {
 		if (!res.headersSent) {
 			res.writeHead(500, { 'Content-Type': 'application/json' });

@@ -13,8 +13,8 @@ type Id struct {
 	// user generated input should be escaped first.
 	//
 	// The following path formats are currently used:
-	// - /app/{project}/{app-id} - the category for an app's spawned processes
-	// - /app/{project} - the category for a project's spawned apps
+	// - /app/{app-id} - the category for an app's spawned processes
+	// - /app - the category for the current project's spawned apps
 	// - /logs/{app-category} - logs for an app with a certain category
 	// - /topics - meta category for information about topics
 	Category string `json:"category"`
