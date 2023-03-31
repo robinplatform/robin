@@ -55,27 +55,11 @@ export function PokemonManager() {
 		searchPokemonRpc,
 		{ sort },
 	);
-	const { data: db, refetch: refetchDb } = useRpcQuery(fetchDbRpc, {});
-	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc, {
-		onSuccess: () => refetchDb(),
-	});
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
+	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc);
 	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {
 		onSuccess: () => {
 			refetchQuery();
-			refetchDb();
-		},
-	});
-
-	const { state } = useTopicQuery({
-		topicId: {
-			category: '/app-topics/my-ext/pogo',
-			key: 'db',
-		},
-		resultType: z.object({}),
-		fetchState: () => Promise.resolve({ state: 0, counter: 0 }),
-		reducer: (a, b) => {
-			console.log('DB mutation', b);
-			return a;
 		},
 	});
 
