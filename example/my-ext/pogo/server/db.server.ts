@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
-import produce from 'immer';
+import produce, { current } from 'immer';
 import * as os from 'os';
 import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
@@ -154,7 +154,7 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		// It might be possible to write this condition a little cleaner, but for now,
 		// this is fine.
 		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega && !isCurrentMega(db.currentMega?.id, currentMega, now)) {
+		if (currentMega && currentMega.id !== pokemon.id) {
 			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
 			currentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),
