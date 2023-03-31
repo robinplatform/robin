@@ -68,7 +68,7 @@ export function PokemonManager() {
 
 	const { state } = useTopicQuery({
 		topicId: {
-			category: '/app-topics/example/my-ext/pogo',
+			category: '/app-topics/my-ext/pogo',
 			key: 'db',
 		},
 		resultType: z.object({}),

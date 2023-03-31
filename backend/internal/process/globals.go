@@ -11,6 +11,8 @@ var Manager *ProcessManager
 
 func init() {
 	robinPath := config.GetRobinPath()
+
+	// TODO: this needs to be isolated by-project
 	manager, err := NewProcessManager(&pubsub.Topics,
 		filepath.Join(robinPath, "logs", "processes"),
 		filepath.Join(

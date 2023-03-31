@@ -5,7 +5,6 @@ import (
 
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
-	"robinplatform.dev/internal/project"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -35,17 +34,11 @@ type CreateTopicInput struct {
 var CreateTopic = AppsRpcMethod[CreateTopicInput, struct{}]{
 	Name: "CreateTopic",
 	Run: func(req RpcRequest[CreateTopicInput]) (struct{}, *HttpError) {
-		projectName, err := project.GetProjectName()
-		if err != nil {
-			// This should have been resolved long before.
-			panic(err)
-		}
-
 		if req.Data.AppId == "" {
 			return struct{}{}, Errorf(500, "App ID was an empty string")
 		}
 
-		categoryParts := []string{"app-topics", projectName, req.Data.AppId}
+		categoryParts := []string{"app-topics", req.Data.AppId}
 		categoryParts = append(categoryParts, req.Data.Category...)
 		topicId := pubsub.TopicId{
 			Category: identity.Category(categoryParts...),
@@ -79,17 +72,11 @@ var PublishTopic = AppsRpcMethod[PublishTopicInput, struct{}]{
 			"key":      req.Data.Key,
 		})
 
-		projectName, err := project.GetProjectName()
-		if err != nil {
-			// This should have been resolved long before.
-			panic(err)
-		}
-
 		if req.Data.AppId == "" {
 			return struct{}{}, Errorf(500, "App ID was an empty string")
 		}
 
-		categoryParts := []string{"app-topics", projectName, req.Data.AppId}
+		categoryParts := []string{"app-topics", req.Data.AppId}
 		categoryParts = append(categoryParts, req.Data.Category...)
 		topicId := pubsub.TopicId{
 			Category: identity.Category(categoryParts...),

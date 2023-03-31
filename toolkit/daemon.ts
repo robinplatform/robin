@@ -15,7 +15,7 @@ export class Topic<T> {
 	) {}
 
 	// Creates a topic under the specified category and key, as a subcategory of
-	// `/app-topics/{project}/{app}/`.
+	// `/app-topics/{app}/`.
 	public static async createTopic<T>(
 		category: string,
 		key: string,
