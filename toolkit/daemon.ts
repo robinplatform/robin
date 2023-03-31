@@ -20,9 +20,9 @@ export class Topic<T> {
 		category: string,
 		key: string,
 	): Promise<Topic<T>> {
-		const res = await request({
+		await request({
 			pathname: '/api/apps/rpc/CreateTopic',
-			resultType: z.object({ error: z.unknown().optional() }),
+			resultType: z.object({}),
 			body: {
 				appId: process.env.ROBIN_APP_ID,
 				category,
@@ -30,17 +30,13 @@ export class Topic<T> {
 			},
 		});
 
-		if (res.error) {
-			throw res.error;
-		}
-
 		return new Topic<T>(category, key);
 	}
 
 	async publish(t: T) {
-		const res = await request({
+		await request({
 			pathname: '/api/apps/rpc/PublishToTopic',
-			resultType: z.object({ error: z.unknown().optional() }),
+			resultType: z.object({}),
 			body: {
 				appId: process.env.ROBIN_APP_ID,
 				category: this.category,
@@ -48,9 +44,5 @@ export class Topic<T> {
 				data: t,
 			},
 		});
-
-		if (res.error) {
-			throw res.error;
-		}
 	}
 }

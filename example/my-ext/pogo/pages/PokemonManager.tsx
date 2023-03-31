@@ -1,4 +1,5 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
+import { useTopicQuery } from '@robinplatform/toolkit/react/stream';
 import React from 'react';
 import { refreshDexRpc, searchPokemonRpc } from '../server/pogo.server';
 import { ScrollWindow } from '../components/ScrollWindow';
@@ -7,6 +8,7 @@ import { addPokemonRpc, fetchDbRpc } from '../server/db.server';
 import { PokemonInfo } from '../components/PokemonInfo';
 import { SelectPage } from '../components/SelectPage';
 import { useSelectOption } from '../components/EditableField';
+import { z } from 'zod';
 
 // TODO: planner for upcoming events
 // TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
@@ -61,6 +63,19 @@ export function PokemonManager() {
 		onSuccess: () => {
 			refetchQuery();
 			refetchDb();
+		},
+	});
+
+	const { state } = useTopicQuery({
+		topicId: {
+			category: '/app-topics/example/my-ext/pogo',
+			key: 'db',
+		},
+		resultType: z.object({}),
+		fetchState: () => Promise.resolve({ state: 0, counter: 0 }),
+		reducer: (a, b) => {
+			console.log('DB mutation', b);
+			return a;
 		},
 	});
 

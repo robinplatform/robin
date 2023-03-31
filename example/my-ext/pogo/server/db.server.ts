@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import produce from 'immer';
 import * as os from 'os';
-import { onAppStart } from '@robinplatform/toolkit/daemon';
+import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
@@ -45,6 +45,12 @@ onAppStart(async () => {
 	}
 });
 
+let dbModifiedTopic = undefined as unknown as Topic<{}>;
+
+onAppStart(async () => {
+	dbModifiedTopic = await Topic.createTopic(['pogo'], 'db');
+});
+
 let dbAccessActive = false;
 let dbDirty = false;
 const mutexQueue: ((u: unknown) => void)[] = [];
@@ -72,6 +78,7 @@ export async function withDb(mut: (db: PogoDb) => void) {
 
 	if (dbDirty) {
 		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+		await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
 		dbDirty = false;
 	}
 

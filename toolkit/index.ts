@@ -42,6 +42,10 @@ export async function request<T>({
 		...overrides,
 	});
 
+	if (res.status === 404) {
+		throw new Error(`404 not found: ${targetUrl}`);
+	}
+
 	const resBody = await res.json();
 	if (typeof resBody === 'object' && resBody && resBody.type === 'error') {
 		throw Object.assign(new Error(resBody.error), {

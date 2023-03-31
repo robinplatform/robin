@@ -73,6 +73,8 @@ func (server *Server) loadRpcMethods() {
 	GetAppSettingsById.Register(server)
 	UpdateAppSettings.Register(server)
 	GetTopics.Register(server)
+	CreateTopic.Register(server)
+	PublishTopic.Register(server)
 
 	// Streaming methods
 
