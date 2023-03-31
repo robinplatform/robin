@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';
-import produce, { current } from 'immer';
+import produce from 'immer';
 import * as os from 'os';
 import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
@@ -90,6 +90,14 @@ export async function withDb(mut: (db: PogoDb) => void) {
 		}
 
 		return newDb;
+	});
+}
+
+export async function setDbValueRpc({ db }: { db: PogoDb }) {
+	return await withDb((prev) => {
+		prev.pokedex = db.pokedex;
+		prev.pokemon = db.pokemon;
+		prev.currentMega = db.currentMega;
 	});
 }
 
