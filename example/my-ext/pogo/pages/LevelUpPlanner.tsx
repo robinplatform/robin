@@ -20,6 +20,10 @@ import { fetchDbRpc } from '../server/db.server';
 // iterate backwards in time from each lock point
 // at the last lock point, iterate forwards in time
 
+// TODO: add something to allow for checking the cost of daily level-ups
+// TODO: move the calculations to the server
+// TODO: add data that shows remaining mega energy
+
 type MegaEvolveEvent = PokemonMegaValues & {
 	date: Date;
 };

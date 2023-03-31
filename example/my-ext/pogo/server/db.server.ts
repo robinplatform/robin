@@ -7,8 +7,6 @@ import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
-	megaCostForSpecies,
-	megaLevelFromCount,
 	Pokemon,
 	Species,
 } from '../domain-utils';
@@ -85,7 +83,7 @@ export async function withDb(mut: (db: PogoDb) => void) {
 			console.log('DB access caused mutation');
 
 			// TODO: don't do this on literally every write. Maybe do it once a second.
-			await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+			await fs.promises.writeFile(DB_FILE, JSON.stringify(newDb));
 
 			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
 			DB = newDb;
@@ -149,8 +147,14 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
+		// If there's a pokemon who is set as "currentMega", and their mega evolution is
+		// still active, we should update their mega time. If they're not still active,
+		// we can safely ignore their mega time.
+		//
+		// It might be possible to write this condition a little cleaner, but for now,
+		// this is fine.
 		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega) {
+		if (currentMega && !isCurrentMega(db.currentMega?.id, currentMega, now)) {
 			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
 			currentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),
