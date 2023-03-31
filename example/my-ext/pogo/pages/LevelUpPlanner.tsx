@@ -2,7 +2,11 @@ import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
-import { SelectPage } from '../components/SelectPage';
+import {
+	SelectPage,
+	SelectPokemon,
+	usePageState,
+} from '../components/PageState';
 import {
 	computeEvolve,
 	nextMegaDeadline,
@@ -149,12 +153,10 @@ function DayBox({ children }: { children: React.ReactNode }) {
 
 export function LevelUpPlanner() {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const pokemon = React.useMemo(
-		() => Object.values(db?.pokemon ?? {}),
-		[db?.pokemon],
-	);
-	const { selected, ...selectMon } = useSelectOption(pokemon);
 
+	const { pokemon: selectedMonId } = usePageState();
+
+	const selected = db?.pokemon?.[selectedMonId ?? ''];
 	const dexEntry = selected ? db?.pokedex?.[selected.pokemonId] : undefined;
 	const days = React.useMemo(() => {
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: shut up
@@ -192,17 +194,7 @@ export function LevelUpPlanner() {
 			<div className={'row robin-gap'}>
 				<SelectPage />
 
-				<select {...selectMon}>
-					<option>Select a pokemon...</option>
-
-					{pokemon.map((mon, index) => (
-						<option key={mon.id} value={index}>
-							{mon.name
-								? `${mon.name} (${db?.pokedex?.[mon.pokemonId]?.name})`
-								: db?.pokedex?.[mon.pokemonId]?.name}
-						</option>
-					))}
-				</select>
+				<SelectPokemon />
 			</div>
 
 			<ScrollWindow

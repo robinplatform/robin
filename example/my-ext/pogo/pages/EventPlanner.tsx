@@ -1,7 +1,7 @@
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { ScrollWindow } from '../components/ScrollWindow';
-import { SelectPage } from '../components/SelectPage';
+import { SelectPage } from '../components/PageState';
 import { getUpcomingEventsRpc, PogoEvent } from '../server/leekduck.server';
 
 // Should be able to:

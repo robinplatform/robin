@@ -5,13 +5,13 @@ import { ScrollWindow } from '../components/ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
 import { addPokemonRpc, fetchDbRpc, setDbValueRpc } from '../server/db.server';
 import { PokemonInfo } from '../components/PokemonInfo';
-import { SelectPage } from '../components/SelectPage';
+import { SelectPage } from '../components/PageState';
 import { useSelectOption } from '../components/EditableField';
 
 // TODO: planner for upcoming events
 // TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
 
-function SelectPokemon({
+function SelectSpecies({
 	submit,
 	buttonText,
 }: {
@@ -153,7 +153,7 @@ export function PokemonManager() {
 					className={'robin-rounded robin-pad'}
 					style={{ backgroundColor: 'Gray' }}
 				>
-					<SelectPokemon submit={addPokemon} buttonText={'Add Pokemon'} />
+					<SelectSpecies submit={addPokemon} buttonText={'Add Pokemon'} />
 				</div>
 
 				{!!db &&
