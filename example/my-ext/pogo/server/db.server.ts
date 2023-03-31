@@ -78,44 +78,27 @@ onAppStart(async () => {
 	dbModifiedTopic = await Topic.createTopic(['pogo'], 'db');
 });
 
-let dbAccessActive = false;
-let dbDirty = false;
-const mutexQueue: ((u: unknown) => void)[] = [];
-
 export async function withDb(mut: (db: PogoDb) => void) {
-	if (dbAccessActive) {
-		await new Promise((res) => mutexQueue.push(res));
-	} else {
-		dbAccessActive = true;
-	}
+	return await DBLock.withLock(async () => {
+		const newDb = produce(DB, mut);
+		if (newDb !== DB) {
+			console.log('DB access caused mutation');
 
-	const newDb = produce(DB, mut);
+			// TODO: don't do this on literally every write. Maybe do it once a second.
+			await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
 
-	if (newDb !== DB) {
-		console.log('DB access caused mutation');
-		dbDirty = true;
-		DB = newDb;
-	}
+			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
+			DB = newDb;
+		}
 
-	const waiter = mutexQueue.shift();
-	if (waiter) {
-		waiter(null);
 		return newDb;
-	}
-
-	if (dbDirty) {
-		await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
-		await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
-		dbDirty = false;
-	}
-
-	dbAccessActive = false;
-
-	return newDb;
+	});
 }
 
 export async function fetchDbRpc() {
-	return DB;
+	return await DBLock.withLock(async () => {
+		return DB;
+	});
 }
 
 export function getDB() {
