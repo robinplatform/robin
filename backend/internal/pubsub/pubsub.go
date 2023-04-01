@@ -266,6 +266,15 @@ func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	topic := &Topic[T]{Id: id, metaChannel: r.metaChannel}
 	r.topics[key] = topic
 
+	r.metaChannel <- MetaTopicInfo{
+		Kind: "update",
+		Data: TopicInfo{
+			Id:              topic.Id,
+			Closed:          topic.closed,
+			SubscriberCount: len(topic.subscribers),
+		},
+	}
+
 	return topic, nil
 }
 
