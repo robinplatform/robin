@@ -149,9 +149,9 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
-		// If there's a pokemon who is set as "currentMega", and their mega evolution is
-		// still active, we should update their mega time. If they're not still active,
-		// we can safely ignore their mega time.
+		// If there's a pokemon who is set as "currentMega", and they're not the current
+		// pokemon we're evolving now, we should try to update their mega time; however,
+		// the Math.min prevents any problems with overwriting a stale mega pokemon.
 		//
 		// It might be possible to write this condition a little cleaner, but for now,
 		// this is fine.
