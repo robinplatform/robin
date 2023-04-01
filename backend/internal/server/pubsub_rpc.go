@@ -45,6 +45,13 @@ var CreateTopic = AppsRpcMethod[CreateTopicInput, struct{}]{
 			Key:      req.Data.Key,
 		}
 
+		topic := getTopic(topicId)
+		if topic != nil {
+			// We've already created the topic; since app topics can't be closed right now,
+			// it is easier to simply do this additional hack.
+			return struct{}{}, nil
+		}
+
 		topic, err := pubsub.CreateTopic[any](&pubsub.Topics, topicId)
 		if err != nil {
 			return struct{}{}, Errorf(500, "%s", err.Error())
