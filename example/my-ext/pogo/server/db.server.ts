@@ -11,6 +11,8 @@ import {
 	Species,
 } from '../domain-utils';
 import { HOUR_MS } from '../math';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
 class Mutex {
 	private lastLockWaiter = Promise.resolve();
@@ -49,24 +51,20 @@ const PogoDb = z.object({
 		.optional(),
 });
 
+const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
+const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
 };
-
-const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
-let DBLock = new Mutex();
-let DB: PogoDb = EmptyDb;
+DB.data = EmptyDb;
 
 onAppStart(async () => {
 	try {
-		const text = await fs.promises.readFile(DB_FILE, 'utf8');
-		const data = JSON.parse(text);
-		DB = PogoDb.parse(data);
+		await DB.read();
+		DB.data = PogoDb.parse(DB.data);
 	} catch (e) {
 		console.log('Failed to read from JSON', e);
-		// TODO: better error handling
-		DB = EmptyDb;
 	}
 });
 
@@ -77,20 +75,18 @@ onAppStart(async () => {
 });
 
 export async function withDb(mut: (db: PogoDb) => void) {
-	return await DBLock.withLock(async () => {
-		const newDb = produce(DB, mut);
-		if (newDb !== DB) {
-			console.log('DB access caused mutation');
+	const newDb = produce(DB.data, mut);
+	if (newDb !== DB.data) {
+		console.log('DB access caused mutation');
 
-			// TODO: don't do this on literally every write. Maybe do it once a second.
-			await fs.promises.writeFile(DB_FILE, JSON.stringify(newDb));
+		// TODO: don't do this on literally every write. Maybe do it once a second.
+		await fs.promises.writeFile(DB_FILE, JSON.stringify(newDb));
 
-			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
-			DB = newDb;
-		}
+		await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
+		DB.data = newDb;
+	}
 
-		return newDb;
-	});
+	return newDb;
 }
 
 export async function setDbValueRpc({ db }: { db: PogoDb }) {
@@ -101,14 +97,12 @@ export async function setDbValueRpc({ db }: { db: PogoDb }) {
 	});
 }
 
-export async function fetchDbRpc() {
-	return await DBLock.withLock(async () => {
-		return DB;
-	});
+export async function fetchDbRpc(): Promise<PogoDb> {
+	return DB.data ?? EmptyDb;
 }
 
-export function getDB() {
-	return DB;
+export function getDB(): PogoDb {
+	return DB.data ?? EmptyDb;
 }
 
 export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
