@@ -10,14 +10,14 @@ export async function onAppStart(handler: () => Promise<void>) {
 
 export class Topic<T> {
 	private constructor(
-		private readonly category: string,
+		private readonly category: string[],
 		private readonly key: string,
 	) {}
 
 	// Creates a topic under the specified category and key, as a subcategory of
 	// `/app-topics/{app}/`.
 	public static async createTopic<T>(
-		category: string,
+		category: string[],
 		key: string,
 	): Promise<Topic<T>> {
 		await request({
