@@ -2,7 +2,11 @@ import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
-import { SelectPage } from '../components/SelectPage';
+import {
+	SelectPage,
+	SelectPokemon,
+	usePageState,
+} from '../components/PageState';
 import { megaCostForTime, MegaWaitDays, MegaWaitTime } from '../domain-utils';
 import { arrayOfN, HOUR_MS } from '../math';
 import { fetchDbRpc } from '../server/db.server';
@@ -139,23 +143,17 @@ const TableRows: { megaCost: number; level: 1 | 2 | 3 }[] = [
 ];
 
 export function CostTables() {
-	const { data: { pokedex = {} } = {} } = useRpcQuery(fetchDbRpc, {});
-	const { selected: selectedPokemon, ...selectMon } = useSelectOption(pokedex);
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
+	const { pokemon: selectedMonId } = usePageState();
+	const selectedPokemon =
+		db?.pokedex?.[db.pokemon?.[selectedMonId ?? '']?.pokemonId ?? ''];
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div className={'row robin-gap'}>
 				<SelectPage />
 
-				<select {...selectMon}>
-					<option>Select a Pokemon...</option>
-
-					{Object.entries(pokedex).map(([id, entry]) => (
-						<option key={id} value={id}>
-							{entry.name}
-						</option>
-					))}
-				</select>
+				<SelectPokemon />
 			</div>
 
 			<ScrollWindow

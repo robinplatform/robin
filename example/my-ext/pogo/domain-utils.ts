@@ -25,9 +25,8 @@ export const Pokemon = z.object({
 	megaCount: z.number(),
 });
 
-type PokemonMegaValues = {
-	megaEnergyAvailable: number;
-	megaCost: number;
+export type PokemonMegaValues = {
+	megaEnergySpent: number;
 	megaCount: number;
 	lastMegaStart: string;
 	lastMegaEnd: string;
@@ -82,12 +81,14 @@ export const MegaRequirements = {
 } as const;
 
 export const MegaWaitDays = {
+	0: 0,
 	1: 7,
 	2: 5,
 	3: 3,
 } as const;
 
 export const MegaWaitTime = {
+	0: 0,
 	1: 7 * DAY_MS,
 	2: 5 * DAY_MS,
 	3: 3 * DAY_MS,
@@ -110,11 +111,7 @@ export function megaLevelFromCount(count: number): 0 | 1 | 2 | 3 {
 }
 
 export function nextMegaDeadline(count: number, lastMega: Date): Date {
-	const date = new Date(lastMega);
-	const offset = MegaWaitTime[megaLevelFromCount(count)] ?? 0;
-	date.setTime(date.getTime() + offset);
-
-	return date;
+	return new Date(lastMega.getTime() + MegaWaitTime[megaLevelFromCount(count)]);
 }
 
 export function megaCostForSpecies(
@@ -177,10 +174,15 @@ export function isCurrentMega(
 
 export function computeEvolve(
 	now: Date,
-	pokemon: PokemonMegaValues,
-): Omit<PokemonMegaValues, 'megaCost'> {
-	const prevEnergy = pokemon.megaEnergyAvailable;
-	const megaEnergyAvailable = Math.max(0, prevEnergy - pokemon.megaCost);
+	dexEntry: Species,
+	pokemon: Pick<Pokemon, 'lastMegaEnd' | 'lastMegaStart' | 'megaCount'>,
+): PokemonMegaValues {
+	const megaLevel = megaLevelFromCount(pokemon.megaCount);
+	const megaEnergySpent = megaCostForSpecies(
+		dexEntry,
+		megaLevel,
+		now.getTime() - new Date(pokemon.lastMegaEnd).getTime(),
+	);
 
 	const prevMegaStart = new Date(pokemon.lastMegaStart);
 	const eightHoursFromNow = new Date(now.getTime() + 8 * HOUR_MS);
@@ -195,7 +197,7 @@ export function computeEvolve(
 	}
 
 	return {
-		megaEnergyAvailable,
+		megaEnergySpent,
 		megaCount,
 		lastMegaStart,
 		lastMegaEnd,

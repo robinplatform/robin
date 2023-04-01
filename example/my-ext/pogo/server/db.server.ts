@@ -7,12 +7,12 @@ import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
-	megaCostForSpecies,
-	megaLevelFromCount,
 	Pokemon,
 	Species,
 } from '../domain-utils';
 import { HOUR_MS } from '../math';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
 class Mutex {
 	private lastLockWaiter = Promise.resolve();
@@ -51,24 +51,20 @@ const PogoDb = z.object({
 		.optional(),
 });
 
+const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
+const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
 };
-
-const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
-let DBLock = new Mutex();
-let DB: PogoDb = EmptyDb;
+DB.data = EmptyDb;
 
 onAppStart(async () => {
 	try {
-		const text = await fs.promises.readFile(DB_FILE, 'utf8');
-		const data = JSON.parse(text);
-		DB = PogoDb.parse(data);
+		await DB.read();
+		DB.data = PogoDb.parse(DB.data);
 	} catch (e) {
 		console.log('Failed to read from JSON', e);
-		// TODO: better error handling
-		DB = EmptyDb;
 	}
 });
 
@@ -79,30 +75,34 @@ onAppStart(async () => {
 });
 
 export async function withDb(mut: (db: PogoDb) => void) {
-	return await DBLock.withLock(async () => {
-		const newDb = produce(DB, mut);
-		if (newDb !== DB) {
-			console.log('DB access caused mutation');
+	const newDb = produce(DB.data, mut);
+	if (newDb !== DB.data) {
+		console.log('DB access caused mutation');
 
-			// TODO: don't do this on literally every write. Maybe do it once a second.
-			await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+		// TODO: don't do this on literally every write. Maybe do it once a second.
+		await fs.promises.writeFile(DB_FILE, JSON.stringify(newDb));
 
-			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
-			DB = newDb;
-		}
+		await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
+		DB.data = newDb;
+	}
 
-		return newDb;
+	return newDb;
+}
+
+export async function setDbValueRpc({ db }: { db: PogoDb }) {
+	return await withDb((prev) => {
+		prev.pokedex = db.pokedex;
+		prev.pokemon = db.pokemon;
+		prev.currentMega = db.currentMega;
 	});
 }
 
-export async function fetchDbRpc() {
-	return await DBLock.withLock(async () => {
-		return DB;
-	});
+export async function fetchDbRpc(): Promise<PogoDb> {
+	return DB.data ?? EmptyDb;
 }
 
-export function getDB() {
-	return DB;
+export function getDB(): PogoDb {
+	return DB.data ?? EmptyDb;
 }
 
 export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
@@ -138,28 +138,25 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 			return;
 		}
 
-		const megaLevel = megaLevelFromCount(pokemon.megaCount);
-		const megaCost = megaCostForSpecies(
-			dexEntry,
-			megaLevel,
-			new Date().getTime() - new Date(pokemon.lastMegaEnd).getTime(),
+		const nextData = computeEvolve(now, dexEntry, pokemon);
+
+		dexEntry.megaEnergyAvailable -= Math.min(
+			dexEntry.megaEnergyAvailable,
+			nextData.megaEnergySpent,
 		);
 
-		const nextData = computeEvolve(now, {
-			megaCost,
-			megaCount: pokemon.megaCount,
-			megaEnergyAvailable: dexEntry.megaEnergyAvailable,
-			lastMegaStart: pokemon.lastMegaStart,
-			lastMegaEnd: pokemon.lastMegaEnd,
-		});
-
-		dexEntry.megaEnergyAvailable = nextData.megaEnergyAvailable;
 		pokemon.lastMegaStart = nextData.lastMegaStart;
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
+		// If there's a pokemon who is set as "currentMega", and they're not the current
+		// pokemon we're evolving now, we should try to update their mega time; however,
+		// the Math.min prevents any problems with overwriting a stale mega pokemon.
+		//
+		// It might be possible to write this condition a little cleaner, but for now,
+		// this is fine.
 		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega) {
+		if (currentMega && currentMega.id !== pokemon.id) {
 			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
 			currentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),

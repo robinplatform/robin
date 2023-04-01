@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCurrentPage } from './components/SelectPage';
+import { usePageState } from './components/PageState';
 import { EventPlanner } from './pages/EventPlanner';
 import { PokemonManager } from './pages/PokemonManager';
 import { CostTables } from './pages/CostTables';
@@ -12,7 +12,7 @@ import { useTopicQuery } from '@robinplatform/toolkit/react/stream';
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
 export function Pogo(): JSX.Element {
-	const { page } = useCurrentPage();
+	const { page } = usePageState();
 
 	const { refetch } = useRpcQuery(fetchDbRpc, {});
 	useTopicQuery({
@@ -22,7 +22,7 @@ export function Pogo(): JSX.Element {
 		},
 		resultType: z.object({}),
 		fetchState: () => Promise.resolve({ state: 0, counter: 0 }),
-		reducer: (a, b) => {
+		reducer: (a, _b) => {
 			refetch();
 			return a;
 		},
