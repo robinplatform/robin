@@ -13,7 +13,6 @@ import (
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
-	"robinplatform.dev/internal/pubsub"
 )
 
 var (
@@ -54,8 +53,6 @@ type CompiledApp struct {
 
 	// serverExports maps absolute paths of server files to the functions they export
 	serverExports map[string][]string
-
-	topics map[string]*pubsub.Topic[any]
 }
 
 func (compiler *Compiler) ResetAppCache(id string) {
@@ -91,7 +88,6 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		compiler:         compiler,
 		keepAliveRunning: new(int64),
 		builderMux:       &sync.RWMutex{},
-		topics:           make(map[string]*pubsub.Topic[any]),
 
 		Id:        id,
 		ProcessId: processId,
