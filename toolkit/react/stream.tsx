@@ -64,12 +64,10 @@ export function useTopicQuery<State, Output>({
 		},
 		reducer: (prev: StreamState, packet): StreamState => {
 			if (packet.kind === 'state') {
-				// The >= seems to be required. Sometimes we'll get two fetches in a row,
-				// and the first will cause the saved messages to be applied, only for the
-				// second fetch to arrive. If you use > instead of >=, the second fetch
-				// might overwrite the first, even though the state counter is literally
-				// the same.
-				if (prev.kind === 'state' && prev.counter >= packet.messageId) {
+				// The > allows new state to overwrite if it's up-to-date, but otherwise
+				// prevents fetches of now-stale data from interfering with the state of
+				// the topic.
+				if (prev.kind === 'state' && prev.counter > packet.messageId) {
 					return prev;
 				}
 
