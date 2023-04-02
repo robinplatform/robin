@@ -5,6 +5,7 @@ import {
 	nextMegaDeadline,
 	computeEvolve,
 } from '../domain-utils';
+import { DAY_MS, arrayOfN } from '../math';
 import { getDB } from './db.server';
 
 export type MegaEvolveEvent = PokemonMegaValues & {
@@ -47,11 +48,16 @@ function naiveFreeMegaEvolve(
 	return out;
 }
 
+export type PlannerDay = {
+	date: string;
+	eventsToday: MegaEvolveEvent[];
+};
+
 export async function megaLevelPlanForPokemonRpc({
 	id,
 }: {
 	id: string;
-}): Promise<MegaEvolveEvent[]> {
+}): Promise<PlannerDay[]> {
 	const db = getDB();
 	const pokemon = db.pokemon[id];
 	const dexEntry = db.pokedex[pokemon?.pokemonId ?? -1];
@@ -62,5 +68,22 @@ export async function megaLevelPlanForPokemonRpc({
 	}
 
 	const now = new Date();
-	return naiveFreeMegaEvolve(now, dexEntry, pokemon);
+	const plan = naiveFreeMegaEvolve(now, dexEntry, pokemon);
+
+	const timeToLastEvent =
+		new Date(plan[plan.length - 1].date).getTime() - now.getTime();
+	const daysToDisplay = Math.ceil(timeToLastEvent / DAY_MS) + 4;
+
+	return arrayOfN(daysToDisplay)
+		.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
+		.map((date) => {
+			const eventsToday = plan.filter(
+				(e) => new Date(e.date).toDateString() === date.toDateString(),
+			);
+
+			return {
+				date: date.toISOString(),
+				eventsToday,
+			};
+		});
 }

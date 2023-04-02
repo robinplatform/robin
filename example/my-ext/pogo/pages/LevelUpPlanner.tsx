@@ -1,21 +1,11 @@
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
 import {
 	SelectPage,
 	SelectPokemon,
 	usePageState,
 } from '../components/PageState';
-import {
-	computeEvolve,
-	nextMegaDeadline,
-	Pokemon,
-	PokemonMegaValues,
-	Species,
-} from '../domain-utils';
-import { arrayOfN, DAY_MS } from '../math';
-import { fetchDbRpc } from '../server/db.server';
 import {
 	MegaEvolveEvent,
 	megaLevelPlanForPokemonRpc,
@@ -29,7 +19,6 @@ import {
 // at the last lock point, iterate forwards in time
 
 // TODO: add something to allow for checking the cost of daily level-ups
-// TODO: move the calculations to the server
 // TODO: add data that shows remaining mega energy
 
 function DateText({ date }: { date: Date }) {
@@ -117,34 +106,9 @@ function DayBox({ children }: { children: React.ReactNode }) {
 export function LevelUpPlanner() {
 	const { pokemon: selectedMonId } = usePageState();
 
-	const { data: plan } = useRpcQuery(megaLevelPlanForPokemonRpc, {
+	const { data: days } = useRpcQuery(megaLevelPlanForPokemonRpc, {
 		id: selectedMonId ?? '',
 	});
-
-	const days = React.useMemo(() => {
-		const now = new Date();
-
-		if (!plan || plan.length === 0) {
-			return undefined;
-		}
-
-		const timeToLastEvent =
-			new Date(plan[plan.length - 1].date).getTime() - now.getTime();
-		const daysToDisplay = Math.ceil(timeToLastEvent / DAY_MS) + 4;
-
-		return arrayOfN(daysToDisplay)
-			.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
-			.map((date) => {
-				const eventsToday = plan.filter(
-					(e) => new Date(e.date).toDateString() === date.toDateString(),
-				);
-
-				return {
-					date,
-					eventsToday,
-				};
-			});
-	}, [plan]);
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
@@ -164,10 +128,10 @@ export function LevelUpPlanner() {
 				}}
 			>
 				{days?.map(({ date, eventsToday }) => (
-					<DayBox key={`${date.toISOString()}`}>
-						<DateText date={date} />
+					<DayBox key={date}>
+						<DateText date={new Date(date)} />
 
-						{date.toDateString() === new Date().toDateString() ? (
+						{new Date(date).toDateString() === new Date().toDateString() ? (
 							<BigDot />
 						) : (
 							<SmallDot />
