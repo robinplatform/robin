@@ -1,4 +1,4 @@
-import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
+import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
 import { ScrollWindow } from '../components/ScrollWindow';
 import {
@@ -10,6 +10,7 @@ import {
 	MegaEvolveEvent,
 	megaLevelPlanForPokemonRpc,
 } from '../server/planner.server';
+import { addPlannedEventRpc } from '../server/db.server';
 
 // Include cancel or not
 // Specify locks/planned actions
@@ -103,11 +104,36 @@ function DayBox({ children }: { children: React.ReactNode }) {
 	);
 }
 
+function AddEventButton({
+	pokemonId,
+	date,
+}: {
+	pokemonId: string;
+	date: Date;
+}) {
+	const { mutate: addPlannedEvents } = useRpcMutation(addPlannedEventRpc, {});
+
+	return (
+		<button
+			style={{
+				position: 'absolute',
+				left: '2rem',
+				top: '0',
+			}}
+			onClick={() =>
+				addPlannedEvents({ pokemonId, isoDate: date.toISOString() })
+			}
+		>
+			Mega
+		</button>
+	);
+}
+
 export function LevelUpPlanner() {
-	const { pokemon: selectedMonId } = usePageState();
+	const { pokemon: selectedMonId = '' } = usePageState();
 
 	const { data: days } = useRpcQuery(megaLevelPlanForPokemonRpc, {
-		id: selectedMonId ?? '',
+		id: selectedMonId,
 	});
 
 	return (
@@ -140,6 +166,10 @@ export function LevelUpPlanner() {
 						{eventsToday.map((e, index) => (
 							<EventText key={`${index}`} event={e} />
 						))}
+
+						{eventsToday.length === 0 && (
+							<AddEventButton pokemonId={selectedMonId} date={new Date(date)} />
+						)}
 					</DayBox>
 				))}
 			</ScrollWindow>

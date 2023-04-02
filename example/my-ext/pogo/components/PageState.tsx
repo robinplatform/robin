@@ -4,7 +4,7 @@ import { useSelectOption } from './EditableField';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc } from '../server/db.server';
 
-const DefaultPage = 'pokemon' as const;
+const DefaultPage = 'levelup' as const;
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 const PageTypes = ['pokemon', 'planner', 'tables', 'levelup'] as const;

@@ -5,10 +5,11 @@ import {
 	nextMegaDeadline,
 	computeEvolve,
 } from '../domain-utils';
-import { DAY_MS, arrayOfN } from '../math';
+import { DAY_MS, arrayOfN, dateString } from '../math';
 import { getDB } from './db.server';
 
 export type MegaEvolveEvent = PokemonMegaValues & {
+	id?: string;
 	date: string;
 };
 
@@ -68,18 +69,54 @@ export async function megaLevelPlanForPokemonRpc({
 	}
 
 	const now = new Date();
-	const plan = naiveFreeMegaEvolve(now, dexEntry, pokemon);
+
+	const plans = db.evolvePlans.filter((plan) => {
+		const date = new Date(plan.date);
+		if (dateString(date) < dateString(now)) {
+			return false;
+		}
+
+		return plan.pokemonId === id;
+	});
+
+	plans.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+	let currentState = {
+		date: now,
+		lastMegaEnd: pokemon.lastMegaEnd,
+		lastMegaStart: pokemon.lastMegaStart,
+		megaCount: pokemon.megaCount,
+	};
+	const events: MegaEvolveEvent[] = [];
+	for (const plan of plans) {
+		const planDate = new Date(plan.date);
+
+		const newState = computeEvolve(planDate, dexEntry, currentState);
+		console.log('plan', { plan, newState });
+		events.push({
+			date: plan.date,
+			id: plan.id,
+			...newState,
+		});
+
+		currentState = {
+			...newState,
+			date: new Date(Math.max(planDate.getTime(), currentState.date.getTime())),
+		};
+	}
+
+	events.push(...naiveFreeMegaEvolve(currentState.date, dexEntry, pokemon));
 
 	const timeToLastEvent =
-		plan.length === 0
+		events.length === 0
 			? 0
-			: new Date(plan[plan.length - 1].date).getTime() - now.getTime();
+			: new Date(events[events.length - 1].date).getTime() - now.getTime();
 	const daysToDisplay = Math.max(0, Math.ceil(timeToLastEvent / DAY_MS)) + 4;
 
 	return arrayOfN(daysToDisplay)
 		.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
 		.map((date) => {
-			const eventsToday = plan.filter(
+			const eventsToday = events.filter(
 				(e) => new Date(e.date).toDateString() === date.toDateString(),
 			);
 

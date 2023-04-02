@@ -11,7 +11,7 @@ import {
 	Pokemon,
 	Species,
 } from '../domain-utils';
-import { dateString, HOUR_MS, uuid } from '../math';
+import { HOUR_MS, uuid } from '../math';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 
@@ -19,7 +19,7 @@ export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
-	evolvePlans: z.record(z.string(), z.array(PlannedMega)),
+	evolvePlans: z.array(PlannedMega),
 	mostRecentMega: z.object({ id: z.string() }).optional(),
 });
 
@@ -28,7 +28,7 @@ const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
-	evolvePlans: {},
+	evolvePlans: [],
 };
 DB.data = EmptyDb;
 
@@ -226,7 +226,7 @@ export async function setNameRpc({ id, name }: { id: string; name: string }) {
 	return {};
 }
 
-export async function addPlannedEvent({
+export async function addPlannedEventRpc({
 	pokemonId,
 	isoDate,
 }: {
@@ -240,12 +240,19 @@ export async function addPlannedEvent({
 			return {};
 		}
 
-		const plans = (db.evolvePlans[dateString(date)] ||= []);
-		plans.push({
+		db.evolvePlans.push({
 			id: uuid(pokemonId),
-			date: isoDate,
+			date: date.toISOString(),
 			pokemonId,
 		});
+	});
+
+	return {};
+}
+
+export async function deletePlannedEventRpc({ id }: { id: string }) {
+	withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
 	});
 
 	return {};
