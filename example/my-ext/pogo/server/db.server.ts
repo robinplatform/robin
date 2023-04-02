@@ -14,32 +14,6 @@ import { HOUR_MS } from '../math';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 
-class Mutex {
-	private lastLockWaiter = Promise.resolve();
-
-	// Uses an implicit chain of promises and control flow stuffs. IDK if I like it, but it is VERY short.
-	// https://stackoverflow.com/questions/51086688/mutex-in-javascript-does-this-look-like-a-correct-implementation
-	async lock(): Promise<() => void> {
-		const waitFor = this.lastLockWaiter;
-
-		let unlock: () => void;
-		this.lastLockWaiter = new Promise((res) => {
-			unlock = () => res();
-		});
-
-		return waitFor.then((r) => unlock);
-	}
-
-	async withLock<T>(f: () => Promise<T>): Promise<T> {
-		const unlock = await this.lock();
-		try {
-			return await f();
-		} finally {
-			unlock();
-		}
-	}
-}
-
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
@@ -105,13 +79,13 @@ export function getDB(): PogoDb {
 	return DB.data ?? EmptyDb;
 }
 
-export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
-	const id = `${pokemonId}-${Math.random()}`;
+export async function addPokemonRpc({ pokedexId }: { pokedexId: number }) {
+	const id = `${pokedexId}-${Math.random()}`;
 	const now = new Date().toISOString();
 	await withDb((db) => {
 		db.pokemon[id] = {
 			id,
-			pokemonId,
+			pokedexId,
 			megaCount: 0,
 
 			// This causes some strange behavior but... it's probably fine.
@@ -126,7 +100,7 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 export async function evolvePokemonRpc({ id }: { id: string }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
-		const dexEntry = db.pokedex[pokemon.pokemonId];
+		const dexEntry = db.pokedex[pokemon.pokedexId];
 
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
 		if (!pokemon || !dexEntry) return;
@@ -217,14 +191,14 @@ export async function setPokemonMegaCountRpc({
 }
 
 export async function setPokemonMegaEnergyRpc({
-	pokemonId,
+	pokedexId,
 	megaEnergy,
 }: {
-	pokemonId: number;
+	pokedexId: number;
 	megaEnergy: number;
 }) {
 	await withDb((db) => {
-		const dexEntry = db.pokedex[pokemonId];
+		const dexEntry = db.pokedex[pokedexId];
 		if (!dexEntry) return;
 
 		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);

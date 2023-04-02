@@ -60,8 +60,8 @@ export function SelectPokemon() {
 			{pokemon.map((mon) => (
 				<option key={mon.id} value={mon.id}>
 					{mon.name
-						? `${mon.name} (${db?.pokedex?.[mon.pokemonId]?.name})`
-						: db?.pokedex?.[mon.pokemonId]?.name}
+						? `${mon.name} (${db?.pokedex?.[mon.pokedexId]?.name})`
+						: db?.pokedex?.[mon.pokedexId]?.name}
 				</option>
 			))}
 		</select>

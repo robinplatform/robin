@@ -60,7 +60,7 @@ export async function megaLevelPlanForPokemonRpc({
 }): Promise<PlannerDay[]> {
 	const db = getDB();
 	const pokemon = db.pokemon[id];
-	const dexEntry = db.pokedex[pokemon?.pokemonId ?? -1];
+	const dexEntry = db.pokedex[pokemon?.pokedexId ?? -1];
 
 	// rome-ignore lint/complexity/useSimplifiedLogicExpression: idiotic rule
 	if (!pokemon || !dexEntry) {

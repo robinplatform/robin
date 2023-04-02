@@ -18,11 +18,16 @@ export const Species = z.object({
 export type Pokemon = z.infer<typeof Pokemon>;
 export const Pokemon = z.object({
 	id: z.string(),
-	pokemonId: z.number(),
+	pokedexId: z.number(),
 	name: z.string().optional(),
 	lastMegaStart: z.string(),
 	lastMegaEnd: z.string(),
 	megaCount: z.number(),
+});
+
+export type PlannedMega = z.infer<typeof PlannedMega>;
+export const PlannedMega = z.object({
+	date: z.string(),
 });
 
 export type PokemonMegaValues = {
