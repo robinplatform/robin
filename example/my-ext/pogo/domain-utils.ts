@@ -158,15 +158,15 @@ export function megaCostForTime(
 }
 
 export function isCurrentMega(
-	currentMega: string | undefined,
+	mostRecentMega: string | undefined,
 	pokemon: Pokemon,
 	now: Date,
 ) {
-	if (!currentMega) {
+	if (!mostRecentMega) {
 		return false;
 	}
 
-	if (currentMega !== pokemon.id) {
+	if (mostRecentMega !== pokemon.id) {
 		return false;
 	}
 

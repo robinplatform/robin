@@ -55,7 +55,7 @@ function EvolvePokemonButton({
 			<button
 				disabled={
 					megaEvolveLoading ||
-					isCurrentMega(db?.currentMega?.id, pokemon, now) ||
+					isCurrentMega(db?.mostRecentMega?.id, pokemon, now) ||
 					megaCost > dexEntry.megaEnergyAvailable
 				}
 				onClick={() => megaEvolve({ id: pokemon.id })}
@@ -69,7 +69,7 @@ function EvolvePokemonButton({
 function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 	const { now } = useCurrentSecond();
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	if (!isCurrentMega(db?.currentMega?.id, pokemon, now)) {
+	if (!isCurrentMega(db?.mostRecentMega?.id, pokemon, now)) {
 		return null;
 	}
 

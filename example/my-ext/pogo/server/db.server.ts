@@ -18,7 +18,7 @@ export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
-	currentMega: z
+	mostRecentMega: z
 		.object({
 			id: z.string(),
 		})
@@ -67,7 +67,7 @@ export async function setDbValueRpc({ db }: { db: PogoDb }) {
 	return await withDb((prev) => {
 		prev.pokedex = db.pokedex;
 		prev.pokemon = db.pokemon;
-		prev.currentMega = db.currentMega;
+		prev.mostRecentMega = db.mostRecentMega;
 	});
 }
 
@@ -107,7 +107,7 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 
 		const now = new Date();
 
-		if (isCurrentMega(db.currentMega?.id, pokemon, now)) {
+		if (isCurrentMega(db.mostRecentMega?.id, pokemon, now)) {
 			console.log('Tried to evolve the currently evolved pokemon');
 			return;
 		}
@@ -123,21 +123,21 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
-		// If there's a pokemon who is set as "currentMega", and they're not the current
+		// If there's a pokemon who is set as "mostRecentMega", and they're not the current
 		// pokemon we're evolving now, we should try to update their mega time; however,
 		// the Math.min prevents any problems with overwriting a stale mega pokemon.
 		//
 		// It might be possible to write this condition a little cleaner, but for now,
 		// this is fine.
-		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega && currentMega.id !== pokemon.id) {
-			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
-			currentMega.lastMegaEnd = new Date(
+		const mostRecentMega = db.pokemon[db.mostRecentMega?.id ?? ''];
+		if (mostRecentMega && mostRecentMega.id !== pokemon.id) {
+			const prevMegaEnd = new Date(mostRecentMega.lastMegaEnd);
+			mostRecentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),
 			).toISOString();
 		}
 
-		db.currentMega = { id };
+		db.mostRecentMega = { id };
 	});
 
 	return {};
