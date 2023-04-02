@@ -84,12 +84,14 @@ export function PokemonManager() {
 
 				<button
 					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() =>
-						downloadObjectAsJson(
-							db,
-							`pogo-data-backup ${new Date().toISOString()}`,
-						)
-					}
+					onClick={() => {
+						const now = new Date();
+						const month = String(now.getMonth()).padStart(2, '0');
+						const day = String(now.getDate()).padStart(2, '0');
+						const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+
+						downloadObjectAsJson(db, name);
+					}}
 				>
 					Download DB
 				</button>

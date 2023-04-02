@@ -71,8 +71,10 @@ export async function megaLevelPlanForPokemonRpc({
 	const plan = naiveFreeMegaEvolve(now, dexEntry, pokemon);
 
 	const timeToLastEvent =
-		new Date(plan[plan.length - 1].date).getTime() - now.getTime();
-	const daysToDisplay = Math.ceil(timeToLastEvent / DAY_MS) + 4;
+		plan.length === 0
+			? 0
+			: new Date(plan[plan.length - 1].date).getTime() - now.getTime();
+	const daysToDisplay = Math.max(0, Math.ceil(timeToLastEvent / DAY_MS)) + 4;
 
 	return arrayOfN(daysToDisplay)
 		.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
