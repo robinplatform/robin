@@ -55,7 +55,7 @@ function EvolvePokemonButton({
 			<button
 				disabled={
 					megaEvolveLoading ||
-					isCurrentMega(db?.currentMega?.id, pokemon, now) ||
+					isCurrentMega(db?.mostRecentMega?.id, pokemon, now) ||
 					megaCost > dexEntry.megaEnergyAvailable
 				}
 				onClick={() => megaEvolve({ id: pokemon.id })}
@@ -69,7 +69,7 @@ function EvolvePokemonButton({
 function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 	const { now } = useCurrentSecond();
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	if (!isCurrentMega(db?.currentMega?.id, pokemon, now)) {
+	if (!isCurrentMega(db?.mostRecentMega?.id, pokemon, now)) {
 		return null;
 	}
 
@@ -90,7 +90,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { mutate: setName, isLoading: setNameLoading } =
 		useRpcMutation(setNameRpc);
 
-	const dexEntry = db?.pokedex[pokemon.pokemonId];
+	const dexEntry = db?.pokedex[pokemon.pokedexId];
 	if (!dexEntry) {
 		return null;
 	}
@@ -241,7 +241,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 						disabled={setEneryLoading}
 						value={dexEntry.megaEnergyAvailable}
 						setValue={(value) =>
-							setEnergy({ pokemonId: dexEntry.number, megaEnergy: value })
+							setEnergy({ pokedexId: dexEntry.number, megaEnergy: value })
 						}
 						parseFunc={(val) => {
 							const parsed = Number.parseInt(val);

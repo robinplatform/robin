@@ -7,48 +7,20 @@ import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
+	PlannedMega,
 	Pokemon,
 	Species,
 } from '../domain-utils';
-import { HOUR_MS } from '../math';
+import { HOUR_MS, uuid } from '../math';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
-
-class Mutex {
-	private lastLockWaiter = Promise.resolve();
-
-	// Uses an implicit chain of promises and control flow stuffs. IDK if I like it, but it is VERY short.
-	// https://stackoverflow.com/questions/51086688/mutex-in-javascript-does-this-look-like-a-correct-implementation
-	async lock(): Promise<() => void> {
-		const waitFor = this.lastLockWaiter;
-
-		let unlock: () => void;
-		this.lastLockWaiter = new Promise((res) => {
-			unlock = () => res();
-		});
-
-		return waitFor.then((r) => unlock);
-	}
-
-	async withLock<T>(f: () => Promise<T>): Promise<T> {
-		const unlock = await this.lock();
-		try {
-			return await f();
-		} finally {
-			unlock();
-		}
-	}
-}
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
-	currentMega: z
-		.object({
-			id: z.string(),
-		})
-		.optional(),
+	evolvePlans: z.array(PlannedMega),
+	mostRecentMega: z.object({ id: z.string() }).optional(),
 });
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
@@ -56,6 +28,7 @@ const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
+	evolvePlans: [],
 };
 DB.data = EmptyDb;
 
@@ -93,7 +66,7 @@ export async function setDbValueRpc({ db }: { db: PogoDb }) {
 	return await withDb((prev) => {
 		prev.pokedex = db.pokedex;
 		prev.pokemon = db.pokemon;
-		prev.currentMega = db.currentMega;
+		prev.mostRecentMega = db.mostRecentMega;
 	});
 }
 
@@ -105,13 +78,13 @@ export function getDB(): PogoDb {
 	return DB.data ?? EmptyDb;
 }
 
-export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
-	const id = `${pokemonId}-${Math.random()}`;
+export async function addPokemonRpc({ pokedexId }: { pokedexId: number }) {
+	const id = `${pokedexId}-${Math.random()}`;
 	const now = new Date().toISOString();
 	await withDb((db) => {
 		db.pokemon[id] = {
 			id,
-			pokemonId,
+			pokedexId,
 			megaCount: 0,
 
 			// This causes some strange behavior but... it's probably fine.
@@ -126,14 +99,14 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 export async function evolvePokemonRpc({ id }: { id: string }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
-		const dexEntry = db.pokedex[pokemon.pokemonId];
+		const dexEntry = db.pokedex[pokemon.pokedexId];
 
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
 		if (!pokemon || !dexEntry) return;
 
 		const now = new Date();
 
-		if (isCurrentMega(db.currentMega?.id, pokemon, now)) {
+		if (isCurrentMega(db.mostRecentMega?.id, pokemon, now)) {
 			console.log('Tried to evolve the currently evolved pokemon');
 			return;
 		}
@@ -149,21 +122,21 @@ export async function evolvePokemonRpc({ id }: { id: string }) {
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
-		// If there's a pokemon who is set as "currentMega", and they're not the current
+		// If there's a pokemon who is set as "mostRecentMega", and they're not the current
 		// pokemon we're evolving now, we should try to update their mega time; however,
 		// the Math.min prevents any problems with overwriting a stale mega pokemon.
 		//
 		// It might be possible to write this condition a little cleaner, but for now,
 		// this is fine.
-		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega && currentMega.id !== pokemon.id) {
-			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
-			currentMega.lastMegaEnd = new Date(
+		const mostRecentMega = db.pokemon[db.mostRecentMega?.id ?? ''];
+		if (mostRecentMega && mostRecentMega.id !== pokemon.id) {
+			const prevMegaEnd = new Date(mostRecentMega.lastMegaEnd);
+			mostRecentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),
 			).toISOString();
 		}
 
-		db.currentMega = { id };
+		db.mostRecentMega = { id };
 	});
 
 	return {};
@@ -217,14 +190,14 @@ export async function setPokemonMegaCountRpc({
 }
 
 export async function setPokemonMegaEnergyRpc({
-	pokemonId,
+	pokedexId,
 	megaEnergy,
 }: {
-	pokemonId: number;
+	pokedexId: number;
 	megaEnergy: number;
 }) {
 	await withDb((db) => {
-		const dexEntry = db.pokedex[pokemonId];
+		const dexEntry = db.pokedex[pokedexId];
 		if (!dexEntry) return;
 
 		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);
@@ -248,6 +221,38 @@ export async function setNameRpc({ id, name }: { id: string; name: string }) {
 		if (!pokemon) return;
 
 		pokemon.name = name;
+	});
+
+	return {};
+}
+
+export async function addPlannedEventRpc({
+	pokemonId,
+	isoDate,
+}: {
+	pokemonId: string;
+	isoDate: string;
+}) {
+	const date = new Date(isoDate);
+
+	withDb((db) => {
+		if (!db.pokemon[pokemonId]) {
+			return {};
+		}
+
+		db.evolvePlans.push({
+			id: uuid(pokemonId),
+			date: date.toISOString(),
+			pokemonId,
+		});
+	});
+
+	return {};
+}
+
+export async function deletePlannedEventRpc({ id }: { id: string }) {
+	withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
 	});
 
 	return {};

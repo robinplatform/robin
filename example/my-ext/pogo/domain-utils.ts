@@ -18,11 +18,18 @@ export const Species = z.object({
 export type Pokemon = z.infer<typeof Pokemon>;
 export const Pokemon = z.object({
 	id: z.string(),
-	pokemonId: z.number(),
+	pokedexId: z.number(),
 	name: z.string().optional(),
 	lastMegaStart: z.string(),
 	lastMegaEnd: z.string(),
 	megaCount: z.number(),
+});
+
+export type PlannedMega = z.infer<typeof PlannedMega>;
+export const PlannedMega = z.object({
+	id: z.string(), // UUID
+	date: z.string(), // ISO time string of the mega start time
+	pokemonId: z.string(), // ID of the pokemon to mega
 });
 
 export type PokemonMegaValues = {
@@ -153,15 +160,15 @@ export function megaCostForTime(
 }
 
 export function isCurrentMega(
-	currentMega: string | undefined,
+	mostRecentMega: string | undefined,
 	pokemon: Pokemon,
 	now: Date,
 ) {
-	if (!currentMega) {
+	if (!mostRecentMega) {
 		return false;
 	}
 
-	if (currentMega !== pokemon.id) {
+	if (mostRecentMega !== pokemon.id) {
 		return false;
 	}
 

@@ -15,7 +15,7 @@ function SelectSpecies({
 	submit,
 	buttonText,
 }: {
-	submit: (data: { pokemonId: number }) => unknown;
+	submit: (data: { pokedexId: number }) => unknown;
 	buttonText: string;
 }) {
 	const { data: { pokedex = {} } = {} } = useRpcQuery(fetchDbRpc, {});
@@ -37,7 +37,7 @@ function SelectSpecies({
 
 			<button
 				disabled={!selected}
-				onClick={() => selected && submit({ pokemonId: selected.number })}
+				onClick={() => selected && submit({ pokedexId: selected.number })}
 			>
 				{buttonText}
 			</button>
@@ -57,7 +57,7 @@ function downloadObjectAsJson(exportObj: unknown, exportName: string) {
 	downloadAnchorNode.remove();
 }
 
-const Sorts = ['name', 'pokemonId', 'megaTime', 'megaLevelUp'] as const;
+const Sorts = ['name', 'pokedexId', 'megaTime', 'megaLevelUp'] as const;
 export function PokemonManager() {
 	const [sortIndex, setSortIndex] = React.useState<number>(0);
 	const sort = Sorts[sortIndex] ?? 'name';
@@ -84,12 +84,14 @@ export function PokemonManager() {
 
 				<button
 					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() =>
-						downloadObjectAsJson(
-							db,
-							`pogo-data-backup ${new Date().toISOString()}`,
-						)
-					}
+					onClick={() => {
+						const now = new Date();
+						const month = String(now.getMonth()).padStart(2, '0');
+						const day = String(now.getDate()).padStart(2, '0');
+						const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+
+						downloadObjectAsJson(db, name);
+					}}
 				>
 					Download DB
 				</button>

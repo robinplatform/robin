@@ -1,6 +1,5 @@
-import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
+import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import React from 'react';
-import { useSelectOption } from '../components/EditableField';
 import { ScrollWindow } from '../components/ScrollWindow';
 import {
 	SelectPage,
@@ -8,66 +7,10 @@ import {
 	usePageState,
 } from '../components/PageState';
 import {
-	computeEvolve,
-	nextMegaDeadline,
-	Pokemon,
-	PokemonMegaValues,
-	Species,
-} from '../domain-utils';
-import { arrayOfN, DAY_MS } from '../math';
-import { fetchDbRpc } from '../server/db.server';
-
-// Include cancel or not
-// Specify locks/planned actions
-
-// iterate forwards over lock points,
-// iterate backwards in time from each lock point
-// at the last lock point, iterate forwards in time
-
-// TODO: add something to allow for checking the cost of daily level-ups
-// TODO: move the calculations to the server
-// TODO: add data that shows remaining mega energy
-
-type MegaEvolveEvent = PokemonMegaValues & {
-	date: Date;
-};
-
-// TODO: move this to server
-function naiveFreeMegaEvolve(
-	now: Date,
-	dexEntry: Species,
-	pokemon: Pick<Pokemon, 'lastMegaEnd' | 'lastMegaStart' | 'megaCount'>,
-): MegaEvolveEvent[] {
-	let { megaCount, lastMegaEnd, lastMegaStart } = pokemon;
-	const out: MegaEvolveEvent[] = [];
-
-	let currentState = { megaCount, lastMegaEnd, lastMegaStart };
-	while (currentState.megaCount < 30) {
-		const deadline = nextMegaDeadline(
-			currentState.megaCount,
-			new Date(currentState.lastMegaEnd),
-		);
-
-		// Move time forwards until the deadline; however, if the deadline is in the past,
-		// because its been a while since the last mega, don't accidentally go back in time.
-		now = new Date(Math.max(now.getTime(), deadline.getTime()));
-
-		const newState = computeEvolve(now, dexEntry, currentState);
-
-		out.push({
-			date: now,
-			...newState,
-		});
-
-		currentState = {
-			megaCount: newState.megaCount,
-			lastMegaEnd: newState.lastMegaEnd,
-			lastMegaStart: newState.lastMegaStart,
-		};
-	}
-
-	return out;
-}
+	MegaEvolveEvent,
+	megaLevelPlanForPokemonRpc,
+} from '../server/planner.server';
+import { addPlannedEventRpc, deletePlannedEventRpc } from '../server/db.server';
 
 function DateText({ date }: { date: Date }) {
 	return (
@@ -89,18 +32,76 @@ function DateText({ date }: { date: Date }) {
 	);
 }
 
-function EventText({ event }: { event: MegaEvolveEvent }) {
+function EventInfo({
+	pokemonId,
+	date,
+	event,
+	refetch,
+}: {
+	pokemonId: string;
+	date: Date;
+	event?: MegaEvolveEvent;
+	refetch: () => void;
+}) {
+	const { mutate: addPlannedEvent } = useRpcMutation(addPlannedEventRpc, {
+		onSuccess: () => refetch(),
+	});
+	const { mutate: deletePlannedEvent } = useRpcMutation(deletePlannedEventRpc, {
+		onSuccess: () => refetch(),
+	});
+
+	if (!event) {
+		return (
+			<div
+				style={{
+					position: 'absolute',
+					left: '2rem',
+					top: '0',
+					width: '12rem',
+				}}
+			>
+				<button
+					onClick={() =>
+						addPlannedEvent({ pokemonId, isoDate: date.toISOString() })
+					}
+				>
+					Mega
+				</button>
+			</div>
+		);
+	}
+
+	const { id, megaEnergySpent, megaEnergyAvailable } = event;
+
+	if (!id) {
+		return (
+			<div
+				style={{
+					position: 'absolute',
+					left: '2rem',
+					top: '0',
+					width: '12rem',
+					color: 'gray',
+				}}
+			>
+				Evolve for {megaEnergySpent === 0 ? 'free' : megaEnergySpent}
+			</div>
+		);
+	}
+
 	return (
 		<div
 			style={{
 				position: 'absolute',
 				left: '2rem',
 				top: '0',
-				bottom: '0',
 				width: '12rem',
+				color: 'black',
 			}}
 		>
-			Evolve for {event.megaEnergySpent} to level up
+			Evolve for {megaEnergySpent}
+			<button onClick={() => deletePlannedEvent({ id })}>X</button>
+			Remaining: {megaEnergyAvailable}
 		</div>
 	);
 }
@@ -152,42 +153,11 @@ function DayBox({ children }: { children: React.ReactNode }) {
 }
 
 export function LevelUpPlanner() {
-	const { data: db } = useRpcQuery(fetchDbRpc, {});
+	const { pokemon: selectedMonId = '' } = usePageState();
 
-	const { pokemon: selectedMonId } = usePageState();
-
-	const selected = db?.pokemon?.[selectedMonId ?? ''];
-	const dexEntry = selected ? db?.pokedex?.[selected.pokemonId] : undefined;
-	const days = React.useMemo(() => {
-		// rome-ignore lint/complexity/useSimplifiedLogicExpression: shut up
-		if (!selected || !dexEntry) {
-			return undefined;
-		}
-
-		const now = new Date();
-
-		const events = naiveFreeMegaEvolve(now, dexEntry, selected);
-		if (events.length === 0) {
-			return undefined;
-		}
-
-		const timeToLastEvent =
-			events[events.length - 1].date.getTime() - now.getTime();
-		const daysToDisplay = Math.ceil(timeToLastEvent / DAY_MS) + 4;
-
-		return arrayOfN(daysToDisplay)
-			.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
-			.map((date) => {
-				const eventsToday = events.filter(
-					(e) => e.date.toDateString() === date.toDateString(),
-				);
-
-				return {
-					date,
-					eventsToday,
-				};
-			});
-	}, [selected, dexEntry]);
+	const { data: days, refetch } = useRpcQuery(megaLevelPlanForPokemonRpc, {
+		id: selectedMonId,
+	});
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
@@ -207,18 +177,21 @@ export function LevelUpPlanner() {
 				}}
 			>
 				{days?.map(({ date, eventsToday }) => (
-					<DayBox>
-						<DateText date={date} />
+					<DayBox key={date}>
+						<DateText date={new Date(date)} />
 
-						{date.toDateString() === new Date().toDateString() ? (
+						{new Date(date).toDateString() === new Date().toDateString() ? (
 							<BigDot />
 						) : (
 							<SmallDot />
 						)}
 
-						{eventsToday.map((e) => (
-							<EventText event={e} />
-						))}
+						<EventInfo
+							pokemonId={selectedMonId}
+							date={new Date(date)}
+							event={eventsToday[0]}
+							refetch={refetch}
+						/>
 					</DayBox>
 				))}
 			</ScrollWindow>

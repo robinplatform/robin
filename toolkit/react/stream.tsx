@@ -64,25 +64,31 @@ export function useTopicQuery<State, Output>({
 		},
 		reducer: (prev: StreamState, packet): StreamState => {
 			if (packet.kind === 'state') {
+				// The > allows new state to overwrite if it's up-to-date, but otherwise
+				// prevents fetches of now-stale data from interfering with the state of
+				// the topic.
 				if (prev.kind === 'state' && prev.counter > packet.messageId) {
 					return prev;
 				}
 
-				const state = (prev.seenMessages ?? [])
-					.filter((msg) => msg.messageId > packet.messageId)
+				const seenMessages = (prev.seenMessages ?? []).filter(
+					(msg) => msg.messageId > packet.messageId,
+				);
+				const state = seenMessages
 					.flatMap((msg) => {
 						const res = resultType.safeParse(msg.data);
-						if (res.success) {
-							return [res.data];
-						}
-
-						return [];
+						return res.success ? [res.data] : [];
 					})
 					.reduce((prev, data) => reducer(prev, data), packet.data as State);
 
+				const maxMessageId = Math.max(
+					packet.messageId,
+					...seenMessages.map((m) => m.messageId),
+				);
+
 				return {
 					kind: 'state',
-					counter: packet.messageId,
+					counter: maxMessageId,
 					state,
 				};
 			}

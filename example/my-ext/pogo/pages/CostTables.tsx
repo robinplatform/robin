@@ -146,7 +146,7 @@ export function CostTables() {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const { pokemon: selectedMonId } = usePageState();
 	const selectedPokemon =
-		db?.pokedex?.[db.pokemon?.[selectedMonId ?? '']?.pokemonId ?? ''];
+		db?.pokedex?.[db.pokemon?.[selectedMonId ?? '']?.pokedexId ?? -1];
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
