@@ -19,3 +19,7 @@ export function dateString(d: Date): string {
 
 	return name;
 }
+
+export function uuid(s: string = ''): string {
+	return `${s}-${Math.random()}-${Math.random()}`;
+}

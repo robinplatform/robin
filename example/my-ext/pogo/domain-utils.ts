@@ -27,7 +27,9 @@ export const Pokemon = z.object({
 
 export type PlannedMega = z.infer<typeof PlannedMega>;
 export const PlannedMega = z.object({
-	date: z.string(),
+	id: z.string(), // UUID
+	date: z.string(), // ISO time string of the mega start time
+	pokemonId: z.string(), // ID of the pokemon to mega
 });
 
 export type PokemonMegaValues = {

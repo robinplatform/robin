@@ -7,10 +7,11 @@ import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
+	PlannedMega,
 	Pokemon,
 	Species,
 } from '../domain-utils';
-import { HOUR_MS } from '../math';
+import { dateString, HOUR_MS, uuid } from '../math';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 
@@ -18,6 +19,7 @@ export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
+	evolvePlans: z.record(z.string(), z.array(PlannedMega)),
 	mostRecentMega: z
 		.object({
 			id: z.string(),
@@ -30,6 +32,7 @@ const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
+	evolvePlans: {},
 };
 DB.data = EmptyDb;
 
@@ -222,6 +225,31 @@ export async function setNameRpc({ id, name }: { id: string; name: string }) {
 		if (!pokemon) return;
 
 		pokemon.name = name;
+	});
+
+	return {};
+}
+
+export async function addPlannedEvent({
+	pokemonId,
+	isoDate,
+}: {
+	pokemonId: string;
+	isoDate: string;
+}) {
+	const date = new Date(isoDate);
+
+	withDb((db) => {
+		if (!db.pokemon[pokemonId]) {
+			return {};
+		}
+
+		const plans = (db.evolvePlans[dateString(date)] ||= []);
+		plans.push({
+			id: uuid(pokemonId),
+			date: isoDate,
+			pokemonId,
+		});
 	});
 
 	return {};
