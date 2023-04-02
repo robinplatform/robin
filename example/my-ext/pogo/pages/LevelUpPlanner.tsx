@@ -12,16 +12,6 @@ import {
 } from '../server/planner.server';
 import { addPlannedEventRpc, deletePlannedEventRpc } from '../server/db.server';
 
-// Include cancel or not
-// Specify locks/planned actions
-
-// iterate forwards over lock points,
-// iterate backwards in time from each lock point
-// at the last lock point, iterate forwards in time
-
-// TODO: add something to allow for checking the cost of daily level-ups
-// TODO: add data that shows remaining mega energy
-
 function DateText({ date }: { date: Date }) {
 	return (
 		<div
@@ -81,7 +71,7 @@ function EventInfo({
 		);
 	}
 
-	const { id, megaEnergySpent } = event;
+	const { id, megaEnergySpent, megaEnergyAvailable } = event;
 
 	if (!id) {
 		return (
@@ -111,6 +101,7 @@ function EventInfo({
 		>
 			Evolve for {megaEnergySpent}
 			<button onClick={() => deletePlannedEvent({ id })}>X</button>
+			Remaining: {megaEnergyAvailable}
 		</div>
 	);
 }

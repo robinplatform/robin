@@ -64,12 +64,19 @@ export function useTopicQuery<State, Output>({
 		},
 		reducer: (prev: StreamState, packet): StreamState => {
 			if (packet.kind === 'state') {
-				if (prev.kind === 'state' && prev.counter > packet.messageId) {
+				// The >= seems to be required. Sometimes we'll get two fetches in a row,
+				// and the first will cause the saved messages to be applied, only for the
+				// second fetch to arrive. If you use > instead of >=, the second fetch
+				// might overwrite the first, even though the state counter is literally
+				// the same.
+				if (prev.kind === 'state' && prev.counter >= packet.messageId) {
 					return prev;
 				}
 
-				const state = (prev.seenMessages ?? [])
-					.filter((msg) => msg.messageId > packet.messageId)
+				const seenMessages = (prev.seenMessages ?? []).filter(
+					(msg) => msg.messageId > packet.messageId,
+				);
+				const state = seenMessages
 					.flatMap((msg) => {
 						const res = resultType.safeParse(msg.data);
 						if (res.success) {
@@ -80,9 +87,14 @@ export function useTopicQuery<State, Output>({
 					})
 					.reduce((prev, data) => reducer(prev, data), packet.data as State);
 
+				const maxMessageId = seenMessages.reduce(
+					(max, msg) => Math.max(msg.messageId, max),
+					packet.messageId,
+				);
+
 				return {
 					kind: 'state',
-					counter: packet.messageId,
+					counter: maxMessageId,
 					state,
 				};
 			}
@@ -172,6 +184,7 @@ export function useStreamMethod<State, Output>({
 			dispatch(res.data);
 		};
 
+		console.log('initialData', JSON.stringify(initialData));
 		stream.start(initialData).then(() => onConnRef.current?.());
 
 		return () => {

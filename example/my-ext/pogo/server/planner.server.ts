@@ -1,4 +1,3 @@
-import { current } from 'immer';
 import {
 	PokemonMegaValues,
 	Species,
@@ -9,17 +8,27 @@ import {
 import { DAY_MS, arrayOfN, dateString } from '../math';
 import { getDB } from './db.server';
 
+// iterate forwards over lock points,
+// iterate backwards in time from each lock point
+// at the last lock point, iterate forwards in time
+
+// TODO: add something to allow for checking the cost of daily level-ups
+// TODO: add data that shows remaining mega energy
+
 export type MegaEvolveEvent = PokemonMegaValues & {
 	id?: string;
 	date: string;
+	megaEnergyAvailable: number;
 };
 
 function naiveFreeMegaEvolve(
 	now: Date,
 	dexEntry: Species,
-	pokemon: Pick<Pokemon, 'lastMegaEnd' | 'lastMegaStart' | 'megaCount'>,
+	state: Pick<Pokemon, 'lastMegaEnd' | 'lastMegaStart' | 'megaCount'> & {
+		megaEnergyAvailable: number;
+	},
 ): MegaEvolveEvent[] {
-	let { megaCount, lastMegaEnd, lastMegaStart } = pokemon;
+	let { megaCount, lastMegaEnd, lastMegaStart, megaEnergyAvailable } = state;
 	const out: MegaEvolveEvent[] = [];
 
 	let currentState = { megaCount, lastMegaEnd, lastMegaStart };
@@ -37,6 +46,7 @@ function naiveFreeMegaEvolve(
 
 		out.push({
 			date: now.toISOString(),
+			megaEnergyAvailable,
 			...newState,
 		});
 
@@ -87,20 +97,25 @@ export async function megaLevelPlanForPokemonRpc({
 		lastMegaEnd: pokemon.lastMegaEnd,
 		lastMegaStart: pokemon.lastMegaStart,
 		megaCount: pokemon.megaCount,
+		megaEnergyAvailable: dexEntry.megaEnergyAvailable,
 	};
 	const events: MegaEvolveEvent[] = [];
 	for (const plan of plans) {
 		const planDate = new Date(plan.date);
 
 		const newState = computeEvolve(planDate, dexEntry, currentState);
+		const megaEnergyAvailable =
+			currentState.megaEnergyAvailable - newState.megaEnergySpent;
 		events.push({
 			date: plan.date,
+			megaEnergyAvailable,
 			id: plan.id,
 			...newState,
 		});
 
 		currentState = {
 			...newState,
+			megaEnergyAvailable,
 			date: new Date(Math.max(planDate.getTime(), currentState.date.getTime())),
 		};
 	}

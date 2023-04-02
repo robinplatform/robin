@@ -8,7 +8,9 @@ async function getWs(): Promise<WebSocket> {
 
 	_ws = new Promise<WebSocket>((res) => (resolve = res));
 
-	const ws = new WebSocket('ws://localhost:9010/api/websocket');
+	const ws = new WebSocket(
+		`ws://${window.location.hostname}:9010/api/websocket`,
+	);
 	ws.onclose = (evt) => {
 		console.log('close', evt.code);
 	};

@@ -99,6 +99,7 @@ func (topic *Topic[T]) addSubscriber() (chan Message[T], error) {
 }
 
 func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
+	endChannel := make(chan struct{}, 1)
 	channel, err := topic.addSubscriber()
 	if err != nil {
 		return Subscription[any]{}, err
@@ -106,16 +107,23 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 
 	anyChannel := make(chan Message[any])
 	go func() {
-		for {
-			val, ok := <-channel
-			if !ok {
-				close(anyChannel)
-				return
-			}
+		defer close(anyChannel)
 
-			anyChannel <- Message[any]{
-				MessageId: val.MessageId,
-				Data:      val.Data,
+		for {
+			select {
+			case <-endChannel:
+				return
+
+			case val, ok := <-channel:
+				if !ok {
+					return
+				}
+
+				anyChannel <- Message[any]{
+					MessageId: val.MessageId,
+					Data:      val.Data,
+				}
+
 			}
 		}
 	}()
@@ -124,7 +132,7 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 		topic.removeSubscriber(channel)
 
 		// This close allows the goroutine to die when the subscriber unsubscribes
-		close(channel)
+		close(endChannel)
 	}
 
 	sub := Subscription[any]{
