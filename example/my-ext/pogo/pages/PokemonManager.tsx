@@ -1,23 +1,21 @@
 import { useRpcQuery, useRpcMutation } from '@robinplatform/toolkit/react/rpc';
-import { useTopicQuery } from '@robinplatform/toolkit/react/stream';
 import React from 'react';
 import { refreshDexRpc, searchPokemonRpc } from '../server/pogo.server';
 import { ScrollWindow } from '../components/ScrollWindow';
 import '@robinplatform/toolkit/styles.css';
-import { addPokemonRpc, fetchDbRpc } from '../server/db.server';
+import { addPokemonRpc, fetchDbRpc, setDbValueRpc } from '../server/db.server';
 import { PokemonInfo } from '../components/PokemonInfo';
-import { SelectPage } from '../components/SelectPage';
+import { SelectPage } from '../components/PageState';
 import { useSelectOption } from '../components/EditableField';
-import { z } from 'zod';
 
 // TODO: planner for upcoming events
 // TODO: put POGO thingy into its own package on NPM, and debug why packages sorta dont work right now
 
-function SelectPokemon({
+function SelectSpecies({
 	submit,
 	buttonText,
 }: {
-	submit: (data: { pokemonId: number }) => unknown;
+	submit: (data: { pokedexId: number }) => unknown;
 	buttonText: string;
 }) {
 	const { data: { pokedex = {} } = {} } = useRpcQuery(fetchDbRpc, {});
@@ -39,7 +37,7 @@ function SelectPokemon({
 
 			<button
 				disabled={!selected}
-				onClick={() => selected && submit({ pokemonId: selected.number })}
+				onClick={() => selected && submit({ pokedexId: selected.number })}
 			>
 				{buttonText}
 			</button>
@@ -47,7 +45,19 @@ function SelectPokemon({
 	);
 }
 
-const Sorts = ['name', 'pokemonId', 'megaTime', 'megaLevelUp'] as const;
+function downloadObjectAsJson(exportObj: unknown, exportName: string) {
+	var dataStr = `data:text/json;charset=utf-8,${encodeURIComponent(
+		JSON.stringify(exportObj),
+	)}`;
+	var downloadAnchorNode = document.createElement('a');
+	downloadAnchorNode.setAttribute('href', dataStr);
+	downloadAnchorNode.setAttribute('download', `${exportName}.json`);
+	document.body.appendChild(downloadAnchorNode); // required for firefox
+	downloadAnchorNode.click();
+	downloadAnchorNode.remove();
+}
+
+const Sorts = ['name', 'pokedexId', 'megaTime', 'megaLevelUp'] as const;
 export function PokemonManager() {
 	const [sortIndex, setSortIndex] = React.useState<number>(0);
 	const sort = Sorts[sortIndex] ?? 'name';
@@ -55,18 +65,60 @@ export function PokemonManager() {
 		searchPokemonRpc,
 		{ sort },
 	);
-	const { data: db } = useRpcQuery(fetchDbRpc, {});
+	const { data: db, isLoading: dbIsLoading } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc);
 	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {
 		onSuccess: () => {
 			refetchQuery();
 		},
 	});
+	const { mutate: setDb, isLoading: setDbIsLoading } =
+		useRpcMutation(setDbValueRpc);
+
+	const inputRef = React.useRef<HTMLInputElement>(null);
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div className={'row robin-gap'}>
 				<SelectPage />
+
+				<button
+					disabled={setDbIsLoading || dbIsLoading}
+					onClick={() => {
+						const now = new Date();
+						const month = String(now.getMonth()).padStart(2, '0');
+						const day = String(now.getDate()).padStart(2, '0');
+						const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+
+						downloadObjectAsJson(db, name);
+					}}
+				>
+					Download DB
+				</button>
+
+				<button
+					disabled={setDbIsLoading || dbIsLoading}
+					onClick={() => inputRef.current?.click()}
+				>
+					Upload DB
+				</button>
+
+				<input
+					ref={inputRef}
+					id="image-file"
+					type="file"
+					style={{ display: 'none' }}
+					onChange={async (evt) => {
+						const file = evt.target.files?.[0];
+						if (!file) {
+							console.log('it was null');
+							return;
+						}
+
+						const newDb = JSON.parse(await file.text());
+						setDb({ db: newDb });
+					}}
+				/>
 
 				{db && Object.keys(db.pokedex).length === 0 && (
 					<div>Pokedex is empty!</div>
@@ -103,7 +155,7 @@ export function PokemonManager() {
 					className={'robin-rounded robin-pad'}
 					style={{ backgroundColor: 'Gray' }}
 				>
-					<SelectPokemon submit={addPokemon} buttonText={'Add Pokemon'} />
+					<SelectSpecies submit={addPokemon} buttonText={'Add Pokemon'} />
 				</div>
 
 				{!!db &&

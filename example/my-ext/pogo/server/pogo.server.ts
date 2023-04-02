@@ -29,8 +29,8 @@ export async function refreshDexRpc() {
 }
 
 const compareNames = (db: PogoDb, a: Pokemon, b: Pokemon) => {
-	const aName = a.name ?? db.pokedex[a.pokemonId]?.name ?? '';
-	const bName = b.name ?? db.pokedex[b.pokemonId]?.name ?? '';
+	const aName = a.name ?? db.pokedex[a.pokedexId]?.name ?? '';
+	const bName = b.name ?? db.pokedex[b.pokedexId]?.name ?? '';
 
 	return aName.localeCompare(bName);
 };
@@ -51,7 +51,7 @@ const compareMegaTimes = (nowTime: number, a: Pokemon, b: Pokemon) => {
 export async function searchPokemonRpc({
 	sort,
 }: {
-	sort: 'name' | 'pokemonId' | 'megaTime' | 'megaLevelUp';
+	sort: 'name' | 'pokedexId' | 'megaTime' | 'megaLevelUp';
 }) {
 	const db = getDB();
 
@@ -62,9 +62,9 @@ export async function searchPokemonRpc({
 		case 'name':
 			out.sort((a, b) => compareNames(db, a, b));
 			break;
-		case 'pokemonId':
+		case 'pokedexId':
 			out.sort((a, b) => {
-				return a.pokemonId - b.pokemonId;
+				return a.pokedexId - b.pokedexId;
 			});
 			break;
 		case 'megaTime':

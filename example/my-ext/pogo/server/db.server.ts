@@ -7,68 +7,37 @@ import { onAppStart, Topic } from '@robinplatform/toolkit/daemon';
 import {
 	computeEvolve,
 	isCurrentMega,
-	megaCostForSpecies,
-	megaLevelFromCount,
+	PlannedMega,
 	Pokemon,
 	Species,
 } from '../domain-utils';
-import { HOUR_MS } from '../math';
-
-class Mutex {
-	private lastLockWaiter = Promise.resolve();
-
-	// Uses an implicit chain of promises and control flow stuffs. IDK if I like it, but it is VERY short.
-	// https://stackoverflow.com/questions/51086688/mutex-in-javascript-does-this-look-like-a-correct-implementation
-	async lock(): Promise<() => void> {
-		const waitFor = this.lastLockWaiter;
-
-		let unlock: () => void;
-		this.lastLockWaiter = new Promise((res) => {
-			unlock = () => res();
-		});
-
-		return waitFor.then((r) => unlock);
-	}
-
-	async withLock<T>(f: () => Promise<T>): Promise<T> {
-		const unlock = await this.lock();
-		try {
-			return await f();
-		} finally {
-			unlock();
-		}
-	}
-}
+import { HOUR_MS, uuid } from '../math';
+import { Low } from 'lowdb';
+import { JSONFile } from 'lowdb/node';
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
-	currentMega: z
-		.object({
-			id: z.string(),
-		})
-		.optional(),
+	evolvePlans: z.array(PlannedMega),
+	mostRecentMega: z.object({ id: z.string() }).optional(),
 });
 
+const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
+const DB = new Low<PogoDb>(new JSONFile(DB_FILE));
 const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
+	evolvePlans: [],
 };
-
-const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
-let DBLock = new Mutex();
-let DB: PogoDb = EmptyDb;
+DB.data = EmptyDb;
 
 onAppStart(async () => {
 	try {
-		const text = await fs.promises.readFile(DB_FILE, 'utf8');
-		const data = JSON.parse(text);
-		DB = PogoDb.parse(data);
+		await DB.read();
+		DB.data = PogoDb.parse(DB.data);
 	} catch (e) {
 		console.log('Failed to read from JSON', e);
-		// TODO: better error handling
-		DB = EmptyDb;
 	}
 });
 
@@ -79,39 +48,43 @@ onAppStart(async () => {
 });
 
 export async function withDb(mut: (db: PogoDb) => void) {
-	return await DBLock.withLock(async () => {
-		const newDb = produce(DB, mut);
-		if (newDb !== DB) {
-			console.log('DB access caused mutation');
+	const newDb = produce(DB.data, mut);
+	if (newDb !== DB.data) {
+		console.log('DB access caused mutation');
 
-			// TODO: don't do this on literally every write. Maybe do it once a second.
-			await fs.promises.writeFile(DB_FILE, JSON.stringify(DB));
+		// TODO: don't do this on literally every write. Maybe do it once a second.
+		await fs.promises.writeFile(DB_FILE, JSON.stringify(newDb));
 
-			await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
-			DB = newDb;
-		}
+		await dbModifiedTopic.publish({}).catch((e) => console.error('err', e));
+		DB.data = newDb;
+	}
 
-		return newDb;
+	return newDb;
+}
+
+export async function setDbValueRpc({ db }: { db: PogoDb }) {
+	return await withDb((prev) => {
+		prev.pokedex = db.pokedex;
+		prev.pokemon = db.pokemon;
+		prev.mostRecentMega = db.mostRecentMega;
 	});
 }
 
-export async function fetchDbRpc() {
-	return await DBLock.withLock(async () => {
-		return DB;
-	});
+export async function fetchDbRpc(): Promise<PogoDb> {
+	return DB.data ?? EmptyDb;
 }
 
-export function getDB() {
-	return DB;
+export function getDB(): PogoDb {
+	return DB.data ?? EmptyDb;
 }
 
-export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
-	const id = `${pokemonId}-${Math.random()}`;
+export async function addPokemonRpc({ pokedexId }: { pokedexId: number }) {
+	const id = `${pokedexId}-${Math.random()}`;
 	const now = new Date().toISOString();
 	await withDb((db) => {
 		db.pokemon[id] = {
 			id,
-			pokemonId,
+			pokedexId,
 			megaCount: 0,
 
 			// This causes some strange behavior but... it's probably fine.
@@ -126,47 +99,44 @@ export async function addPokemonRpc({ pokemonId }: { pokemonId: number }) {
 export async function evolvePokemonRpc({ id }: { id: string }) {
 	await withDb((db) => {
 		const pokemon = db.pokemon[id];
-		const dexEntry = db.pokedex[pokemon.pokemonId];
+		const dexEntry = db.pokedex[pokemon.pokedexId];
 
 		// rome-ignore lint/complexity/useSimplifiedLogicExpression: I'm not fucking applying demorgan's law to this
 		if (!pokemon || !dexEntry) return;
 
 		const now = new Date();
 
-		if (isCurrentMega(db.currentMega?.id, pokemon, now)) {
+		if (isCurrentMega(db.mostRecentMega?.id, pokemon, now)) {
 			console.log('Tried to evolve the currently evolved pokemon');
 			return;
 		}
 
-		const megaLevel = megaLevelFromCount(pokemon.megaCount);
-		const megaCost = megaCostForSpecies(
-			dexEntry,
-			megaLevel,
-			new Date().getTime() - new Date(pokemon.lastMegaEnd).getTime(),
+		const nextData = computeEvolve(now, dexEntry, pokemon);
+
+		dexEntry.megaEnergyAvailable -= Math.min(
+			dexEntry.megaEnergyAvailable,
+			nextData.megaEnergySpent,
 		);
 
-		const nextData = computeEvolve(now, {
-			megaCost,
-			megaCount: pokemon.megaCount,
-			megaEnergyAvailable: dexEntry.megaEnergyAvailable,
-			lastMegaStart: pokemon.lastMegaStart,
-			lastMegaEnd: pokemon.lastMegaEnd,
-		});
-
-		dexEntry.megaEnergyAvailable = nextData.megaEnergyAvailable;
 		pokemon.lastMegaStart = nextData.lastMegaStart;
 		pokemon.lastMegaEnd = nextData.lastMegaEnd;
 		pokemon.megaCount = nextData.megaCount;
 
-		const currentMega = db.pokemon[db.currentMega?.id ?? ''];
-		if (currentMega) {
-			const prevMegaEnd = new Date(currentMega.lastMegaEnd);
-			currentMega.lastMegaEnd = new Date(
+		// If there's a pokemon who is set as "mostRecentMega", and they're not the current
+		// pokemon we're evolving now, we should try to update their mega time; however,
+		// the Math.min prevents any problems with overwriting a stale mega pokemon.
+		//
+		// It might be possible to write this condition a little cleaner, but for now,
+		// this is fine.
+		const mostRecentMega = db.pokemon[db.mostRecentMega?.id ?? ''];
+		if (mostRecentMega && mostRecentMega.id !== pokemon.id) {
+			const prevMegaEnd = new Date(mostRecentMega.lastMegaEnd);
+			mostRecentMega.lastMegaEnd = new Date(
 				Math.min(now.getTime(), prevMegaEnd.getTime()),
 			).toISOString();
 		}
 
-		db.currentMega = { id };
+		db.mostRecentMega = { id };
 	});
 
 	return {};
@@ -220,14 +190,14 @@ export async function setPokemonMegaCountRpc({
 }
 
 export async function setPokemonMegaEnergyRpc({
-	pokemonId,
+	pokedexId,
 	megaEnergy,
 }: {
-	pokemonId: number;
+	pokedexId: number;
 	megaEnergy: number;
 }) {
 	await withDb((db) => {
-		const dexEntry = db.pokedex[pokemonId];
+		const dexEntry = db.pokedex[pokedexId];
 		if (!dexEntry) return;
 
 		dexEntry.megaEnergyAvailable = Math.max(megaEnergy, 0);
@@ -251,6 +221,38 @@ export async function setNameRpc({ id, name }: { id: string; name: string }) {
 		if (!pokemon) return;
 
 		pokemon.name = name;
+	});
+
+	return {};
+}
+
+export async function addPlannedEventRpc({
+	pokemonId,
+	isoDate,
+}: {
+	pokemonId: string;
+	isoDate: string;
+}) {
+	const date = new Date(isoDate);
+
+	withDb((db) => {
+		if (!db.pokemon[pokemonId]) {
+			return {};
+		}
+
+		db.evolvePlans.push({
+			id: uuid(pokemonId),
+			date: date.toISOString(),
+			pokemonId,
+		});
+	});
+
+	return {};
+}
+
+export async function deletePlannedEventRpc({ id }: { id: string }) {
+	withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
 	});
 
 	return {};
