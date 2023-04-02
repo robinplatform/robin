@@ -20,11 +20,7 @@ const PogoDb = z.object({
 	pokedex: z.record(z.coerce.number(), Species),
 	pokemon: z.record(z.string(), Pokemon),
 	evolvePlans: z.record(z.string(), z.array(PlannedMega)),
-	mostRecentMega: z
-		.object({
-			id: z.string(),
-		})
-		.optional(),
+	mostRecentMega: z.object({ id: z.string() }).optional(),
 });
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
