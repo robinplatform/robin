@@ -184,7 +184,6 @@ export function useStreamMethod<State, Output>({
 			dispatch(res.data);
 		};
 
-		console.log('initialData', JSON.stringify(initialData));
 		stream.start(initialData).then(() => onConnRef.current?.());
 
 		return () => {
