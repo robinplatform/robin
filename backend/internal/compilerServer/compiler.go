@@ -24,11 +24,13 @@ var (
 type Compiler struct {
 	ServerPort int
 
-	mux      sync.RWMutex
-	appCache map[string]CompiledApp
+	mux  sync.RWMutex
+	apps map[string]CompiledApp
 }
 
 type CompiledApp struct {
+	shouldCache bool
+
 	httpClient       *http.Client
 	compiler         *Compiler
 	keepAliveRunning *int64
@@ -55,7 +57,7 @@ type CompiledApp struct {
 
 func (compiler *Compiler) ResetAppCache(id string) {
 	compiler.mux.Lock()
-	delete(compiler.appCache, id)
+	delete(compiler.apps, id)
 	compiler.mux.Unlock()
 }
 
@@ -63,12 +65,12 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
-	if app, found := compiler.appCache[id]; found {
+	if app, found := compiler.apps[id]; found {
 		return app, true, nil
 	}
 
-	if compiler.appCache == nil && CacheEnabled {
-		compiler.appCache = make(map[string]CompiledApp)
+	if compiler.apps == nil && CacheEnabled {
+		compiler.apps = make(map[string]CompiledApp)
 	}
 
 	appConfig, err := project.LoadRobinAppById(id)
@@ -82,6 +84,7 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	}
 
 	app := CompiledApp{
+		shouldCache:      CacheEnabled && appConfig.ConfigPath.Scheme != "file",
 		compiler:         compiler,
 		keepAliveRunning: new(int64),
 		builderMux:       &sync.RWMutex{},
@@ -91,8 +94,8 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	}
 
 	// TODO: add something to invalidate the cache if the app's source is changed, instead of just disabling cache
-	if compiler.appCache != nil && appConfig.ConfigPath.Scheme != "file" {
-		compiler.appCache[id] = app
+	if compiler.apps != nil {
+		compiler.apps[id] = app
 	}
 
 	return app, false, nil
@@ -143,7 +146,7 @@ func (compiler *Compiler) GetClientMetaFile(id string) (map[string]any, error) {
 		return nil, err
 	}
 
-	app := compiler.appCache[id]
+	app := compiler.apps[id]
 	return app.ClientMetafile, nil
 }
 
@@ -162,7 +165,7 @@ func (app *CompiledApp) buildClient() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
-	if app.ClientJs != "" {
+	if app.ClientJs != "" && app.shouldCache {
 		return nil
 	}
 
@@ -188,7 +191,7 @@ func (app *CompiledApp) buildServerBundle() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
-	if app.ServerJs != "" {
+	if app.ServerJs != "" && app.shouldCache {
 		return nil
 	}
 
