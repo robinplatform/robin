@@ -73,7 +73,7 @@ type Subscription[T any] struct {
 	Unsubscribe func()
 }
 
-func (topic *Topic[T]) addSubscriber() (chan Message[T], error) {
+func (topic *Topic[T]) addSubscriber() (<-chan Message[T], error) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -99,11 +99,20 @@ func (topic *Topic[T]) addSubscriber() (chan Message[T], error) {
 }
 
 func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
-	endChannel := make(chan struct{}, 1)
 	channel, err := topic.addSubscriber()
 	if err != nil {
 		return Subscription[any]{}, err
 	}
+
+	// This channel is used to end the goroutine that pipes messages from the topic to
+	// the subscriber. It needs to be separate so that when the publisher closes the topic,
+	// and then separately, the subscriber unsubscribes, there isn't accidentally an instance of
+	// closing the channel returned by addSubscriber.
+	//
+	// Technically, now that I've fixed the return type, it's not even possible to call close on
+	// the channel returned by `addSubscriber` anymore, but I feel this explanation is still useful
+	// as documentation.
+	endChannel := make(chan struct{}, 1)
 
 	anyChannel := make(chan Message[any])
 	go func() {
@@ -130,8 +139,6 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 
 	unsub := func() {
 		topic.removeSubscriber(channel)
-
-		// This close allows the goroutine to die when the subscriber unsubscribes
 		close(endChannel)
 	}
 
