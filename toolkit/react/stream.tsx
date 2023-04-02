@@ -77,17 +77,13 @@ export function useTopicQuery<State, Output>({
 				const state = seenMessages
 					.flatMap((msg) => {
 						const res = resultType.safeParse(msg.data);
-						if (res.success) {
-							return [res.data];
-						}
-
-						return [];
+						return res.success ? [res.data] : [];
 					})
 					.reduce((prev, data) => reducer(prev, data), packet.data as State);
 
-				const maxMessageId = seenMessages.reduce(
-					(max, msg) => Math.max(msg.messageId, max),
+				const maxMessageId = Math.max(
 					packet.messageId,
+					...seenMessages.map((m) => m.messageId),
 				);
 
 				return {

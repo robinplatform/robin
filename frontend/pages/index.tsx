@@ -136,6 +136,7 @@ function Topics() {
 			if (!selectedTopic) {
 				return prev;
 			}
+
 			const prevArray: string[] = prev[selectedTopic.key] ?? [];
 			const message = JSON.stringify(packet);
 			return {
