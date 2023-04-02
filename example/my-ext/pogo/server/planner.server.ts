@@ -92,7 +92,6 @@ export async function megaLevelPlanForPokemonRpc({
 		const planDate = new Date(plan.date);
 
 		const newState = computeEvolve(planDate, dexEntry, currentState);
-		console.log('plan', { plan, newState });
 		events.push({
 			date: plan.date,
 			id: plan.id,
