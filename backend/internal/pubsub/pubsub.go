@@ -385,7 +385,7 @@ func Subscribe[T any](r *Registry, id TopicId) (Subscription[T], error) {
 type TopicInfo struct {
 	Id              TopicId `json:"id"`
 	Closed          bool    `json:"closed"`
-	Counter         int32   `json:"counter"`
+	Counter         int32   `json:"counter"` // The ID of the next message
 	SubscriberCount int     `json:"subscriberCount"`
 }
 
