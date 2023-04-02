@@ -10,7 +10,7 @@ import {
 	MegaEvolveEvent,
 	megaLevelPlanForPokemonRpc,
 } from '../server/planner.server';
-import { addPlannedEventRpc } from '../server/db.server';
+import { addPlannedEventRpc, deletePlannedEventRpc } from '../server/db.server';
 
 // Include cancel or not
 // Specify locks/planned actions
@@ -42,18 +42,75 @@ function DateText({ date }: { date: Date }) {
 	);
 }
 
-function EventText({ event }: { event: MegaEvolveEvent }) {
+function EventInfo({
+	pokemonId,
+	date,
+	event,
+	refetch,
+}: {
+	pokemonId: string;
+	date: Date;
+	event?: MegaEvolveEvent;
+	refetch: () => void;
+}) {
+	const { mutate: addPlannedEvent } = useRpcMutation(addPlannedEventRpc, {
+		onSuccess: () => refetch(),
+	});
+	const { mutate: deletePlannedEvent } = useRpcMutation(deletePlannedEventRpc, {
+		onSuccess: () => refetch(),
+	});
+
+	if (!event) {
+		return (
+			<div
+				style={{
+					position: 'absolute',
+					left: '2rem',
+					top: '0',
+					width: '12rem',
+				}}
+			>
+				<button
+					onClick={() =>
+						addPlannedEvent({ pokemonId, isoDate: date.toISOString() })
+					}
+				>
+					Mega
+				</button>
+			</div>
+		);
+	}
+
+	const { id, megaEnergySpent } = event;
+
+	if (!id) {
+		return (
+			<div
+				style={{
+					position: 'absolute',
+					left: '2rem',
+					top: '0',
+					width: '12rem',
+					color: 'gray',
+				}}
+			>
+				Evolve for {megaEnergySpent === 0 ? 'free' : megaEnergySpent}
+			</div>
+		);
+	}
+
 	return (
 		<div
 			style={{
 				position: 'absolute',
 				left: '2rem',
 				top: '0',
-				bottom: '0',
 				width: '12rem',
+				color: 'black',
 			}}
 		>
-			Evolve for {event.megaEnergySpent} to level up
+			Evolve for {megaEnergySpent}
+			<button onClick={() => deletePlannedEvent({ id })}>X</button>
 		</div>
 	);
 }
@@ -104,35 +161,10 @@ function DayBox({ children }: { children: React.ReactNode }) {
 	);
 }
 
-function AddEventButton({
-	pokemonId,
-	date,
-}: {
-	pokemonId: string;
-	date: Date;
-}) {
-	const { mutate: addPlannedEvents } = useRpcMutation(addPlannedEventRpc, {});
-
-	return (
-		<button
-			style={{
-				position: 'absolute',
-				left: '2rem',
-				top: '0',
-			}}
-			onClick={() =>
-				addPlannedEvents({ pokemonId, isoDate: date.toISOString() })
-			}
-		>
-			Mega
-		</button>
-	);
-}
-
 export function LevelUpPlanner() {
 	const { pokemon: selectedMonId = '' } = usePageState();
 
-	const { data: days } = useRpcQuery(megaLevelPlanForPokemonRpc, {
+	const { data: days, refetch } = useRpcQuery(megaLevelPlanForPokemonRpc, {
 		id: selectedMonId,
 	});
 
@@ -163,13 +195,12 @@ export function LevelUpPlanner() {
 							<SmallDot />
 						)}
 
-						{eventsToday.map((e, index) => (
-							<EventText key={`${index}`} event={e} />
-						))}
-
-						{eventsToday.length === 0 && (
-							<AddEventButton pokemonId={selectedMonId} date={new Date(date)} />
-						)}
+						<EventInfo
+							pokemonId={selectedMonId}
+							date={new Date(date)}
+							event={eventsToday[0]}
+							refetch={refetch}
+						/>
 					</DayBox>
 				))}
 			</ScrollWindow>

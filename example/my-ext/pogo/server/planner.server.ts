@@ -1,3 +1,4 @@
+import { current } from 'immer';
 import {
 	PokemonMegaValues,
 	Species,
@@ -104,7 +105,9 @@ export async function megaLevelPlanForPokemonRpc({
 		};
 	}
 
-	events.push(...naiveFreeMegaEvolve(currentState.date, dexEntry, pokemon));
+	events.push(
+		...naiveFreeMegaEvolve(currentState.date, dexEntry, currentState),
+	);
 
 	const timeToLastEvent =
 		events.length === 0
