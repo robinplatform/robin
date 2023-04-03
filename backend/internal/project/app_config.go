@@ -270,15 +270,21 @@ func LoadRobinAppById(appId string) (RobinAppConfig, error) {
 }
 
 func (projectConfig *RobinProjectConfig) LoadRobinAppById(appId string) (RobinAppConfig, error) {
-	apps, err := projectConfig.GetAllProjectApps()
-	if err != nil {
-		return RobinAppConfig{}, err
-	}
+	var loadErr error
+	for _, configPath := range projectConfig.Apps {
+		var app RobinAppConfig
+		if err := app.readRobinAppConfig(projectConfig, configPath); err != nil {
+			loadErr = err
+			continue
+		}
 
-	for _, app := range apps {
 		if app.Id == appId {
 			return app, nil
 		}
+	}
+
+	if loadErr != nil {
+		return RobinAppConfig{}, fmt.Errorf("failed to find app with id '%s': %w", appId, loadErr)
 	}
 
 	return RobinAppConfig{}, fmt.Errorf("failed to find app with id '%s'", appId)
