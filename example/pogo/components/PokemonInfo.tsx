@@ -162,7 +162,7 @@ function MegaCount({
 						left: 0,
 						bottom: '1rem',
 
-						width: '5rem',
+						width: '7rem',
 
 						visibility: forceVisible ? 'visible' : undefined,
 						zIndex: 1000,
@@ -182,8 +182,10 @@ function MegaCount({
 						}}
 					>
 						{megaLevel < 3
-							? `${MegaRequirements[megaLevel + 1] - megaCount} to next level`
-							: 'max level'}
+							? `${MegaRequirements[megaLevel + 1] - megaCount} to level ${
+									megaLevel + 1
+							  }`
+							: 'level 3 (max)'}
 					</div>
 				</div>
 			</div>
