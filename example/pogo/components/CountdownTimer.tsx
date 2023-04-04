@@ -2,6 +2,7 @@ import React from 'react';
 import '@robinplatform/toolkit/styles.css';
 import './timer.scss';
 import { create } from 'zustand';
+import { EditSvg } from './EditableField';
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 
@@ -126,14 +127,29 @@ export function CountdownTimer({
 				</div>
 			))}
 
-			{setDeadline && !editing && (
-				<button disabled={disableEditing} onClick={() => setEditing(true)}>
-					edit
-				</button>
-			)}
-			{setDeadline && editing && (
-				<button disabled={disableEditing} onClick={() => setEditing(false)}>
-					done
+			{setDeadline && (
+				<button
+					disabled={disableEditing}
+					onClick={() => setEditing(!editing)}
+					style={{
+						alignSelf: 'flex-start',
+
+						width: '0.8rem',
+						height: '0.8rem',
+						padding: 0,
+
+						fontSize: '0.8rem',
+						lineHeight: '0.8rem',
+						textAlign: 'center',
+
+						display: 'flex',
+						flexDirection: 'column',
+						justifyContent: 'center',
+						alignItems: 'center',
+						color: 'red',
+					}}
+				>
+					{editing ? <>&#xd7;</> : <EditSvg />}
 				</button>
 			)}
 		</div>

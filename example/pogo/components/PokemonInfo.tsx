@@ -194,8 +194,9 @@ function MegaCount({
 				</div>
 			</div>
 
-			<div className={'row'}>
+			<div className={'row'} style={{ gap: '0.2rem' }}>
 				<button
+					style={{ padding: '0.2rem' }}
 					disabled={setMegaCountLoading}
 					onClick={() => setMegaCount({ id: pokemonId, count: megaCount + 1 })}
 				>
@@ -203,6 +204,7 @@ function MegaCount({
 				</button>
 
 				<button
+					style={{ padding: '0.2rem' }}
 					disabled={setMegaCountLoading}
 					onClick={() => setMegaCount({ id: pokemonId, count: megaCount - 1 })}
 				>
@@ -298,22 +300,6 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 							</div>
 						</EditField>
 
-						<div className={'row'} style={{ gap: '0.5rem' }}>
-							{dexEntry.megaType.map((t) => (
-								<div
-									key={t}
-									className={'robin-rounded'}
-									style={{
-										padding: '0.25rem 0.5rem 0.25rem 0.5rem',
-										backgroundColor: TypeColors[t.toLowerCase()],
-										color: TypeTextColors[t.toLowerCase()],
-									}}
-								>
-									{t}
-								</div>
-							))}
-						</div>
-
 						{!!pokemon.megaCount && (
 							<CountdownTimer
 								doneText="now"
@@ -339,30 +325,50 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
 				</div>
 
-				<div className={'row'} style={{ gap: '0.5rem' }}>
-					<p>Mega Level: </p>
-					<MegaCount megaCount={pokemon.megaCount} pokemonId={pokemon.id} />
+				<div className={'row'} style={{ gap: '0.75rem' }}>
+					<div className={'row'} style={{ gap: '0.5rem' }}>
+						{dexEntry.megaType.map((t) => (
+							<div
+								key={t}
+								className={'robin-rounded'}
+								style={{
+									padding: '0.25rem 0.5rem 0.25rem 0.5rem',
+									backgroundColor: TypeColors[t.toLowerCase()],
+									color: TypeTextColors[t.toLowerCase()],
+								}}
+							>
+								{t}
+							</div>
+						))}
+					</div>
+
+					<div className={'row'} style={{ gap: '0.5rem' }}>
+						<p>Energy: </p>
+						<EditField
+							disabled={setEneryLoading}
+							value={dexEntry.megaEnergyAvailable}
+							setValue={(value) =>
+								setEnergy({ pokedexId: dexEntry.number, megaEnergy: value })
+							}
+							parseFunc={(val) => {
+								const parsed = Number.parseInt(val);
+								if (Number.isNaN(parsed)) {
+									return undefined;
+								}
+
+								return parsed;
+							}}
+						>
+							<p style={{ minWidth: '1rem' }}>{dexEntry.megaEnergyAvailable}</p>
+						</EditField>
+					</div>
 				</div>
 
-				<div className={'row'} style={{ gap: '0.5rem' }}>
-					Mega Energy:{' '}
-					<EditField
-						disabled={setEneryLoading}
-						value={dexEntry.megaEnergyAvailable}
-						setValue={(value) =>
-							setEnergy({ pokedexId: dexEntry.number, megaEnergy: value })
-						}
-						parseFunc={(val) => {
-							const parsed = Number.parseInt(val);
-							if (Number.isNaN(parsed)) {
-								return undefined;
-							}
-
-							return parsed;
-						}}
-					>
-						<p style={{ minWidth: '1rem' }}>{dexEntry.megaEnergyAvailable}</p>
-					</EditField>
+				<div className={'row'} style={{ gap: '0.75rem' }}>
+					<div className={'row'} style={{ gap: '0.5rem' }}>
+						<p>Level: </p>
+						<MegaCount megaCount={pokemon.megaCount} pokemonId={pokemon.id} />
+					</div>
 				</div>
 
 				<div className={'row'} style={{ justifyContent: 'space-between' }}>
@@ -373,7 +379,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 								setPokemon(pokemon.id);
 							}}
 						>
-							View Cost Tables
+							Cost Tables
 						</button>
 
 						{megaLevel !== 3 && (
@@ -383,7 +389,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 									setPokemon(pokemon.id);
 								}}
 							>
-								View Level Planner
+								Level Planner
 							</button>
 						)}
 					</div>

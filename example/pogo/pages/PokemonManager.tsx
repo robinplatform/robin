@@ -87,8 +87,8 @@ export function PokemonManager() {
 				)}
 				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
 
-				<div>
-					Sort by:{' '}
+				<div className={'col'}>
+					<p>Sort by: </p>
 					<select
 						value={sortIndex}
 						onChange={(evt) => {
@@ -117,14 +117,14 @@ export function PokemonManager() {
 						downloadObjectAsJson(db, name);
 					}}
 				>
-					Download DB
+					Save DB
 				</button>
 
 				<button
 					disabled={setDbIsLoading || dbIsLoading}
 					onClick={() => inputRef.current?.click()}
 				>
-					Upload DB
+					Load DB
 				</button>
 
 				<input
