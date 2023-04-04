@@ -255,7 +255,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 							return parsed;
 						}}
 					>
-						<p style={{ width: '10rem' }}>{dexEntry.megaEnergyAvailable}</p>
+						<p style={{ minWidth: '1rem' }}>{dexEntry.megaEnergyAvailable}</p>
 					</EditField>
 				</div>
 
