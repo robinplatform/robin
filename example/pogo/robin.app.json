@@ -1,0 +1,6 @@
+{
+	"id": "pogo",
+	"name": "PoGo",
+	"page": "pogo.tsx",
+	"pageIcon": "🎮"
+}

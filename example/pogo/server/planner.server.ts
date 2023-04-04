@@ -17,6 +17,7 @@ import { getDB } from './db.server';
 
 export type MegaEvolveEvent = PokemonMegaValues & {
 	id?: string;
+	title: string;
 	date: string;
 	megaEnergyAvailable: number;
 };
@@ -42,18 +43,22 @@ function naiveFreeMegaEvolve(
 		// because its been a while since the last mega, don't accidentally go back in time.
 		now = new Date(Math.max(now.getTime(), deadline.getTime()));
 
-		const newState = computeEvolve(now, dexEntry, currentState);
+		const result = computeEvolve(now, dexEntry, currentState);
+		if (result.megaEnergySpent !== 0) {
+			console.warn('naiveFreeMegaEvolve: Found non-zero evolve cost');
+		}
 
 		out.push({
+			title: 'Free Evolve',
 			date: now.toISOString(),
 			megaEnergyAvailable,
-			...newState,
+			...result,
 		});
 
 		currentState = {
-			megaCount: newState.megaCount,
-			lastMegaEnd: newState.lastMegaEnd,
-			lastMegaStart: newState.lastMegaStart,
+			megaCount: result.megaCount,
+			lastMegaEnd: result.lastMegaEnd,
+			lastMegaStart: result.lastMegaStart,
 		};
 	}
 
@@ -103,18 +108,19 @@ export async function megaLevelPlanForPokemonRpc({
 	for (const plan of plans) {
 		const planDate = new Date(plan.date);
 
-		const newState = computeEvolve(planDate, dexEntry, currentState);
+		const result = computeEvolve(planDate, dexEntry, currentState);
 		const megaEnergyAvailable =
-			currentState.megaEnergyAvailable - newState.megaEnergySpent;
+			currentState.megaEnergyAvailable - result.megaEnergySpent;
 		events.push({
+			title: `Planned Evolve for ${result.megaEnergySpent}`,
 			date: plan.date,
 			megaEnergyAvailable,
 			id: plan.id,
-			...newState,
+			...result,
 		});
 
 		currentState = {
-			...newState,
+			...result,
 			megaEnergyAvailable,
 			date: new Date(Math.max(planDate.getTime(), currentState.date.getTime())),
 		};
@@ -136,6 +142,10 @@ export async function megaLevelPlanForPokemonRpc({
 			const eventsToday = events.filter(
 				(e) => new Date(e.date).toDateString() === date.toDateString(),
 			);
+
+			if (eventsToday.length === 0) {
+				//
+			}
 
 			return {
 				date: date.toISOString(),

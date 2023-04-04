@@ -71,7 +71,7 @@ function EventInfo({
 		);
 	}
 
-	const { id, megaEnergySpent, megaEnergyAvailable } = event;
+	const { id, title, megaEnergyAvailable } = event;
 
 	if (!id) {
 		return (
@@ -84,7 +84,7 @@ function EventInfo({
 					color: 'gray',
 				}}
 			>
-				Evolve for {megaEnergySpent === 0 ? 'free' : megaEnergySpent}
+				{title}
 			</div>
 		);
 	}
@@ -99,7 +99,7 @@ function EventInfo({
 				color: 'black',
 			}}
 		>
-			Evolve for {megaEnergySpent}
+			{title}
 			<button onClick={() => deletePlannedEvent({ id })}>X</button>
 			Remaining: {megaEnergyAvailable}
 		</div>
@@ -161,7 +161,7 @@ export function LevelUpPlanner() {
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
-			<div className={'row robin-gap'}>
+			<div className={'row robin-gap'} style={{ flexWrap: 'wrap' }}>
 				<SelectPage />
 
 				<SelectPokemon />

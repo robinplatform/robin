@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import React from 'react';
-import { useSelectOption } from './EditableField';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc } from '../server/db.server';
 
@@ -27,16 +26,19 @@ export function SelectPage() {
 	const { page, setPage } = usePageState();
 
 	return (
-		<select
-			value={page}
-			onChange={(evt) => setPage(evt.target.value as PageType)}
-		>
-			{PageTypes.map((page) => (
-				<option key={page} value={page}>
-					{page}
-				</option>
-			))}
-		</select>
+		<div className={'col'}>
+			<p>Page:</p>
+			<select
+				value={page}
+				onChange={(evt) => setPage(evt.target.value as PageType)}
+			>
+				{PageTypes.map((page) => (
+					<option key={page} value={page}>
+						{page}
+					</option>
+				))}
+			</select>
+		</div>
 	);
 }
 
@@ -49,21 +51,26 @@ export function SelectPokemon() {
 	);
 
 	return (
-		<select
-			value={selectedPokemon}
-			onChange={(evt) =>
-				evt.target.value ? setPokemon(evt.target.value) : setPokemon(undefined)
-			}
-		>
-			<option value={''}>Select pokemon...</option>
+		<div className={'col'}>
+			<p>Pokemon:</p>
+			<select
+				value={selectedPokemon}
+				onChange={(evt) =>
+					evt.target.value
+						? setPokemon(evt.target.value)
+						: setPokemon(undefined)
+				}
+			>
+				<option value={''}>Select pokemon...</option>
 
-			{pokemon.map((mon) => (
-				<option key={mon.id} value={mon.id}>
-					{mon.name
-						? `${mon.name} (${db?.pokedex?.[mon.pokedexId]?.name})`
-						: db?.pokedex?.[mon.pokedexId]?.name}
-				</option>
-			))}
-		</select>
+				{pokemon.map((mon) => (
+					<option key={mon.id} value={mon.id}>
+						{mon.name && mon.name !== db?.pokedex?.[mon.pokedexId]?.name
+							? `${mon.name} (${db?.pokedex?.[mon.pokedexId]?.name})`
+							: db?.pokedex?.[mon.pokedexId]?.name}
+					</option>
+				))}
+			</select>
+		</div>
 	);
 }

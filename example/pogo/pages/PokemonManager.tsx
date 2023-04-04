@@ -79,29 +79,55 @@ export function PokemonManager() {
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
-			<div className={'row robin-gap'}>
+			<div className={'row robin-gap'} style={{ flexWrap: 'wrap' }}>
 				<SelectPage />
 
-				<button
-					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() => {
-						const now = new Date();
-						const month = String(now.getMonth()).padStart(2, '0');
-						const day = String(now.getDate()).padStart(2, '0');
-						const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+				<div className={'col'}>
+					<p>Sort by:</p>
+					<select
+						value={sortIndex}
+						onChange={(evt) => {
+							const index = Number.parseInt(evt.target.value);
+							setSortIndex(index);
+						}}
+					>
+						{Sorts.map((sort, index) => {
+							return (
+								<option key={sort} value={index}>
+									{sort}
+								</option>
+							);
+						})}
+					</select>
+				</div>
 
-						downloadObjectAsJson(db, name);
-					}}
-				>
-					Download DB
-				</button>
+				{db && Object.keys(db.pokedex).length === 0 && (
+					<div>Pokedex is empty!</div>
+				)}
+				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
 
-				<button
-					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() => inputRef.current?.click()}
-				>
-					Upload DB
-				</button>
+				<div className={'col'} style={{ gap: '0.25rem' }}>
+					<button
+						disabled={setDbIsLoading || dbIsLoading}
+						onClick={() => {
+							const now = new Date();
+							const month = String(now.getMonth()).padStart(2, '0');
+							const day = String(now.getDate()).padStart(2, '0');
+							const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+
+							downloadObjectAsJson(db, name);
+						}}
+					>
+						Save DB
+					</button>
+
+					<button
+						disabled={setDbIsLoading || dbIsLoading}
+						onClick={() => inputRef.current?.click()}
+					>
+						Load DB
+					</button>
+				</div>
 
 				<input
 					ref={inputRef}
@@ -119,30 +145,6 @@ export function PokemonManager() {
 						setDb({ db: newDb });
 					}}
 				/>
-
-				{db && Object.keys(db.pokedex).length === 0 && (
-					<div>Pokedex is empty!</div>
-				)}
-				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
-
-				<div>
-					Sort by:{' '}
-					<select
-						value={sortIndex}
-						onChange={(evt) => {
-							const index = Number.parseInt(evt.target.value);
-							setSortIndex(index);
-						}}
-					>
-						{Sorts.map((sort, index) => {
-							return (
-								<option key={sort} value={index}>
-									{sort}
-								</option>
-							);
-						})}
-					</select>
-				</div>
 			</div>
 
 			<ScrollWindow
@@ -155,7 +157,7 @@ export function PokemonManager() {
 					className={'robin-rounded robin-pad'}
 					style={{ backgroundColor: 'Gray' }}
 				>
-					<SelectSpecies submit={addPokemon} buttonText={'Add Pokemon'} />
+					<SelectSpecies submit={addPokemon} buttonText={'Add'} />
 				</div>
 
 				{!!db &&
