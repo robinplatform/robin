@@ -19,7 +19,7 @@ export function Pogo(): JSX.Element {
 	const { refetch } = useRpcQuery(fetchDbRpc, {});
 	useTopicQuery({
 		topicId: {
-			category: '/app-topics/my-ext/pogo',
+			category: '/app-topics/pogo/pogo',
 			key: 'db',
 		},
 		resultType: z.object({}),

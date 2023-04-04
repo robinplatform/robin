@@ -77,6 +77,48 @@ function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 	return <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>M</div>;
 }
 
+function MegaCount({
+	pokemonId,
+	megaCount,
+}: {
+	pokemonId: string;
+	megaCount: number;
+}) {
+	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
+		useRpcMutation(setPokemonMegaCountRpc);
+	const megaLevel = megaLevelFromCount(megaCount);
+
+	return (
+		<div className={'row'}>
+			<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
+				{megaLevel}
+				{megaLevel < 3 && (
+					<p>
+						{megaCount} done, {MegaRequirements[megaLevel + 1] - megaCount} to
+						level {megaLevel + 1}
+					</p>
+				)}
+			</div>
+
+			<div className={'row'}>
+				<button
+					disabled={setMegaCountLoading}
+					onClick={() => setMegaCount({ id: pokemonId, count: megaCount + 1 })}
+				>
+					+
+				</button>
+
+				<button
+					disabled={setMegaCountLoading}
+					onClick={() => setMegaCount({ id: pokemonId, count: megaCount - 1 })}
+				>
+					-
+				</button>
+			</div>
+		</div>
+	);
+}
+
 export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
@@ -205,37 +247,9 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
 				</div>
 
-				<div className={'row'}>
-					<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
-						<p>Mega Level: {megaLevel}</p>
-						{megaLevel < 3 && (
-							<p>
-								{pokemon.megaCount} done,{' '}
-								{MegaRequirements[megaLevel + 1] - pokemon.megaCount} to level{' '}
-								{megaLevel + 1}
-							</p>
-						)}
-					</div>
-
-					<div className={'row'}>
-						<button
-							disabled={setMegaCountLoading}
-							onClick={() =>
-								setMegaCount({ id: pokemon.id, count: pokemon.megaCount + 1 })
-							}
-						>
-							+
-						</button>
-
-						<button
-							disabled={setMegaCountLoading}
-							onClick={() =>
-								setMegaCount({ id: pokemon.id, count: pokemon.megaCount - 1 })
-							}
-						>
-							-
-						</button>
-					</div>
+				<div className={'row'} style={{ gap: '0.5rem' }}>
+					<p>Mega Level: </p>
+					<MegaCount megaCount={pokemon.megaCount} pokemonId={pokemon.id} />
 				</div>
 
 				<div className={'row'} style={{ gap: '0.5rem' }}>

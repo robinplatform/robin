@@ -119,7 +119,7 @@ export function useSelectOption<T>(options: Partial<Record<number, T>>) {
 function EditSvg() {
 	return (
 		<svg
-			enable-background="new 0 0 19 19"
+			enableBackground="new 0 0 19 19"
 			height="0.8rem"
 			width="0.8rem"
 			id="Layer_1"

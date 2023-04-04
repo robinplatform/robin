@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import React from 'react';
-import { useSelectOption } from './EditableField';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc } from '../server/db.server';
 
