@@ -165,12 +165,13 @@ function MegaCount({
 						width: '7rem',
 
 						visibility: forceVisible ? 'visible' : undefined,
-						zIndex: 1000,
+						opacity: forceVisible ? '1' : undefined,
 
 						paddingBottom: '0.3rem',
 
 						display: 'flex',
 						justifyContent: 'flex-end',
+						transition: '0.3s opacity ease, 0.3s visibility ease',
 					}}
 				>
 					<div
