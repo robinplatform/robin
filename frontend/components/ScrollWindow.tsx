@@ -1,6 +1,4 @@
 import React from 'react';
-import styles from './ScrollWindow.module.scss';
-import cx from 'classnames';
 
 type ScrollWindowProps = {
 	className?: string;
@@ -8,7 +6,7 @@ type ScrollWindowProps = {
 	innerClassName?: string;
 	innerStyle?: React.CSSProperties;
 	children?: React.ReactNode;
-	scrollStyle: React.CSSProperties['overflowY'];
+	scrollStyle?: React.CSSProperties['overflowY'];
 };
 
 export const ScrollWindow = ({
@@ -27,8 +25,8 @@ export const ScrollWindow = ({
     https://stackoverflow.com/questions/27433183/make-scrollable-div-take-up-remaining-height
     */
 	return (
-		<div className={cx(className, styles.wrapper)} style={style}>
-			<div className={styles.inner} style={{ overflowY: scrollStyle }}>
+		<div className={className} style={{ ...style, position: 'relative' }}>
+			<div style={{ position: 'absolute', inset: 0, overflowY: scrollStyle }}>
 				{/* Maybe innerClassName and innerStyle aren't necessary, but I like them as a way to reduce
 					the indentation level of the caller's children */}
 				<div className={innerClassName} style={innerStyle}>

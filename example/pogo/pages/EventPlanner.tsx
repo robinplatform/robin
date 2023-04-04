@@ -31,7 +31,7 @@ export function EventPlanner() {
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
-			<div className={'row robin-gap'}>
+			<div className={'row robin-gap'} style={{ flexWrap: 'wrap' }}>
 				<SelectPage />
 			</div>
 

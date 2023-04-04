@@ -24,7 +24,7 @@ import {
 } from '../server/db.server';
 import React from 'react';
 import { usePageState } from './PageState';
-import { first } from 'lodash';
+import { TypeIcons } from './TypeIcons';
 
 function EvolvePokemonButton({
 	dexEntry,
@@ -56,6 +56,7 @@ function EvolvePokemonButton({
 				)}
 
 			<button
+				style={{ padding: '0' }}
 				disabled={
 					megaEvolveLoading ||
 					isCurrentMega(db?.mostRecentMega?.id, pokemon, now) ||
@@ -63,7 +64,7 @@ function EvolvePokemonButton({
 				}
 				onClick={() => megaEvolve({ id: pokemon.id })}
 			>
-				Evolve for {megaCost}
+				Evolve ({megaCost})
 			</button>
 		</div>
 	);
@@ -254,14 +255,21 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 				>
 					<MegaIndicator pokemon={pokemon} />
 				</div>
+
+				<div
+					style={{
+						position: 'absolute',
+						top: '-1.20rem',
+						right: '-1.20rem',
+					}}
+				>
+					<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
+				</div>
 			</div>
 
 			<div className={'col'} style={{ gap: '0.5rem' }}>
-				<div
-					className={'row'}
-					style={{ justifyContent: 'space-between', height: '3rem' }}
-				>
-					<div className={'row robin-gap'}>
+				<div className={'row'} style={{ gap: '0.5rem', flexWrap: 'wrap' }}>
+					<div className={'row'} style={{ height: '3rem' }}>
 						<EditField
 							disabled={setNameLoading}
 							value={pokemon.name ?? dexEntry.name}
@@ -299,47 +307,54 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 								)}
 							</div>
 						</EditField>
-
-						{!!pokemon.megaCount && (
-							<CountdownTimer
-								doneText="now"
-								disableEditing={setMegaEvolveTimeLoading}
-								setDeadline={(deadline) =>
-									setMegaEvolveTime({
-										id: pokemon.id,
-										newMegaEnd: new Date(
-											deadline.getTime() - MegaWaitTime[megaLevel],
-										).toISOString(),
-									})
-								}
-								deadline={
-									new Date(
-										new Date(pokemon.lastMegaEnd).getTime() +
-											MegaWaitTime[megaLevel],
-									)
-								}
-							/>
-						)}
 					</div>
 
-					<EvolvePokemonButton dexEntry={dexEntry} pokemon={pokemon} />
+					<div className={'row'} style={{ gap: '0.5rem' }}>
+						{dexEntry.megaType.map((t) => {
+							const Comp = TypeIcons[t.toLowerCase()] ?? TypeIcons.normal;
+
+							return (
+								<div
+									style={{
+										height: '2rem',
+										width: '2rem',
+										borderRadius: '1rem',
+										padding: '0.3rem',
+										backgroundColor: TypeColors[t.toLowerCase()],
+									}}
+								>
+									<Comp />
+								</div>
+							);
+						})}
+					</div>
+
+					{!!pokemon.megaCount && (
+						<CountdownTimer
+							doneText="now"
+							disableEditing={setMegaEvolveTimeLoading}
+							setDeadline={(deadline) =>
+								setMegaEvolveTime({
+									id: pokemon.id,
+									newMegaEnd: new Date(
+										deadline.getTime() - MegaWaitTime[megaLevel],
+									).toISOString(),
+								})
+							}
+							deadline={
+								new Date(
+									new Date(pokemon.lastMegaEnd).getTime() +
+										MegaWaitTime[megaLevel],
+								)
+							}
+						/>
+					)}
 				</div>
 
-				<div className={'row'} style={{ gap: '0.75rem' }}>
+				<div className={'row'} style={{ gap: '1.25rem', flexWrap: 'wrap' }}>
 					<div className={'row'} style={{ gap: '0.5rem' }}>
-						{dexEntry.megaType.map((t) => (
-							<div
-								key={t}
-								className={'robin-rounded'}
-								style={{
-									padding: '0.25rem 0.5rem 0.25rem 0.5rem',
-									backgroundColor: TypeColors[t.toLowerCase()],
-									color: TypeTextColors[t.toLowerCase()],
-								}}
-							>
-								{t}
-							</div>
-						))}
+						<p>Level: </p>
+						<MegaCount megaCount={pokemon.megaCount} pokemonId={pokemon.id} />
 					</div>
 
 					<div className={'row'} style={{ gap: '0.5rem' }}>
@@ -364,22 +379,18 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					</div>
 				</div>
 
-				<div className={'row'} style={{ gap: '0.75rem' }}>
-					<div className={'row'} style={{ gap: '0.5rem' }}>
-						<p>Level: </p>
-						<MegaCount megaCount={pokemon.megaCount} pokemonId={pokemon.id} />
-					</div>
-				</div>
-
-				<div className={'row'} style={{ justifyContent: 'space-between' }}>
-					<div className={'row robin-gap'}>
+				<div className={'row'} style={{ flexWrap: 'wrap', rowGap: '1rem' }}>
+					<div
+						className={'row robin-gap'}
+						style={{ justifyContent: 'space-between', flexGrow: 1 }}
+					>
 						<button
 							onClick={() => {
 								setPage('tables');
 								setPokemon(pokemon.id);
 							}}
 						>
-							Cost Tables
+							Tables
 						</button>
 
 						{megaLevel !== 3 && (
@@ -389,17 +400,22 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 									setPokemon(pokemon.id);
 								}}
 							>
-								Level Planner
+								Planner
 							</button>
 						)}
 					</div>
 
-					<button
-						disabled={deletePokemonLoading}
-						onClick={() => deletePokemon({ id: pokemon.id })}
+					<div
+						className={'row'}
+						style={{ flexGrow: 2, justifyContent: 'flex-end' }}
 					>
-						Delete
-					</button>
+						<button
+							disabled={deletePokemonLoading}
+							onClick={() => deletePokemon({ id: pokemon.id })}
+						>
+							Delete
+						</button>
+					</div>
 				</div>
 			</div>
 		</div>

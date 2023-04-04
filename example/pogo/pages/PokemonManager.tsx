@@ -79,16 +79,11 @@ export function PokemonManager() {
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
-			<div className={'row robin-gap'}>
+			<div className={'row robin-gap'} style={{ flexWrap: 'wrap' }}>
 				<SelectPage />
 
-				{db && Object.keys(db.pokedex).length === 0 && (
-					<div>Pokedex is empty!</div>
-				)}
-				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
-
 				<div className={'col'}>
-					<p>Sort by: </p>
+					<p>Sort by:</p>
 					<select
 						value={sortIndex}
 						onChange={(evt) => {
@@ -106,26 +101,33 @@ export function PokemonManager() {
 					</select>
 				</div>
 
-				<button
-					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() => {
-						const now = new Date();
-						const month = String(now.getMonth()).padStart(2, '0');
-						const day = String(now.getDate()).padStart(2, '0');
-						const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
+				{db && Object.keys(db.pokedex).length === 0 && (
+					<div>Pokedex is empty!</div>
+				)}
+				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
 
-						downloadObjectAsJson(db, name);
-					}}
-				>
-					Save DB
-				</button>
+				<div className={'col'} style={{ gap: '0.25rem' }}>
+					<button
+						disabled={setDbIsLoading || dbIsLoading}
+						onClick={() => {
+							const now = new Date();
+							const month = String(now.getMonth()).padStart(2, '0');
+							const day = String(now.getDate()).padStart(2, '0');
+							const name = `pogo-bkp ${now.getFullYear()}-${month}-${day}`;
 
-				<button
-					disabled={setDbIsLoading || dbIsLoading}
-					onClick={() => inputRef.current?.click()}
-				>
-					Load DB
-				</button>
+							downloadObjectAsJson(db, name);
+						}}
+					>
+						Save DB
+					</button>
+
+					<button
+						disabled={setDbIsLoading || dbIsLoading}
+						onClick={() => inputRef.current?.click()}
+					>
+						Load DB
+					</button>
+				</div>
 
 				<input
 					ref={inputRef}
@@ -155,7 +157,7 @@ export function PokemonManager() {
 					className={'robin-rounded robin-pad'}
 					style={{ backgroundColor: 'Gray' }}
 				>
-					<SelectSpecies submit={addPokemon} buttonText={'Add Pokemon'} />
+					<SelectSpecies submit={addPokemon} buttonText={'Add'} />
 				</div>
 
 				{!!db &&
