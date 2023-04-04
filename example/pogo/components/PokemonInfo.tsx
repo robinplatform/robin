@@ -159,7 +159,7 @@ function MegaCount({
 					className="pogo-mega-info-tooltip"
 					style={{
 						position: 'absolute',
-						left: 0,
+						right: `calc(${Math.max(2 - megaLevel, 0)} * 1.4rem)`,
 						bottom: '1rem',
 
 						width: '7rem',
@@ -168,6 +168,9 @@ function MegaCount({
 						zIndex: 1000,
 
 						paddingBottom: '0.3rem',
+
+						display: 'flex',
+						justifyContent: 'flex-end',
 					}}
 				>
 					<div
