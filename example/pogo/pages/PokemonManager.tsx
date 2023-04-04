@@ -82,6 +82,30 @@ export function PokemonManager() {
 			<div className={'row robin-gap'}>
 				<SelectPage />
 
+				{db && Object.keys(db.pokedex).length === 0 && (
+					<div>Pokedex is empty!</div>
+				)}
+				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
+
+				<div>
+					Sort by:{' '}
+					<select
+						value={sortIndex}
+						onChange={(evt) => {
+							const index = Number.parseInt(evt.target.value);
+							setSortIndex(index);
+						}}
+					>
+						{Sorts.map((sort, index) => {
+							return (
+								<option key={sort} value={index}>
+									{sort}
+								</option>
+							);
+						})}
+					</select>
+				</div>
+
 				<button
 					disabled={setDbIsLoading || dbIsLoading}
 					onClick={() => {
@@ -119,30 +143,6 @@ export function PokemonManager() {
 						setDb({ db: newDb });
 					}}
 				/>
-
-				{db && Object.keys(db.pokedex).length === 0 && (
-					<div>Pokedex is empty!</div>
-				)}
-				<button onClick={() => refreshDex({})}>Refresh Pokedex</button>
-
-				<div>
-					Sort by:{' '}
-					<select
-						value={sortIndex}
-						onChange={(evt) => {
-							const index = Number.parseInt(evt.target.value);
-							setSortIndex(index);
-						}}
-					>
-						{Sorts.map((sort, index) => {
-							return (
-								<option key={sort} value={index}>
-									{sort}
-								</option>
-							);
-						})}
-					</select>
-				</div>
 			</div>
 
 			<ScrollWindow

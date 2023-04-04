@@ -22,6 +22,7 @@ import {
 	setNameRpc,
 } from '../server/db.server';
 import React from 'react';
+import { usePageState } from './PageState';
 
 function EvolvePokemonButton({
 	dexEntry,
@@ -89,6 +90,8 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 		useRpcMutation(deletePokemonRpc);
 	const { mutate: setName, isLoading: setNameLoading } =
 		useRpcMutation(setNameRpc);
+
+	const { setPage, setPokemon } = usePageState();
 
 	const dexEntry = db?.pokedex[pokemon.pokedexId];
 	if (!dexEntry) {
@@ -256,7 +259,29 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 					</EditField>
 				</div>
 
-				<div className={'row'} style={{ justifyContent: 'flex-end' }}>
+				<div className={'row'} style={{ justifyContent: 'space-between' }}>
+					<div className={'row robin-gap'}>
+						<button
+							onClick={() => {
+								setPage('tables');
+								setPokemon(pokemon.id);
+							}}
+						>
+							View Cost Tables
+						</button>
+
+						{megaLevel !== 3 && (
+							<button
+								onClick={() => {
+									setPage('levelup');
+									setPokemon(pokemon.id);
+								}}
+							>
+								View Level Planner
+							</button>
+						)}
+					</div>
+
 					<button
 						disabled={deletePokemonLoading}
 						onClick={() => deletePokemon({ id: pokemon.id })}
