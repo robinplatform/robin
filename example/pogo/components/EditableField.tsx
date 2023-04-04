@@ -120,8 +120,6 @@ function EditSvg() {
 	return (
 		<svg
 			enableBackground="new 0 0 19 19"
-			height="0.8rem"
-			width="0.8rem"
 			id="Layer_1"
 			version="1.1"
 			viewBox="0 0 19 19"

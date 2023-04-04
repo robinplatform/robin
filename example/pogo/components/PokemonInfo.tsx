@@ -12,6 +12,7 @@ import {
 	MegaRequirements,
 	isCurrentMega,
 } from '../domain-utils';
+import './pokemon-info.scss';
 import {
 	evolvePokemonRpc,
 	fetchDbRpc,
@@ -23,6 +24,7 @@ import {
 } from '../server/db.server';
 import React from 'react';
 import { usePageState } from './PageState';
+import { first } from 'lodash';
 
 function EvolvePokemonButton({
 	dexEntry,
@@ -77,6 +79,8 @@ function MegaIndicator({ pokemon }: { pokemon: Pokemon }) {
 	return <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>M</div>;
 }
 
+const megaIconUrl =
+	'https://static.wikia.nocookie.net/robloxpokemonbrickbronze/images/4/42/Megaevo.png/revision/latest/scale-to-width-down/90?cb=20160828021945';
 function MegaCount({
 	pokemonId,
 	megaCount,
@@ -88,16 +92,100 @@ function MegaCount({
 		useRpcMutation(setPokemonMegaCountRpc);
 	const megaLevel = megaLevelFromCount(megaCount);
 
+	const [forceVisible, setForceVisible] = React.useState(false);
+	const firstRender = React.useRef(true);
+
+	React.useEffect(() => {
+		if (firstRender.current) {
+			firstRender.current = false;
+			return;
+		}
+		setForceVisible(true);
+
+		const timeout = setTimeout(() => setForceVisible(false), 1000);
+
+		return () => clearTimeout(timeout);
+	}, [megaCount]);
+
+	const progressCircle = ({
+		required,
+		have,
+	}: {
+		required: number;
+		have: number;
+	}) => {
+		return (
+			<div
+				style={{
+					overflow: 'hidden',
+					borderRadius: '0.6rem',
+					height: '1.1rem',
+					width: '1.1rem',
+					border: '1px solid black',
+
+					backgroundSize: 'cover',
+					backgroundPosition: 'center',
+					backgroundImage:
+						'linear-gradient(to bottom, purple, lightblue, lightgreen, yellow)',
+
+					display: 'flex',
+					justifyContent: 'flex-end',
+				}}
+			>
+				<div
+					style={{
+						width: `calc(${
+							100 * (1 - Math.min(Math.max(have, 0), required) / required)
+						}%)`,
+						background: 'white',
+					}}
+				/>
+			</div>
+		);
+	};
+
+	// https://static.wikia.nocookie.net/robloxpokemonbrickbronze/images/4/42/Megaevo.png/revision/latest/scale-to-width-down/90?cb=20160828021945
+
 	return (
-		<div className={'row'}>
-			<div className={'row robin-gap'} style={{ minWidth: '20rem' }}>
-				{megaLevel}
-				{megaLevel < 3 && (
-					<p>
-						{megaCount} done, {MegaRequirements[megaLevel + 1] - megaCount} to
-						level {megaLevel + 1}
-					</p>
-				)}
+		<div className={'row'} style={{ gap: '0.4rem' }}>
+			<div className="pogo-mega-info" style={{ position: 'relative' }}>
+				<div className={'row'} style={{ gap: '0.3rem' }}>
+					{progressCircle({ required: 1, have: megaCount })}
+					{progressCircle({ required: 6, have: megaCount - 1 })}
+					{progressCircle({ required: 23, have: megaCount - 7 })}
+				</div>
+
+				<div
+					className="pogo-mega-info-tooltip"
+					style={{
+						position: 'absolute',
+						left: 0,
+						bottom: '1rem',
+
+						width: '5rem',
+
+						visibility: forceVisible ? 'visible' : undefined,
+						zIndex: 1000,
+
+						paddingBottom: '0.3rem',
+					}}
+				>
+					<div
+						className="robin-rounded"
+						style={{
+							width: 'fit-content',
+
+							padding: '0.2rem',
+							opacity: '95%',
+							backgroundColor: 'black',
+							color: 'white',
+						}}
+					>
+						{megaLevel < 3
+							? `${MegaRequirements[megaLevel + 1] - megaCount} to next level`
+							: 'max level'}
+					</div>
+				</div>
 			</div>
 
 			<div className={'row'}>
@@ -121,8 +209,6 @@ function MegaCount({
 
 export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const { mutate: setMegaCount, isLoading: setMegaCountLoading } =
-		useRpcMutation(setPokemonMegaCountRpc);
 	const { mutate: setMegaEvolveTime, isLoading: setMegaEvolveTimeLoading } =
 		useRpcMutation(setPokemonMegaEndRpc);
 	const { mutate: setEnergy, isLoading: setEneryLoading } = useRpcMutation(
