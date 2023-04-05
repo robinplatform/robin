@@ -67,13 +67,13 @@ function EventInfo({ event }: { event: MegaEvolveEvent }) {
 		{},
 	);
 
-	const { id, title, megaEnergyAvailable, date } = event;
+	const { id, title, date } = event;
 
 	if (!id) {
 		return (
 			<div
 				style={{
-					width: '12rem',
+					width: '20rem',
 					color: 'gray',
 				}}
 			>
@@ -84,8 +84,10 @@ function EventInfo({ event }: { event: MegaEvolveEvent }) {
 
 	return (
 		<div
+			className={'row'}
 			style={{
-				width: '12rem',
+				width: '20rem',
+				gap: '0.5rem',
 				color: 'black',
 			}}
 		>
@@ -97,6 +99,7 @@ function EventInfo({ event }: { event: MegaEvolveEvent }) {
 				}
 				disabled={deleteLoading || setDateLoading}
 			/>
+
 			{title}
 			<button
 				disabled={deleteLoading || setDateLoading}
@@ -104,7 +107,6 @@ function EventInfo({ event }: { event: MegaEvolveEvent }) {
 			>
 				X
 			</button>
-			Remaining: {megaEnergyAvailable}
 		</div>
 	);
 }
@@ -183,26 +185,33 @@ export function LevelUpPlanner() {
 					gap: '1.5rem',
 				}}
 			>
-				{days?.map(({ date, eventsToday }) => (
+				{days?.map(({ date, energyAtStartOfDay, eventsToday }) => (
 					<DayBox key={date}>
 						<DateText date={new Date(date)} />
 
 						<SmallDot />
 
 						<div
+							className={'row'}
 							style={{
 								position: 'absolute',
+								gap: '0.5rem',
 								left: '19rem',
 								top: 0,
+								alignItems: 'flex-start',
 							}}
 						>
-							{eventsToday.length === 0 && (
-								<EmptyDay pokemonId={selectedMonId} date={new Date(date)} />
-							)}
+							<p>{energyAtStartOfDay}</p>
 
-							{eventsToday.map((event) => (
-								<EventInfo key={`${event.id ?? event.date}`} event={event} />
-							))}
+							<>
+								{eventsToday.length === 0 && (
+									<EmptyDay pokemonId={selectedMonId} date={new Date(date)} />
+								)}
+
+								{eventsToday.map((event) => (
+									<EventInfo key={`${event.id ?? event.date}`} event={event} />
+								))}
+							</>
 						</div>
 					</DayBox>
 				))}

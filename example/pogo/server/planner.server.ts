@@ -67,6 +67,7 @@ function naiveFreeMegaEvolve(
 
 export type PlannerDay = {
 	date: string;
+	energyAtStartOfDay: number;
 	eventsToday: MegaEvolveEvent[];
 };
 
@@ -197,20 +198,28 @@ export async function megaLevelPlanForPokemonRpc({
 			: new Date(events[events.length - 1].date).getTime() - now.getTime();
 	const daysToDisplay = Math.max(0, Math.ceil(timeToLastEvent / DAY_MS)) + 4;
 
-	return arrayOfN(daysToDisplay)
-		.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
-		.map((date) => {
-			const eventsToday = events.filter(
-				(e) => new Date(e.date).toDateString() === date.toDateString(),
-			);
+	let energyAtStartOfDay = dexEntry.megaEnergyAvailable;
+	const out: PlannerDay[] = [];
+	for (const dayIndex of arrayOfN(daysToDisplay)) {
+		const date = new Date(Date.now() + (dayIndex - 2) * DAY_MS);
 
-			if (eventsToday.length === 0) {
-				//
-			}
+		const eventsToday = events.filter(
+			(e) => new Date(e.date).toDateString() === date.toDateString(),
+		);
 
-			return {
-				date: date.toISOString(),
-				eventsToday,
-			};
+		const spentToday = eventsToday.reduce(
+			(prev, evt) => evt.megaEnergySpent + prev,
+			0,
+		);
+
+		out.push({
+			date: date.toISOString(),
+			eventsToday,
+			energyAtStartOfDay,
 		});
+
+		energyAtStartOfDay -= spentToday;
+	}
+
+	return out;
 }
