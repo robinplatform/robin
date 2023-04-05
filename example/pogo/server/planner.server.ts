@@ -5,8 +5,8 @@ import {
 	nextMegaDeadline,
 	computeEvolve,
 } from '../domain-utils';
-import { DAY_MS, arrayOfN, dateString } from '../math';
-import { getDB } from './db.server';
+import { DAY_MS, arrayOfN, dateString, uuid } from '../math';
+import { getDB, withDb } from './db.server';
 
 // iterate forwards over lock points,
 // iterate backwards in time from each lock point
@@ -69,6 +69,67 @@ export type PlannerDay = {
 	date: string;
 	eventsToday: MegaEvolveEvent[];
 };
+
+export async function addPlannedEventRpc({
+	pokemonId,
+	isoDate,
+}: {
+	pokemonId: string;
+	isoDate: string;
+}) {
+	const date = new Date(isoDate);
+
+	withDb((db) => {
+		if (!db.pokemon[pokemonId]) {
+			return {};
+		}
+
+		db.evolvePlans.push({
+			id: uuid(pokemonId),
+			date: date.toISOString(),
+			pokemonId,
+		});
+	});
+
+	return {};
+}
+
+export async function deletePlannedEventRpc({ id }: { id: string }) {
+	withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
+	});
+
+	return {};
+}
+
+export async function clearPokemonRpc({ pokemonId }: { pokemonId: string }) {
+	await withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter(
+			(evt) => evt.pokemonId !== pokemonId,
+		);
+	});
+
+	return {};
+}
+
+export async function setDateOfEventRpc({
+	id,
+	isoDate,
+}: {
+	id: string;
+	isoDate: string;
+}) {
+	await withDb((db) => {
+		const evt = db.evolvePlans.find((evt) => evt.id === id);
+		if (!evt) {
+			return;
+		}
+
+		evt.date = new Date(isoDate).toISOString();
+	});
+
+	return {};
+}
 
 export async function megaLevelPlanForPokemonRpc({
 	id,

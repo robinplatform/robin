@@ -5,82 +5,74 @@ import {
 	SelectPage,
 	SelectPokemon,
 	usePageState,
+	useSelectedPokemonId,
 } from '../components/PageState';
 import {
 	MegaEvolveEvent,
+	addPlannedEventRpc,
+	clearPokemonRpc,
+	deletePlannedEventRpc,
 	megaLevelPlanForPokemonRpc,
+	setDateOfEventRpc,
 } from '../server/planner.server';
-import { addPlannedEventRpc, deletePlannedEventRpc } from '../server/db.server';
+import { fetchDbRpc } from '../server/db.server';
 import { TimeSlider } from '../components/EditableField';
+import { useCurrentSecond } from '../components/CountdownTimer';
 
 function DateText({ date }: { date: Date }) {
+	const { now } = useCurrentSecond();
+
+	const isToday = date.toLocaleDateString() === now.toLocaleDateString();
 	return (
 		<div
 			style={{
 				position: 'absolute',
-				right: '2rem',
+				left: '0',
 				top: '0',
 				bottom: '0',
-				width: '10rem',
+				width: '16rem',
 				display: 'flex',
 				flexDirection: 'column',
 				justifyContent: 'center',
 				textAlign: 'right',
+				fontSize: isToday ? '1.3rem' : '1rem',
 			}}
 		>
-			{date.toDateString()}
+			{date.toDateString()} {isToday && '(Today)'}
 		</div>
 	);
 }
 
-function EventInfo({
-	pokemonId,
-	date,
-	event,
-	refetch,
-}: {
-	pokemonId: string;
-	date: Date;
-	event?: MegaEvolveEvent;
-	refetch: () => void;
-}) {
-	const { mutate: addPlannedEvent } = useRpcMutation(addPlannedEventRpc, {
-		onSuccess: () => refetch(),
-	});
-	const { mutate: deletePlannedEvent } = useRpcMutation(deletePlannedEventRpc, {
-		onSuccess: () => refetch(),
-	});
+function EmptyDay({ pokemonId, date }: { pokemonId: string; date: Date }) {
+	const { mutate: addPlannedEvent } = useRpcMutation(addPlannedEventRpc, {});
 
-	if (!event) {
-		return (
-			<div
-				style={{
-					position: 'absolute',
-					left: '2rem',
-					top: '0',
-					width: '12rem',
-				}}
+	return (
+		<div style={{ width: '12rem' }}>
+			<button
+				onClick={() =>
+					addPlannedEvent({ pokemonId, isoDate: date.toISOString() })
+				}
 			>
-				<button
-					onClick={() =>
-						addPlannedEvent({ pokemonId, isoDate: date.toISOString() })
-					}
-				>
-					Mega
-				</button>
-			</div>
-		);
-	}
+				Mega
+			</button>
+		</div>
+	);
+}
 
-	const { id, title, megaEnergyAvailable } = event;
+function EventInfo({ event }: { event: MegaEvolveEvent }) {
+	const { mutate: deletePlannedEvent, isLoading: deleteLoading } =
+		useRpcMutation(deletePlannedEventRpc, {});
+	const { mutate: setEventDate, isLoading: setDateLoading } = useRpcMutation(
+		setDateOfEventRpc,
+		{},
+	);
+
+	const { id, title, megaEnergyAvailable, date } = event;
 
 	if (!id) {
 		return (
 			<div
 				style={{
-					position: 'absolute',
-					left: '2rem',
-					top: '0',
 					width: '12rem',
 					color: 'gray',
 				}}
@@ -93,15 +85,25 @@ function EventInfo({
 	return (
 		<div
 			style={{
-				position: 'absolute',
-				left: '2rem',
-				top: '0',
 				width: '12rem',
 				color: 'black',
 			}}
 		>
+			<TimeSlider
+				value={new Date(date)}
+				displayDate={(d) => d.toLocaleTimeString()}
+				setValue={(eventDate) =>
+					setEventDate({ id, isoDate: eventDate.toISOString() })
+				}
+				disabled={deleteLoading || setDateLoading}
+			/>
 			{title}
-			<button onClick={() => deletePlannedEvent({ id })}>X</button>
+			<button
+				disabled={deleteLoading || setDateLoading}
+				onClick={() => deletePlannedEvent({ id })}
+			>
+				X
+			</button>
 			Remaining: {megaEnergyAvailable}
 		</div>
 	);
@@ -114,25 +116,10 @@ function SmallDot() {
 				position: 'absolute',
 				top: '0',
 				bottom: '0',
+				left: '17rem',
 				height: '1rem',
 				width: '1rem',
 				borderRadius: '1rem',
-				backgroundColor: 'blue',
-			}}
-		/>
-	);
-}
-
-function BigDot() {
-	return (
-		<div
-			style={{
-				position: 'absolute',
-				top: '-0.5rem',
-				left: '-0.5rem',
-				height: '2rem',
-				width: '2rem',
-				borderRadius: '2rem',
 				backgroundColor: 'blue',
 			}}
 		/>
@@ -154,13 +141,19 @@ function DayBox({ children }: { children: React.ReactNode }) {
 }
 
 export function LevelUpPlanner() {
-	const { pokemon: selectedMonId = '' } = usePageState();
+	const selectedMonId = useSelectedPokemonId() ?? '';
 
 	const { data: days, refetch } = useRpcQuery(megaLevelPlanForPokemonRpc, {
 		id: selectedMonId,
 	});
 
-	const [value, setValue] = React.useState(new Date());
+	// Whenever the db is refetched due to changes, we should also refetch this query
+	useRpcQuery(fetchDbRpc, {}, { onSuccess: () => refetch() });
+
+	const { mutate: clearPlans, isLoading: clearPlansLoading } = useRpcMutation(
+		clearPokemonRpc,
+		{},
+	);
 
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
@@ -169,7 +162,16 @@ export function LevelUpPlanner() {
 
 				<SelectPokemon />
 
-				<TimeSlider value={value} setValue={setValue} disabled={false} />
+				<button
+					disabled={clearPlansLoading}
+					onClick={() => {
+						if (selectedMonId) {
+							clearPlans({ pokemonId: selectedMonId });
+						}
+					}}
+				>
+					Clear
+				</button>
 			</div>
 
 			<ScrollWindow
@@ -177,7 +179,7 @@ export function LevelUpPlanner() {
 				style={{ background: 'white' }}
 				innerClassName={'col robin-pad'}
 				innerStyle={{
-					alignItems: 'center',
+					alignItems: 'flex-start',
 					gap: '1.5rem',
 				}}
 			>
@@ -185,18 +187,23 @@ export function LevelUpPlanner() {
 					<DayBox key={date}>
 						<DateText date={new Date(date)} />
 
-						{new Date(date).toDateString() === new Date().toDateString() ? (
-							<BigDot />
-						) : (
-							<SmallDot />
-						)}
+						<SmallDot />
 
-						<EventInfo
-							pokemonId={selectedMonId}
-							date={new Date(date)}
-							event={eventsToday[0]}
-							refetch={refetch}
-						/>
+						<div
+							style={{
+								position: 'absolute',
+								left: '19rem',
+								top: 0,
+							}}
+						>
+							{eventsToday.length === 0 && (
+								<EmptyDay pokemonId={selectedMonId} date={new Date(date)} />
+							)}
+
+							{eventsToday.map((event) => (
+								<EventInfo key={`${event.id ?? event.date}`} event={event} />
+							))}
+						</div>
 					</DayBox>
 				))}
 			</ScrollWindow>

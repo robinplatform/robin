@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import React from 'react';
-import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
-import { fetchDbRpc } from '../server/db.server';
+import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
+import { fetchDbRpc, setPageStateRpc } from '../server/db.server';
 
 const DefaultPage = 'levelup' as const;
 
@@ -9,16 +9,12 @@ const DefaultPage = 'levelup' as const;
 const PageTypes = ['pokemon', 'planner', 'tables', 'levelup'] as const;
 type PageType = typeof PageTypes[number];
 export const usePageState = create<{
-	pokemon: string | undefined;
 	page: PageType;
 	setPage: (a: PageType) => void;
-	setPokemon: (p: string | undefined) => void;
 }>((set, get) => {
 	return {
-		pokemon: undefined,
 		page: DefaultPage,
 		setPage: (a) => set({ page: a }),
-		setPokemon: (pokemon) => set({ pokemon }),
 	};
 });
 
@@ -42,9 +38,16 @@ export function SelectPage() {
 	);
 }
 
+export function useSelectedPokemonId() {
+	const { data: db } = useRpcQuery(fetchDbRpc, {});
+
+	return db?.pageState.selectedPokemonId;
+}
+
 export function SelectPokemon() {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const { pokemon: selectedPokemon, setPokemon } = usePageState();
+	const selectedPokemon = useSelectedPokemonId();
+	const { mutate: setPokemon } = useRpcMutation(setPageStateRpc, {});
 	const pokemon = React.useMemo(
 		() => Object.values(db?.pokemon ?? {}),
 		[db?.pokemon],
@@ -54,11 +57,11 @@ export function SelectPokemon() {
 		<div className={'col'}>
 			<p>Pokemon:</p>
 			<select
-				value={selectedPokemon}
+				value={selectedPokemon ?? ''}
 				onChange={(evt) =>
 					evt.target.value
-						? setPokemon(evt.target.value)
-						: setPokemon(undefined)
+						? setPokemon({ selectedPokemonId: evt.target.value })
+						: setPokemon({ selectedPokemonId: null })
 				}
 			>
 				<option value={''}>Select pokemon...</option>

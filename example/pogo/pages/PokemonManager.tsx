@@ -65,15 +65,16 @@ export function PokemonManager() {
 		searchPokemonRpc,
 		{ sort },
 	);
-	const { data: db, isLoading: dbIsLoading } = useRpcQuery(fetchDbRpc, {});
 	const { mutate: refreshDex } = useRpcMutation(refreshDexRpc);
-	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {
-		onSuccess: () => {
-			refetchQuery();
-		},
-	});
+	const { mutate: addPokemon } = useRpcMutation(addPokemonRpc, {});
 	const { mutate: setDb, isLoading: setDbIsLoading } =
 		useRpcMutation(setDbValueRpc);
+
+	const { data: db, isLoading: dbIsLoading } = useRpcQuery(
+		fetchDbRpc,
+		{},
+		{ onSuccess: () => refetchQuery() },
+	);
 
 	const inputRef = React.useRef<HTMLInputElement>(null);
 

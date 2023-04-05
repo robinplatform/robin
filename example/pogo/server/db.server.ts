@@ -11,9 +11,20 @@ import {
 	Pokemon,
 	Species,
 } from '../domain-utils';
-import { HOUR_MS, uuid } from '../math';
+import { HOUR_MS } from '../math';
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
+
+export type PageState = z.infer<typeof PageState>;
+const PageState = z.object({
+	selectedPokemonId: z.string().optional().nullable(),
+	selectedPage: z.union([
+		z.literal('pokemon'),
+		z.literal('planner'),
+		z.literal('tables'),
+		z.literal('levelup'),
+	]),
+});
 
 export type PogoDb = z.infer<typeof PogoDb>;
 const PogoDb = z.object({
@@ -21,6 +32,8 @@ const PogoDb = z.object({
 	pokemon: z.record(z.string(), Pokemon),
 	evolvePlans: z.array(PlannedMega),
 	mostRecentMega: z.object({ id: z.string() }).optional(),
+
+	pageState: PageState,
 });
 
 const DB_FILE = path.join(os.homedir(), '.a1liu-robin-pogo-db');
@@ -29,6 +42,9 @@ const EmptyDb: PogoDb = {
 	pokedex: {},
 	pokemon: {},
 	evolvePlans: [],
+	pageState: {
+		selectedPage: 'pokemon',
+	},
 };
 DB.data = EmptyDb;
 
@@ -67,6 +83,8 @@ export async function setDbValueRpc({ db }: { db: PogoDb }) {
 		prev.pokedex = db.pokedex;
 		prev.pokemon = db.pokemon;
 		prev.mostRecentMega = db.mostRecentMega;
+		prev.evolvePlans = db.evolvePlans;
+		prev.pageState = db.pageState;
 	});
 }
 
@@ -226,33 +244,9 @@ export async function setNameRpc({ id, name }: { id: string; name: string }) {
 	return {};
 }
 
-export async function addPlannedEventRpc({
-	pokemonId,
-	isoDate,
-}: {
-	pokemonId: string;
-	isoDate: string;
-}) {
-	const date = new Date(isoDate);
-
+export async function setPageStateRpc(pageState: Partial<PageState>) {
 	withDb((db) => {
-		if (!db.pokemon[pokemonId]) {
-			return {};
-		}
-
-		db.evolvePlans.push({
-			id: uuid(pokemonId),
-			date: date.toISOString(),
-			pokemonId,
-		});
-	});
-
-	return {};
-}
-
-export async function deletePlannedEventRpc({ id }: { id: string }) {
-	withDb((db) => {
-		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
+		db.pageState = { ...db.pageState, ...pageState };
 	});
 
 	return {};
