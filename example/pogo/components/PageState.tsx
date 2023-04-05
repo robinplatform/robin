@@ -3,7 +3,7 @@ import React from 'react';
 import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc, setPageStateRpc } from '../server/db.server';
 
-const DefaultPage = 'levelup' as const;
+const DefaultPage = 'pokemon' as const;
 
 // I'm not handling errors in this file, because... oh well. Whatever. Meh.
 const PageTypes = ['pokemon', 'planner', 'tables', 'levelup'] as const;
