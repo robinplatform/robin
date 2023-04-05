@@ -161,7 +161,12 @@ export function TimeSlider({
 	value,
 	setValue,
 	disabled,
-}: Omit<EditFieldProps<Date>, 'parseFunc' | 'children'>) {
+	displayDate = (d) => d.toLocaleString(),
+	positioning = { left: 0, top: '100%' },
+}: Omit<EditFieldProps<Date>, 'parseFunc' | 'children'> & {
+	displayDate?: (d: Date) => string;
+	positioning?: Pick<React.CSSProperties, 'left' | 'right' | 'top' | 'bottom'>;
+}) {
 	const [editing, setEditing] = React.useState<boolean>(false);
 	const [valueState, setValueState] = React.useState<string>('0');
 
@@ -187,8 +192,7 @@ export function TimeSlider({
 				<div
 					style={{
 						position: 'absolute',
-						left: 0,
-						top: '100%',
+						...positioning,
 
 						display: editing ? 'flex' : 'none',
 						gap: '0.5rem',
@@ -210,9 +214,7 @@ export function TimeSlider({
 					/>
 				</div>
 
-				<p>
-					{valueParsed.toDateString()} {valueParsed.toLocaleTimeString()}
-				</p>
+				<p>{displayDate(editing ? valueParsed : value)}</p>
 			</div>
 
 			<div

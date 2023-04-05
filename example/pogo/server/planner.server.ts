@@ -5,8 +5,8 @@ import {
 	nextMegaDeadline,
 	computeEvolve,
 } from '../domain-utils';
-import { DAY_MS, arrayOfN, dateString } from '../math';
-import { getDB } from './db.server';
+import { DAY_MS, arrayOfN, dateString, uuid } from '../math';
+import { getDB, withDb } from './db.server';
 
 // iterate forwards over lock points,
 // iterate backwards in time from each lock point
@@ -67,8 +67,70 @@ function naiveFreeMegaEvolve(
 
 export type PlannerDay = {
 	date: string;
+	energyAtStartOfDay: number;
 	eventsToday: MegaEvolveEvent[];
 };
+
+export async function addPlannedEventRpc({
+	pokemonId,
+	isoDate,
+}: {
+	pokemonId: string;
+	isoDate: string;
+}) {
+	const date = new Date(isoDate);
+
+	withDb((db) => {
+		if (!db.pokemon[pokemonId]) {
+			return {};
+		}
+
+		db.evolvePlans.push({
+			id: uuid(pokemonId),
+			date: date.toISOString(),
+			pokemonId,
+		});
+	});
+
+	return {};
+}
+
+export async function deletePlannedEventRpc({ id }: { id: string }) {
+	withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter((plan) => plan.id !== id);
+	});
+
+	return {};
+}
+
+export async function clearPokemonRpc({ pokemonId }: { pokemonId: string }) {
+	await withDb((db) => {
+		db.evolvePlans = db.evolvePlans.filter(
+			(evt) => evt.pokemonId !== pokemonId,
+		);
+	});
+
+	return {};
+}
+
+export async function setDateOfEventRpc({
+	id,
+	isoDate,
+}: {
+	id: string;
+	isoDate: string;
+}) {
+	await withDb((db) => {
+		const evt = db.evolvePlans.find((evt) => evt.id === id);
+		if (!evt) {
+			return;
+		}
+
+		evt.date = new Date(isoDate).toISOString();
+	});
+
+	return {};
+}
 
 export async function megaLevelPlanForPokemonRpc({
 	id,
@@ -136,20 +198,28 @@ export async function megaLevelPlanForPokemonRpc({
 			: new Date(events[events.length - 1].date).getTime() - now.getTime();
 	const daysToDisplay = Math.max(0, Math.ceil(timeToLastEvent / DAY_MS)) + 4;
 
-	return arrayOfN(daysToDisplay)
-		.map((i) => new Date(Date.now() + (i - 2) * DAY_MS))
-		.map((date) => {
-			const eventsToday = events.filter(
-				(e) => new Date(e.date).toDateString() === date.toDateString(),
-			);
+	let energyAtStartOfDay = dexEntry.megaEnergyAvailable;
+	const out: PlannerDay[] = [];
+	for (const dayIndex of arrayOfN(daysToDisplay)) {
+		const date = new Date(Date.now() + (dayIndex - 2) * DAY_MS);
 
-			if (eventsToday.length === 0) {
-				//
-			}
+		const eventsToday = events.filter(
+			(e) => new Date(e.date).toDateString() === date.toDateString(),
+		);
 
-			return {
-				date: date.toISOString(),
-				eventsToday,
-			};
+		const spentToday = eventsToday.reduce(
+			(prev, evt) => evt.megaEnergySpent + prev,
+			0,
+		);
+
+		out.push({
+			date: date.toISOString(),
+			eventsToday,
+			energyAtStartOfDay,
 		});
+
+		energyAtStartOfDay -= spentToday;
+	}
+
+	return out;
 }
