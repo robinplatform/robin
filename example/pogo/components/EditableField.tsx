@@ -210,9 +210,11 @@ export function TimeSlider({
 					/>
 				</div>
 
-				<p>
-					{valueParsed.toDateString()} {valueParsed.toLocaleTimeString()}
-				</p>
+				{editing ? (
+					<p>{valueParsed.toLocaleString()}</p>
+				) : (
+					<p>{value.toLocaleString()}</p>
+				)}
 			</div>
 
 			<div
