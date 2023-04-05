@@ -23,7 +23,7 @@ import {
 	setNameRpc,
 } from '../server/db.server';
 import React from 'react';
-import { usePageState } from './PageState';
+import { usePageState, useSelectedPokemonId, useSetPokemon } from './PageState';
 import { TypeIcons } from './TypeIcons';
 
 function EvolvePokemonButton({
@@ -228,7 +228,8 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 	const { mutate: setName, isLoading: setNameLoading } =
 		useRpcMutation(setNameRpc);
 
-	const { setPage, setPokemon } = usePageState();
+	const { setPage } = usePageState();
+	const setPokemon = useSetPokemon();
 
 	const dexEntry = db?.pokedex[pokemon.pokedexId];
 	if (!dexEntry) {

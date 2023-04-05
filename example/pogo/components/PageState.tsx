@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import React from 'react';
 import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc, setPageStateRpc } from '../server/db.server';
+import { set } from 'immer/dist/internal';
 
 const DefaultPage = 'pokemon' as const;
 
@@ -44,10 +45,20 @@ export function useSelectedPokemonId() {
 	return db?.pageState.selectedPokemonId;
 }
 
+export function useSetPokemon() {
+	const { mutate: setPokemon } = useRpcMutation(setPageStateRpc, {});
+
+	return React.useCallback(
+		(selectedPokemonId: string | null) => setPokemon({ selectedPokemonId }),
+		[setPokemon],
+	);
+}
+
 export function SelectPokemon() {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
 	const selectedPokemon = useSelectedPokemonId();
-	const { mutate: setPokemon } = useRpcMutation(setPageStateRpc, {});
+	const setPokemon = useSetPokemon();
+
 	const pokemon = React.useMemo(
 		() => Object.values(db?.pokemon ?? {}),
 		[db?.pokemon],
@@ -59,9 +70,7 @@ export function SelectPokemon() {
 			<select
 				value={selectedPokemon ?? ''}
 				onChange={(evt) =>
-					evt.target.value
-						? setPokemon({ selectedPokemonId: evt.target.value })
-						: setPokemon({ selectedPokemonId: null })
+					evt.target.value ? setPokemon(evt.target.value) : setPokemon(null)
 				}
 			>
 				<option value={''}>Select pokemon...</option>
