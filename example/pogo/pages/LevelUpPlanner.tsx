@@ -11,6 +11,7 @@ import {
 	megaLevelPlanForPokemonRpc,
 } from '../server/planner.server';
 import { addPlannedEventRpc, deletePlannedEventRpc } from '../server/db.server';
+import { TimeSlider } from '../components/EditableField';
 
 function DateText({ date }: { date: Date }) {
 	return (
@@ -159,12 +160,16 @@ export function LevelUpPlanner() {
 		id: selectedMonId,
 	});
 
+	const [value, setValue] = React.useState(new Date());
+
 	return (
 		<div className={'col full robin-rounded robin-gap robin-pad'}>
 			<div className={'row robin-gap'} style={{ flexWrap: 'wrap' }}>
 				<SelectPage />
 
 				<SelectPokemon />
+
+				<TimeSlider value={value} setValue={setValue} disabled={false} />
 			</div>
 
 			<ScrollWindow

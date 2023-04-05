@@ -315,6 +315,7 @@ export function PokemonInfo({ pokemon }: { pokemon: Pokemon }) {
 
 							return (
 								<div
+									key={t}
 									style={{
 										height: '2rem',
 										width: '2rem',

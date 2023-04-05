@@ -1,6 +1,8 @@
 import React from 'react';
 import '@robinplatform/toolkit/styles.css';
 import './timer.scss';
+import { HOUR_MS, lerp } from '../math';
+import { DAY_MS } from '../math';
 
 type EditFieldProps<T> = {
 	value: T;
@@ -37,6 +39,7 @@ export function EditField<T>({
 			<div className={'row'} style={{ position: 'relative', padding: '4px' }}>
 				<div
 					style={{
+						display: editing ? undefined : 'none',
 						position: 'absolute',
 						left: 0,
 						top: 0,
@@ -49,7 +52,6 @@ export function EditField<T>({
 						value={valueState}
 						onChange={(evt) => setValueState(evt.target.value)}
 						style={{
-							display: editing ? undefined : 'none',
 							padding: '2px',
 							border: '2px solid gray',
 							height: '100%',
@@ -142,5 +144,157 @@ export function EditSvg() {
 				/>
 			</g>
 		</svg>
+	);
+}
+
+const convertTimeToLerpable = (time: number) => {
+	const beginDate = new Date(time);
+	beginDate.setHours(0, 0, 1);
+	const endDate = new Date(beginDate.getTime() + DAY_MS - 2 * 1000);
+	const decimal =
+		(time - beginDate.getTime()) / (endDate.getTime() - beginDate.getTime());
+
+	return decimal;
+};
+
+export function TimeSlider({
+	value,
+	setValue,
+	disabled,
+}: Omit<EditFieldProps<Date>, 'parseFunc' | 'children'>) {
+	const [editing, setEditing] = React.useState<boolean>(false);
+	const [valueState, setValueState] = React.useState<string>('0');
+
+	const valueTime = value.getTime();
+
+	React.useEffect(() => {
+		const decimal = convertTimeToLerpable(valueTime);
+		setValueState(`${decimal}`);
+	}, [value]);
+
+	const valueParsed = React.useMemo(() => {
+		const parsed = Number.parseFloat(valueState);
+		const beginDate = new Date(valueTime);
+		beginDate.setHours(0, 0, 1);
+		const endDate = new Date(beginDate.getTime() + DAY_MS - 2 * 1000);
+
+		return new Date(lerp(beginDate.getTime(), endDate.getTime(), parsed));
+	}, [valueTime, valueState]);
+
+	return (
+		<div className={'row'} style={{ gap: '0.25rem' }}>
+			<div className={'row'} style={{ position: 'relative', padding: '4px' }}>
+				<div
+					style={{
+						position: 'absolute',
+						left: 0,
+						top: '100%',
+
+						display: editing ? 'flex' : 'none',
+						gap: '0.5rem',
+					}}
+				>
+					<input
+						type="range"
+						min="0"
+						max="1"
+						step="0.01"
+						value={valueState}
+						onChange={(evt) => setValueState(evt.target.value)}
+						style={{
+							padding: '2px',
+							border: '2px solid gray',
+							height: '1rem',
+							width: '10rem',
+						}}
+					/>
+				</div>
+
+				<p>
+					{valueParsed.toDateString()} {valueParsed.toLocaleTimeString()}
+				</p>
+			</div>
+
+			<div
+				className={'col'}
+				style={{
+					alignSelf: 'flex-start',
+				}}
+			>
+				{!editing && (
+					<button
+						disabled={disabled || valueParsed === undefined}
+						style={{
+							width: '0.8rem',
+							height: '0.8rem',
+							padding: 0,
+						}}
+						onClick={() => {
+							setEditing(true);
+						}}
+					>
+						<EditSvg />
+					</button>
+				)}
+
+				{editing && (
+					<>
+						<button
+							disabled={disabled || valueParsed === undefined}
+							style={{
+								width: '0.8rem',
+								height: '0.8rem',
+								padding: 0,
+
+								fontSize: '0.8rem',
+								lineHeight: '0.8rem',
+								textAlign: 'center',
+
+								display: 'flex',
+								flexDirection: 'column',
+								justifyContent: 'center',
+								alignItems: 'center',
+								color: 'red',
+							}}
+							onClick={() => {
+								setValueState(`${convertTimeToLerpable(valueTime)}`);
+								setEditing(false);
+							}}
+						>
+							&#xd7;
+						</button>
+
+						<button
+							disabled={disabled || valueParsed === undefined}
+							style={{
+								width: '0.8rem',
+								height: '0.8rem',
+								padding: 0,
+
+								fontSize: '0.8rem',
+								lineHeight: '0.8rem',
+								textAlign: 'center',
+
+								display: 'flex',
+								flexDirection: 'column',
+								justifyContent: 'center',
+								alignItems: 'center',
+								color: 'green',
+							}}
+							onClick={() => {
+								if (valueParsed === undefined) {
+									return;
+								}
+
+								setValue(valueParsed);
+								setEditing(false);
+							}}
+						>
+							&#x2713;
+						</button>
+					</>
+				)}
+			</div>
+		</div>
 	);
 }
