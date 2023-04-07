@@ -9,7 +9,7 @@ import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc } from './server/db.server';
 import { z } from 'zod';
-import { useTopicQuery } from '@robinplatform/toolkit/react/stream';
+import { useAppTopicQuery } from '@robinplatform/toolkit/react/stream';
 
 function Page() {
 	const { page } = usePageState();
@@ -32,11 +32,9 @@ export function Pogo(): JSX.Element {
 	const [blarg, setBlarg] = React.useState('');
 
 	const { refetch } = useRpcQuery(fetchDbRpc, {});
-	useTopicQuery({
-		topicId: {
-			category: '/app-topics/pogo/pogo',
-			key: 'db',
-		},
+	useAppTopicQuery({
+		category: ['pogo'],
+		key: 'db',
 		resultType: z.object({}),
 		fetchState: () => {
 			setBlarg((blarg) => `${blarg}blah`);

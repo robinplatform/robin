@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"strings"
 	"sync"
 
 	"robinplatform.dev/internal/identity"
@@ -126,30 +125,63 @@ var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 			return err
 		}
 
-		// Hard-coded hack for `/app-topics`, to ensure that the app that created
-		// a given topic is started before the subscription is attempted.
-		// This is... a little bit silly, to say the least.
-		if strings.HasPrefix(input.Id.Category, "/app-topics/") {
-			parts := strings.Split(input.Id.Category[1:], "/")
-			if len(parts) < 2 {
-				return err
-			}
+		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
+		if err != nil {
+			return err
+		}
+		defer sub.Unsubscribe()
 
-			appId := parts[1]
-			app, _, err := req.Server.compiler.GetApp(appId)
-			if err != nil {
-				// the error messages from GetApp() are already user-friendly
-				return err
-			}
-
-			if !app.IsAlive() {
-				if err := app.StartServer(); err != nil {
-					return fmt.Errorf("failed to start app server: %w", err)
+		for {
+			select {
+			case s, ok := <-sub.Out:
+				if !ok {
+					// Channel is closed
+					return nil
 				}
+
+				req.Send(s)
+
+			case <-req.Context.Done():
+				return nil
+			}
+		}
+	},
+}
+
+type SubscribeAppTopicInput struct {
+	AppId    string   `json:"appId"`
+	Category []string `json:"category"`
+	Key      string   `json:"key"`
+}
+
+var SubscribeAppTopic = Stream[SubscribeAppTopicInput, any]{
+	Name: "SubscribeAppTopic",
+	Run: func(req *StreamRequest[SubscribeAppTopicInput, any]) error {
+		input, err := req.ParseInput()
+		if err != nil {
+			return err
+		}
+
+		app, _, err := req.Server.compiler.GetApp(input.AppId)
+		if err != nil {
+			// the error messages from GetApp() are already user-friendly
+			return err
+		}
+
+		if !app.IsAlive() {
+			if err := app.StartServer(); err != nil {
+				return fmt.Errorf("failed to start app server: %w", err)
 			}
 		}
 
-		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
+		categoryParts := []string{"app-topics", input.AppId}
+		categoryParts = append(categoryParts, input.Category...)
+		topicId := pubsub.TopicId{
+			Category: identity.Category(categoryParts...),
+			Key:      input.Key,
+		}
+
+		sub, err := pubsub.SubscribeAny(&pubsub.Topics, topicId)
 		if err != nil {
 			return err
 		}

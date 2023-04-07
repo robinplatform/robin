@@ -82,6 +82,7 @@ func (server *Server) loadRpcMethods() {
 	server.router.GET("/api/websocket", wsHandler.WebsocketHandler(server))
 
 	SubscribeTopic.Register(wsHandler)
+	SubscribeAppTopic.Register(wsHandler)
 }
 
 func createErrorJs(errMessage string) string {
