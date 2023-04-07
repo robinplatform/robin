@@ -9,26 +9,10 @@ import { renderApp } from '@robinplatform/toolkit/react';
 import { useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc } from './server/db.server';
 import { z } from 'zod';
-import { useTopicQuery } from '@robinplatform/toolkit/react/stream';
+import { useAppTopicQuery } from '@robinplatform/toolkit/react/stream';
 
-// "PoGo" is an abbreviation for Pokemon Go which is well-known in the
-// PoGo community.
-export function Pogo(): JSX.Element {
+function Page() {
 	const { page } = usePageState();
-
-	const { refetch } = useRpcQuery(fetchDbRpc, {});
-	useTopicQuery({
-		topicId: {
-			category: '/app-topics/pogo/pogo',
-			key: 'db',
-		},
-		resultType: z.object({}),
-		fetchState: () => Promise.resolve({ state: 0, counter: 0 }),
-		reducer: (a, _b) => {
-			refetch();
-			return a;
-		},
-	});
 
 	switch (page) {
 		case 'pokemon':
@@ -40,6 +24,30 @@ export function Pogo(): JSX.Element {
 		case 'levelup':
 			return <LevelUpPlanner />;
 	}
+}
+
+// "PoGo" is an abbreviation for Pokemon Go which is well-known in the
+// PoGo community.
+export function Pogo(): JSX.Element {
+	const { refetch } = useRpcQuery(fetchDbRpc, {});
+	useAppTopicQuery({
+		category: ['pogo'],
+		key: 'db',
+		resultType: z.object({}),
+		fetchState: () => {
+			return Promise.resolve({ state: 0, counter: 0 });
+		},
+		reducer: (a, _b) => {
+			refetch();
+			return a;
+		},
+	});
+
+	return (
+		<>
+			<Page />
+		</>
+	);
 }
 
 renderApp(<Pogo />);

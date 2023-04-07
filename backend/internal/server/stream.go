@@ -251,8 +251,6 @@ func runMethod(method handler, rawReq *streamRequest) {
 
 	if err := method(rawReq); err != nil {
 		rawReq.SendRaw("error", err.Error())
-
-		return
 	}
 
 	rawReq.SendRaw("methodDone", nil)

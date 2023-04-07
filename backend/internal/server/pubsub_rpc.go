@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"sync"
 
 	"robinplatform.dev/internal/identity"
@@ -125,6 +126,62 @@ var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 		}
 
 		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
+		if err != nil {
+			return err
+		}
+		defer sub.Unsubscribe()
+
+		for {
+			select {
+			case s, ok := <-sub.Out:
+				if !ok {
+					// Channel is closed
+					return nil
+				}
+
+				req.Send(s)
+
+			case <-req.Context.Done():
+				return nil
+			}
+		}
+	},
+}
+
+type SubscribeAppTopicInput struct {
+	AppId    string   `json:"appId"`
+	Category []string `json:"category"`
+	Key      string   `json:"key"`
+}
+
+var SubscribeAppTopic = Stream[SubscribeAppTopicInput, any]{
+	Name: "SubscribeAppTopic",
+	Run: func(req *StreamRequest[SubscribeAppTopicInput, any]) error {
+		input, err := req.ParseInput()
+		if err != nil {
+			return err
+		}
+
+		app, _, err := req.Server.compiler.GetApp(input.AppId)
+		if err != nil {
+			// the error messages from GetApp() are already user-friendly
+			return err
+		}
+
+		if !app.IsAlive() {
+			if err := app.StartServer(); err != nil {
+				return fmt.Errorf("failed to start app server: %w", err)
+			}
+		}
+
+		categoryParts := []string{"app-topics", input.AppId}
+		categoryParts = append(categoryParts, input.Category...)
+		topicId := pubsub.TopicId{
+			Category: identity.Category(categoryParts...),
+			Key:      input.Key,
+		}
+
+		sub, err := pubsub.SubscribeAny(&pubsub.Topics, topicId)
 		if err != nil {
 			return err
 		}
