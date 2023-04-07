@@ -1,3 +1,5 @@
+/// <reference path="./lowdb.d.ts" />
+
 import { z } from 'zod';
 import * as fs from 'fs';
 import * as path from 'path';

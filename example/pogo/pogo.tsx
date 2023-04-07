@@ -29,15 +29,12 @@ function Page() {
 // "PoGo" is an abbreviation for Pokemon Go which is well-known in the
 // PoGo community.
 export function Pogo(): JSX.Element {
-	const [blarg, setBlarg] = React.useState('');
-
 	const { refetch } = useRpcQuery(fetchDbRpc, {});
 	useAppTopicQuery({
 		category: ['pogo'],
 		key: 'db',
 		resultType: z.object({}),
 		fetchState: () => {
-			setBlarg((blarg) => `${blarg}blah`);
 			return Promise.resolve({ state: 0, counter: 0 });
 		},
 		reducer: (a, _b) => {
@@ -48,7 +45,6 @@ export function Pogo(): JSX.Element {
 
 	return (
 		<>
-			{blarg}
 			<Page />
 		</>
 	);
