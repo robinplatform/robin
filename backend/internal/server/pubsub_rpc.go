@@ -1,6 +1,8 @@
 package server
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"robinplatform.dev/internal/identity"
@@ -122,6 +124,29 @@ var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 		input, err := req.ParseInput()
 		if err != nil {
 			return err
+		}
+
+		// Hard-coded hack for `/app-topics`, to ensure that the app that created
+		// a given topic is started before the subscription is attempted.
+		// This is... a little bit silly, to say the least.
+		if strings.HasPrefix(input.Id.Category, "/app-topics/") {
+			parts := strings.Split(input.Id.Category[1:], "/")
+			if len(parts) < 2 {
+				return err
+			}
+
+			appId := parts[1]
+			app, _, err := req.Server.compiler.GetApp(appId)
+			if err != nil {
+				// the error messages from GetApp() are already user-friendly
+				return err
+			}
+
+			if !app.IsAlive() {
+				if err := app.StartServer(); err != nil {
+					return fmt.Errorf("failed to start app server: %w", err)
+				}
+			}
 		}
 
 		sub, err := pubsub.SubscribeAny(&pubsub.Topics, input.Id)
