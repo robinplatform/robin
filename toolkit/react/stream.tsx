@@ -158,9 +158,7 @@ export function useStreamMethod<State, Output>({
 			return;
 		}
 
-		const id = `${methodName}-${Math.random()}`;
-
-		const stream = new Stream(methodName, id);
+		let stream = new Stream(methodName);
 
 		stream.onmessage = (message) => {
 			const { kind, data } = message as { kind: string; data: string };
@@ -168,14 +166,16 @@ export function useStreamMethod<State, Output>({
 				return;
 			}
 
-			const res = resultType.safeParse(data);
-			if (!res.success) {
-				// TODO: handle the error
-				stream.onerror(res.error);
-				return;
-			}
+			const res = resultType.parse(data);
+			dispatch(res);
+		};
 
-			dispatch(res.data);
+		stream.onclose = (cause) => {
+			if (cause === 'WebsocketClosed') {
+				// Retry the stream if the connection was lost.
+				stream = stream.newStreamWithSameHandlers();
+				stream.start(initialData).then(() => onConnRef.current?.());
+			}
 		};
 
 		stream.start(initialData).then(() => onConnRef.current?.());
