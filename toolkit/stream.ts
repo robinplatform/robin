@@ -60,7 +60,7 @@ const getWs = (() => {
 			try {
 				switch (data.kind) {
 					case 'error':
-						stream.onerror(data.error, 'MethodError');
+						stream.onerror(data.data, 'MethodError');
 						break;
 
 					case 'methodDone':
