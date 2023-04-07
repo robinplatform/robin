@@ -8,6 +8,7 @@ const getWs = (() => {
 			return _ws;
 		}
 
+		console.log('making new websocket');
 		let resolveWs: (ws: WebSocket) => void = () => {};
 
 		const newWs = new Promise<WebSocket>((res) => (resolveWs = res));
@@ -79,6 +80,7 @@ const getWs = (() => {
 		};
 
 		ws.onopen = () => {
+			console.log('websocket opened');
 			resolveWs(ws);
 		};
 
