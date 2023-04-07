@@ -6,6 +6,7 @@ import {
 	SelectPage,
 	SelectPokemon,
 	usePageState,
+	useSelectedPokemonId,
 } from '../components/PageState';
 import { megaCostForTime, MegaWaitDays, MegaWaitTime } from '../domain-utils';
 import { arrayOfN, HOUR_MS } from '../math';
@@ -144,7 +145,7 @@ const TableRows: { megaCost: number; level: 1 | 2 | 3 }[] = [
 
 export function CostTables() {
 	const { data: db } = useRpcQuery(fetchDbRpc, {});
-	const { pokemon: selectedMonId } = usePageState();
+	const selectedMonId = useSelectedPokemonId();
 	const selectedPokemon =
 		db?.pokedex?.[db.pokemon?.[selectedMonId ?? '']?.pokedexId ?? -1];
 
