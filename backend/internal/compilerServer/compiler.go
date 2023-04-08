@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 
 	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/compileDaemon"
@@ -31,7 +30,6 @@ type Compiler struct {
 type CompiledApp struct {
 	shouldCache bool
 
-	httpClient       *http.Client
 	compiler         *Compiler
 	keepAliveRunning *int64
 	builderMux       *sync.RWMutex
@@ -99,23 +97,6 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	}
 
 	return app, false, nil
-}
-
-func (compiler *Compiler) Precompile(id string) {
-	if !CacheEnabled {
-		return
-	}
-
-	app, _, err := compiler.GetApp(id)
-	if err != nil {
-		return
-	}
-
-	go app.buildClient()
-
-	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
-		go app.keepAlive()
-	}
 }
 
 func (compiler *Compiler) RenderClient(id string, res http.ResponseWriter) error {

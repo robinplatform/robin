@@ -127,21 +127,6 @@ func (server *Server) Run() error {
 		server.pprofRouter = mux
 	}
 
-	// Start precompiling apps, and ignore the errors for now
-	// The errors will get handled when the app is requested
-	go func() {
-		if compilerServer.CacheEnabled {
-			apps, err := project.GetAllProjectApps()
-			if err != nil {
-				return
-			}
-
-			for _, app := range apps {
-				go server.compiler.Precompile(app.Id)
-			}
-		}
-	}()
-
 	// TODO: Move the compiler routes to a separate file/into compiler
 	// Apps
 	server.router.GET("/api/app-resources/:id/base/*filepath", func(res http.ResponseWriter, req *http.Request, params httprouter.Params) {
