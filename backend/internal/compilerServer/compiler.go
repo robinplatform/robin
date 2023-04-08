@@ -9,6 +9,8 @@ import (
 
 	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/compileDaemon"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
@@ -17,8 +19,23 @@ import (
 var (
 	logger log.Logger = log.New("compile")
 
+	httpClient httpcache.CacheClient
+
 	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )
+
+func init() {
+	var err error
+	cacheFilename := config.GetHttpCachePath()
+	httpClient, err = httpcache.NewClient(cacheFilename, 100*1024*1024)
+	if err != nil {
+		httpLogger := log.New("http")
+		httpLogger.Debug("Failed to load HTTP cache, will recreate", log.Ctx{
+			"error": err,
+			"path":  cacheFilename,
+		})
+	}
+}
 
 type Compiler struct {
 	ServerPort int
