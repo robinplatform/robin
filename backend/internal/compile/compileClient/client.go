@@ -33,7 +33,6 @@ type ClientJSInput struct {
 }
 
 type ClientBundle struct {
-	JS            string
 	Metafile      map[string]any
 	Html          string
 	ServerExports map[string][]string
@@ -117,7 +116,6 @@ func BuildClientBundle(input ClientJSInput) (ClientBundle, error) {
 	}
 
 	bundle := ClientBundle{
-		JS:            js,
 		Metafile:      metafile,
 		Html:          htmlOutput.String(),
 		ServerExports: serverExports,

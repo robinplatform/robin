@@ -57,9 +57,6 @@ type CompiledApp struct {
 	// Html holds the HTML to be rendered on the client
 	Html string
 
-	// ClientJs holds the compiled JS bundle for the client-side app
-	ClientJs string
-
 	// ClientMetafile holds the parsed metafile for the client-side app (useful for debugging)
 	ClientMetafile map[string]any
 
@@ -163,7 +160,7 @@ func (app *CompiledApp) buildClient() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
-	if app.ClientJs != "" && app.shouldCache {
+	if app.Html != "" && app.shouldCache {
 		return nil
 	}
 
@@ -177,7 +174,6 @@ func (app *CompiledApp) buildClient() error {
 		return err
 	}
 
-	app.ClientJs = bundle.JS
 	app.ClientMetafile = bundle.Metafile
 	app.Html = bundle.Html
 	app.serverExports = bundle.ServerExports
