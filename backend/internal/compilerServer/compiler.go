@@ -6,10 +6,11 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 
 	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/compileDaemon"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
@@ -18,8 +19,23 @@ import (
 var (
 	logger log.Logger = log.New("compile")
 
+	httpClient httpcache.CacheClient
+
 	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )
+
+func init() {
+	var err error
+	cacheFilename := config.GetHttpCachePath()
+	httpClient, err = httpcache.NewClient(cacheFilename, 100*1024*1024)
+	if err != nil {
+		httpLogger := log.New("http")
+		httpLogger.Debug("Failed to load HTTP cache, will recreate", log.Ctx{
+			"error": err,
+			"path":  cacheFilename,
+		})
+	}
+}
 
 type Compiler struct {
 	ServerPort int
@@ -31,7 +47,6 @@ type Compiler struct {
 type CompiledApp struct {
 	shouldCache bool
 
-	httpClient       *http.Client
 	compiler         *Compiler
 	keepAliveRunning *int64
 	builderMux       *sync.RWMutex
@@ -41,9 +56,6 @@ type CompiledApp struct {
 
 	// Html holds the HTML to be rendered on the client
 	Html string
-
-	// ClientJs holds the compiled JS bundle for the client-side app
-	ClientJs string
 
 	// ClientMetafile holds the parsed metafile for the client-side app (useful for debugging)
 	ClientMetafile map[string]any
@@ -101,23 +113,6 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	return app, false, nil
 }
 
-func (compiler *Compiler) Precompile(id string) {
-	if !CacheEnabled {
-		return
-	}
-
-	app, _, err := compiler.GetApp(id)
-	if err != nil {
-		return
-	}
-
-	go app.buildClient()
-
-	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
-		go app.keepAlive()
-	}
-}
-
 func (compiler *Compiler) RenderClient(id string, res http.ResponseWriter) error {
 	app, cached, err := compiler.GetApp(id)
 	if err != nil {
@@ -165,7 +160,7 @@ func (app *CompiledApp) buildClient() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
-	if app.ClientJs != "" && app.shouldCache {
+	if app.Html != "" && app.shouldCache {
 		return nil
 	}
 
@@ -179,7 +174,6 @@ func (app *CompiledApp) buildClient() error {
 		return err
 	}
 
-	app.ClientJs = bundle.JS
 	app.ClientMetafile = bundle.Metafile
 	app.Html = bundle.Html
 	app.serverExports = bundle.ServerExports
