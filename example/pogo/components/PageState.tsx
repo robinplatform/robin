@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import React from 'react';
 import { useRpcMutation, useRpcQuery } from '@robinplatform/toolkit/react/rpc';
 import { fetchDbRpc, setPageStateRpc } from '../server/db.server';
-import { set } from 'immer/dist/internal';
 
 const DefaultPage = 'pokemon' as const;
 
