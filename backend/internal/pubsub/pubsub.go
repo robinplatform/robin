@@ -144,6 +144,21 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 	return sub, nil
 }
 
+func (topic *Topic[_]) LockWithInfo() TopicInfo {
+	topic.m.Lock()
+
+	return TopicInfo{
+		Id:              topic.Id,
+		Counter:         topic.counter,
+		Closed:          topic.closed,
+		SubscriberCount: len(topic.subscribers),
+	}
+}
+
+func (topic *Topic[_]) Unlock() {
+	topic.m.Unlock()
+}
+
 func (topic *Topic[T]) removeSubscriber(sub <-chan Message[T]) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
@@ -174,15 +189,10 @@ func (topic *Topic[T]) removeSubscriber(sub <-chan Message[T]) {
 }
 
 func (topic *Topic[_]) GetInfo() TopicInfo {
-	topic.m.Lock()
+	info := topic.LockWithInfo()
 	defer topic.m.Unlock()
 
-	return TopicInfo{
-		Id:              topic.Id,
-		Counter:         topic.counter,
-		Closed:          topic.closed,
-		SubscriberCount: len(topic.subscribers),
-	}
+	return info
 }
 
 func (topic *Topic[_]) IsClosed() bool {

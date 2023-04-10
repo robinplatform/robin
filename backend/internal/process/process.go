@@ -101,6 +101,34 @@ func (process *Process) IsAlive() bool {
 	}
 }
 
+type LogFileResult struct {
+	Text    string
+	Counter int32
+}
+
+func (r *RHandle) LogFile(id ProcessId) (LogFileResult, bool) {
+	proc, found := r.FindById(id)
+	if !found {
+		return LogFileResult{}, false
+	}
+
+	info := proc.logsTopic.LockWithInfo()
+	defer proc.logsTopic.Unlock()
+
+	path := r.m.getLogFilePath(id)
+	f, err := os.ReadFile(path)
+	if err != nil {
+		return LogFileResult{}, false
+	}
+
+	res := LogFileResult{
+		Text:    string(f),
+		Counter: info.Counter,
+	}
+
+	return res, true
+}
+
 func osProcessIsAlive(pid int) bool {
 	// TODO: check the actual error, it might've been a permission error
 	// or something else.
@@ -295,17 +323,17 @@ func (manager *ProcessManager) topicForProcId(id ProcessId) (*pubsub.Topic[strin
 	return topic, nil
 }
 
-func (r *RHandle) FindById(id ProcessId) (*Process, error) {
+func (r *RHandle) FindById(id ProcessId) (Process, bool) {
 	procEntry, found := r.db.Find(findById(id))
 	if !found {
-		return nil, processNotFound(id)
+		return Process{}, false
 	}
-	return &procEntry, nil
+	return procEntry, true
 }
 
 func (r *RHandle) IsAlive(id ProcessId) bool {
-	process, err := r.FindById(id)
-	if err != nil {
+	process, found := r.FindById(id)
+	if !found {
 		return false
 	}
 	return process.IsAlive()
@@ -356,20 +384,20 @@ func (m *ProcessManager) pipeTailIntoTopic(process Process) {
 }
 
 // This reads the path variable to find the right executable.
-func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
+func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (Process, error) {
 	var err error
 	config.Command, err = exec.LookPath(config.Command)
 	if err != nil {
-		return nil, fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
+		return Process{}, fmt.Errorf("failed to find command %s in $PATH: %w", config.Command, err)
 	}
 
 	return w.Spawn(config)
 }
 
 // This spawns a process using the given arguments and executable path.
-func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
+func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
-		return nil, err
+		return Process{}, err
 	}
 
 	prev, found := w.db.Find(findById(procConfig.Id))
@@ -379,14 +407,14 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 				"processId": procConfig.Id,
 				"pid":       prev.Pid,
 			})
-			return &prev, processExists(procConfig.Id)
+			return prev, processExists(procConfig.Id)
 		}
 
 		logger.Debug("Found previous dead process entry, deleting it", log.Ctx{
 			"processId": procConfig.Id,
 		})
 		if err := w.Remove(prev.Id); err != nil {
-			return nil, fmt.Errorf("failed to delete previous process: %w", err)
+			return Process{}, fmt.Errorf("failed to delete previous process: %w", err)
 		}
 	}
 
@@ -396,7 +424,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 
 	empty, err := os.Open(os.DevNull)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open null device: %w", err)
+		return Process{}, fmt.Errorf("failed to open null device: %w", err)
 	}
 	defer empty.Close()
 
@@ -404,13 +432,13 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	processLogsFolderPath := filepath.Dir(processLogsPath)
 
 	if err := os.MkdirAll(processLogsFolderPath, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create process folder: %w", err)
+		return Process{}, fmt.Errorf("failed to create process folder: %w", err)
 	}
 
 	// Don't close the file, instead pass it on to the tail goroutine later on
 	output, err := os.Create(processLogsPath)
 	if err != nil {
-		return nil, err
+		return Process{}, err
 	}
 	defer output.Close()
 
@@ -427,14 +455,14 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 	argStrings := append([]string{procConfig.Command}, procConfig.Args...)
 	proc, err := os.StartProcess(procConfig.Command, argStrings, &attr)
 	if err != nil {
-		return nil, err
+		return Process{}, err
 	}
 	defer proc.Release()
 
 	topic, err := w.Read.m.topicForProcId(procConfig.Id)
 	if err != nil {
 		_ = proc.Kill()
-		return nil, err
+		return Process{}, err
 	}
 
 	ctx, cancel := context.WithCancel(w.Read.m.ctx)
@@ -483,10 +511,10 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (*Process, error) {
 			})
 		}
 
-		return nil, err
+		return Process{}, err
 	}
 
-	return &entry, nil
+	return entry, nil
 }
 
 // Remove will kill the process if it is alive, and then remove it from the database

@@ -24,8 +24,8 @@ import (
 )
 
 func (app *CompiledApp) IsAlive() bool {
-	process, err := process.Manager.FindById(app.ProcessId)
-	if err != nil {
+	process, found := process.Manager.FindById(app.ProcessId)
+	if !found {
 		return false
 	}
 
@@ -184,7 +184,7 @@ func (app *CompiledApp) StartServer() error {
 	w := process.Manager.WriteHandle()
 	defer w.Close()
 
-	if proc, err := w.Read.FindById(app.ProcessId); err == nil && proc.IsAlive() {
+	if proc, found := w.Read.FindById(app.ProcessId); found && proc.IsAlive() {
 		return nil
 	}
 
@@ -326,9 +326,9 @@ type AppResponse struct {
 }
 
 func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) AppResponse {
-	serverProcess, err := process.Manager.FindById(app.ProcessId)
-	if err != nil {
-		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
+	serverProcess, found := process.Manager.FindById(app.ProcessId)
+	if !found {
+		return AppResponse{StatusCode: 500, Err: "failed to make app request: app process not found"}
 	}
 
 	serializedBody, err := json.Marshal(body)

@@ -120,9 +120,9 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	procB, err := managerB.FindById(id)
-	if err != nil {
-		t.Fatalf("error finding process: %s", err.Error())
+	procB, found := managerB.FindById(id)
+	if !found {
+		t.Fatalf("error finding processs")
 	}
 
 	if !managerB.IsAlive(id) {
