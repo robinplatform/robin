@@ -312,6 +312,10 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 }
 
 func (m *ProcessManager) pipeTailIntoTopic(process Process) {
+	if process.logsTopic == nil || process.logsTopic.IsClosed() {
+		return
+	}
+
 	defer process.logsTopic.Close()
 
 	config := tail.Config{

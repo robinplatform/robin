@@ -58,7 +58,7 @@ type Topic[T any] struct {
 
 type anyTopic interface {
 	addAnySubscriber() (Subscription[any], error)
-	isClosed() bool
+	IsClosed() bool
 	GetInfo() TopicInfo
 }
 
@@ -185,7 +185,7 @@ func (topic *Topic[_]) GetInfo() TopicInfo {
 	}
 }
 
-func (topic *Topic[_]) isClosed() bool {
+func (topic *Topic[_]) IsClosed() bool {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -268,7 +268,7 @@ func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	}
 
 	key := id.String()
-	if prev := r.topics[key]; prev != nil && !prev.isClosed() {
+	if prev := r.topics[key]; prev != nil && !prev.IsClosed() {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 
