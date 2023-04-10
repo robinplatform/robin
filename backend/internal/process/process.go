@@ -106,7 +106,7 @@ type LogFileResult struct {
 	Counter int32
 }
 
-func (r *RHandle) LogFile(id ProcessId) (LogFileResult, bool) {
+func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, bool) {
 	proc, found := r.FindById(id)
 	if !found {
 		return LogFileResult{}, false
