@@ -225,17 +225,19 @@ function Topics() {
 			</ScrollWindow>
 
 			<div
-				className={'full robin-rounded col robin-pad robin-gap'}
+				className={'full robin-rounded col'}
 				style={{ backgroundColor: 'Brown' }}
 			>
-				{selectedTopic === undefined ? (
-					<div>No topic is selected</div>
-				) : (
-					<div>
-						Selected topic is{' '}
-						{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
-					</div>
-				)}
+				<div className={'robin-pad'}>
+					{selectedTopic === undefined ? (
+						<div>No topic is selected</div>
+					) : (
+						<div>
+							Selected topic is{' '}
+							{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
+						</div>
+					)}
+				</div>
 
 				<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>
 					{topicMessages?.[selectedTopic?.key ?? '']?.map((msg, idx) => (
@@ -264,22 +266,25 @@ export default function Home() {
 				<div>Hello world!</div>
 
 				<div className={'full robin-gap'} style={{ display: 'flex' }}>
-					<div className={'full'} style={{ maxWidth: '30rem' }}>
+					<div className={'full'}>
 						<Processes />
 					</div>
 
-					<div className={'full'} style={{ maxWidth: '30rem' }}>
+					<div className={'full'}>
 						<Topics />
 					</div>
+				</div>
 
-					<div
-						className={'full robin-rounded robin-pad'}
-						style={{ maxWidth: '30rem', backgroundColor: 'Gray' }}
-					>
-						<a href="/debug/pprof/" style={{ color: 'inherit' }}>
-							Profiler endpoint
-						</a>
-					</div>
+				<div
+					className={'robin-gap robin-pad robin-rounded'}
+					style={{
+						display: 'flex',
+						backgroundColor: 'Gray',
+					}}
+				>
+					<a href="/debug/pprof/" style={{ color: 'inherit' }}>
+						Profiler endpoint
+					</a>
 				</div>
 			</div>
 		</div>
