@@ -29,23 +29,6 @@ func PipeTopic[T any](topicId pubsub.TopicId, req *StreamRequest[T, any]) error 
 	}
 }
 
-type SubscribeToProcessLogsInput struct {
-	ProcessId process.ProcessId `json:"processId"`
-}
-
-var SubscribeToProcessLogs = Stream[SubscribeToProcessLogsInput, any]{
-	Name: "SubscribeProcessLogs",
-	Run: func(req *StreamRequest[SubscribeToProcessLogsInput, any]) error {
-		input, err := req.ParseInput()
-		if err != nil {
-			return err
-		}
-
-		topicId := process.LogsTopicId(input.ProcessId)
-		return PipeTopic(topicId, req)
-	},
-}
-
 type GetProcessLogsInput struct {
 	ProcessId process.ProcessId `json:"processId"`
 }

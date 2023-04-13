@@ -1,8 +1,6 @@
 package server
 
 import (
-	"fmt"
-
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -124,30 +122,11 @@ var SubscribeAppTopic = Stream[SubscribeAppTopicInput, any]{
 
 		if !app.IsAlive() {
 			if err := app.StartServer(); err != nil {
-				return fmt.Errorf("failed to start app server: %w", err)
+				return err
 			}
 		}
 
 		topicId := app.TopicId(input.Category, input.Key)
-		sub, err := pubsub.SubscribeAny(&pubsub.Topics, topicId)
-		if err != nil {
-			return err
-		}
-		defer sub.Unsubscribe()
-
-		for {
-			select {
-			case s, ok := <-sub.Out:
-				if !ok {
-					// Channel is closed
-					return nil
-				}
-
-				req.Send(s)
-
-			case <-req.Context.Done():
-				return nil
-			}
-		}
+		return PipeTopic(topicId, req)
 	},
 }

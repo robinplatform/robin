@@ -211,8 +211,6 @@ func (app *CompiledApp) buildServerBundle() error {
 	return nil
 }
 
-// abstraction to go from seralized data to normal data, pass in parser and serializer, have it work on each run
-
 func (app *CompiledApp) GetTopic(topicId pubsub.TopicId) *pubsub.Topic[any] {
 	app.topicMux.Lock()
 	defer app.topicMux.Unlock()
@@ -237,13 +235,6 @@ func (app *CompiledApp) UpsertTopic(topicId pubsub.TopicId) (*pubsub.Topic[any],
 
 	return topic, nil
 
-}
-
-func (app *CompiledApp) SetTopic(topic *pubsub.Topic[any]) {
-	app.topicMux.Lock()
-	defer app.topicMux.Unlock()
-
-	app.topicMap[topic.Id.String()] = topic
 }
 
 func (app *CompiledApp) TopicId(category []string, key string) pubsub.TopicId {
