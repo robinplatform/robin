@@ -56,6 +56,13 @@ func (m *ProcessManager) CopyOutData() []Process {
 	return r.CopyOutData()
 }
 
+func (m *ProcessManager) GetLogFile(id ProcessId) (LogFileResult, error) {
+	r := m.ReadHandle()
+	defer r.Close()
+
+	return r.GetLogFile(id)
+}
+
 func (m *ProcessManager) Remove(id ProcessId) error {
 	w := m.WriteHandle()
 	defer w.Close()

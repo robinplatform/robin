@@ -102,14 +102,14 @@ func (process *Process) IsAlive() bool {
 }
 
 type LogFileResult struct {
-	Text    string
-	Counter int32
+	Text    string `json:"text"`
+	Counter int32  `json:"counter"` // TODO: bad name
 }
 
-func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, bool) {
+func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, error) {
 	proc, found := r.FindById(id)
 	if !found {
-		return LogFileResult{}, false
+		return LogFileResult{}, processNotFound(id)
 	}
 
 	info := proc.logsTopic.LockWithInfo()
@@ -118,7 +118,7 @@ func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, bool) {
 	path := r.m.getLogFilePath(id)
 	f, err := os.ReadFile(path)
 	if err != nil {
-		return LogFileResult{}, false
+		return LogFileResult{}, err
 	}
 
 	res := LogFileResult{
@@ -126,7 +126,7 @@ func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, bool) {
 		Counter: info.Counter,
 	}
 
-	return res, true
+	return res, nil
 }
 
 func osProcessIsAlive(pid int) bool {
@@ -305,11 +305,16 @@ func pollForExit(processes []pollPidContext) {
 	}
 }
 
-func (manager *ProcessManager) topicForProcId(id ProcessId) (*pubsub.Topic[string], error) {
-	topicId := pubsub.TopicId{
+func LogsTopicId(id ProcessId) pubsub.TopicId {
+	return pubsub.TopicId{
 		Category: path.Join("/logs", id.Category),
 		Key:      id.Key,
 	}
+
+}
+
+func (manager *ProcessManager) topicForProcId(id ProcessId) (*pubsub.Topic[string], error) {
+	topicId := LogsTopicId(id)
 
 	topic, err := pubsub.CreateTopic[string](manager.registry, topicId)
 	if err != nil {
