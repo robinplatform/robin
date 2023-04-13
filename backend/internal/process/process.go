@@ -112,8 +112,11 @@ func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, error) {
 		return LogFileResult{}, processNotFound(id)
 	}
 
-	info := proc.logsTopic.LockWithInfo()
-	defer proc.logsTopic.Unlock()
+	var info pubsub.TopicInfo
+	if proc.logsTopic != nil {
+		info = proc.logsTopic.LockWithInfo()
+		defer proc.logsTopic.Unlock()
+	}
 
 	path := r.m.getLogFilePath(id)
 	f, err := os.ReadFile(path)
@@ -232,9 +235,20 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 
 	manager.ctx, manager.cancel = context.WithCancel(context.Background())
 
+	procIds := make([]pollPidContext, 0)
 	var topicCreationErr error
 	err = manager.db.ForEachWriting(func(proc *Process) {
 		proc.Context, proc.cancel = context.WithCancel(manager.ctx)
+
+		if !osProcessIsAlive(proc.Pid) {
+			proc.cancel()
+			return
+		}
+
+		procIds = append(procIds, pollPidContext{
+			pid:    proc.Pid,
+			cancel: proc.cancel,
+		})
 
 		topic, err := manager.topicForProcId(proc.Id)
 		if err != nil {
@@ -243,31 +257,18 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 		}
 
 		proc.logsTopic = topic
+
+		go manager.pipeTailIntoTopic(TopicTailInfo{
+			processId: proc.Id,
+			logsTopic: topic,
+			Context:   proc.Context,
+		})
 	})
 	if topicCreationErr != nil {
 		return nil, topicCreationErr
 	}
 	if err != nil {
 		return nil, err
-	}
-
-	// This needs to be copied out because otherwise you'd have a situation where
-	// the process being referenced is modified by another thread in parallel
-	processes := manager.db.ShallowCopyOutData()
-
-	procIds := make([]pollPidContext, 0, len(processes))
-	for _, proc := range processes {
-		if !osProcessIsAlive(proc.Pid) {
-			proc.cancel()
-			proc.logsTopic.Close()
-			continue
-		}
-
-		go manager.pipeTailIntoTopic(proc)
-		procIds = append(procIds, pollPidContext{
-			pid:    proc.Pid,
-			cancel: proc.cancel,
-		})
 	}
 
 	// Hand off procIds to the goroutine
@@ -344,7 +345,13 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func (m *ProcessManager) pipeTailIntoTopic(process Process) {
+type TopicTailInfo struct {
+	processId ProcessId
+	logsTopic *pubsub.Topic[string]
+	Context   context.Context
+}
+
+func (m *ProcessManager) pipeTailIntoTopic(process TopicTailInfo) {
 	if process.logsTopic == nil || process.logsTopic.IsClosed() {
 		return
 	}
@@ -356,7 +363,7 @@ func (m *ProcessManager) pipeTailIntoTopic(process Process) {
 		Follow: true,
 		Logger: tail.DiscardingLogger,
 	}
-	out, err := tail.TailFile(m.getLogFilePath(process.Id), config)
+	out, err := tail.TailFile(m.getLogFilePath(process.processId), config)
 	if err != nil {
 		logger.Err("failed to tail file", log.Ctx{
 			"err": err.Error(),
@@ -488,7 +495,11 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	}
 
 	// Write output to file
-	go w.Read.m.pipeTailIntoTopic(entry)
+	go w.Read.m.pipeTailIntoTopic(TopicTailInfo{
+		processId: entry.Id,
+		logsTopic: entry.logsTopic,
+		Context:   entry.Context,
+	})
 
 	// Reap zombies
 	go waitForExit(pollPidContext{
