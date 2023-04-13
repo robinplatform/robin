@@ -1,11 +1,5 @@
 package pubsub
 
-/*
-TODO: It may be useful or even necessary to include a "state" field for each topic, so for example,
-a subscription can get the list of log statements that happened before it existed. ~Something something monad.~
-I don't quite want to implement all that hoopla right this second, but it's something to be aware of.
-*/
-
 import (
 	"errors"
 	"fmt"
@@ -64,7 +58,7 @@ type Topic[T any] struct {
 
 type anyTopic interface {
 	addAnySubscriber() (Subscription[any], error)
-	isClosed() bool
+	IsClosed() bool
 	GetInfo() TopicInfo
 }
 
@@ -150,6 +144,21 @@ func (topic *Topic[T]) addAnySubscriber() (Subscription[any], error) {
 	return sub, nil
 }
 
+func (topic *Topic[_]) LockWithInfo() TopicInfo {
+	topic.m.Lock()
+
+	return TopicInfo{
+		Id:              topic.Id,
+		Counter:         topic.counter,
+		Closed:          topic.closed,
+		SubscriberCount: len(topic.subscribers),
+	}
+}
+
+func (topic *Topic[_]) Unlock() {
+	topic.m.Unlock()
+}
+
 func (topic *Topic[T]) removeSubscriber(sub <-chan Message[T]) {
 	topic.m.Lock()
 	defer topic.m.Unlock()
@@ -180,18 +189,13 @@ func (topic *Topic[T]) removeSubscriber(sub <-chan Message[T]) {
 }
 
 func (topic *Topic[_]) GetInfo() TopicInfo {
-	topic.m.Lock()
+	info := topic.LockWithInfo()
 	defer topic.m.Unlock()
 
-	return TopicInfo{
-		Id:              topic.Id,
-		Counter:         topic.counter,
-		Closed:          topic.closed,
-		SubscriberCount: len(topic.subscribers),
-	}
+	return info
 }
 
-func (topic *Topic[_]) isClosed() bool {
+func (topic *Topic[_]) IsClosed() bool {
 	topic.m.Lock()
 	defer topic.m.Unlock()
 
@@ -274,7 +278,7 @@ func createTopic[T any](r *Registry, id TopicId) (*Topic[T], error) {
 	}
 
 	key := id.String()
-	if prev := r.topics[key]; prev != nil && !prev.isClosed() {
+	if prev := r.topics[key]; prev != nil && !prev.IsClosed() {
 		return nil, fmt.Errorf("%w: %s", ErrTopicExists, id.String())
 	}
 

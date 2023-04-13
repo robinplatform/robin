@@ -6,22 +6,44 @@ import toast from 'react-hot-toast';
 import { useTopicQuery } from '../../toolkit/react/stream';
 import { ScrollWindow } from '../components/ScrollWindow';
 
+type Process = z.infer<typeof Process>;
+const Process = z.object({
+	id: z.object({
+		category: z.string(),
+		key: z.string(),
+	}),
+	command: z.string(),
+	args: z.array(z.string()),
+});
+
 // This is a temporary bit of code to just display what's in the processes DB
 // to make writing other features easier
 function Processes() {
 	const { data: processes = [], error } = useRpcQuery({
 		method: 'ListProcesses',
 		data: {},
-		result: z.array(
-			z.object({
-				id: z.object({
-					category: z.string(),
-					key: z.string(),
+		result: z.array(Process),
+	});
+
+	const [currentProcess, setCurrentProcess] = React.useState<Process>();
+	const { state } = useTopicQuery({
+		topicId: currentProcess && {
+			category: `/logs${currentProcess.id.category}`,
+			key: currentProcess.id.key,
+		},
+		resultType: z.string(),
+		fetchState: () =>
+			runRpcQuery({
+				method: 'GetProcessLogs',
+				data: { processId: currentProcess?.id },
+				result: z.object({
+					counter: z.number(),
+					text: z.string(),
 				}),
-				command: z.string(),
-				args: z.array(z.string()),
-			}),
-		),
+			}).then(({ counter, text }) => ({ counter, state: text })),
+		reducer: (prev, message) => {
+			return prev + '\n' + message;
+		},
 	});
 
 	React.useEffect(() => {
@@ -32,7 +54,7 @@ function Processes() {
 
 	return (
 		<div
-			className={'full col robin-rounded robin-pad'}
+			className={'full col robin-rounded robin-gap robin-pad'}
 			style={{ backgroundColor: 'DarkSlateGray', maxHeight: '100%' }}
 		>
 			<div>Processes</div>
@@ -44,16 +66,36 @@ function Processes() {
 						<div
 							key={key}
 							className={'robin-rounded robin-pad'}
-							style={{ backgroundColor: 'Coral' }}
+							style={{ backgroundColor: 'Coral', width: '100%' }}
 						>
 							{key}
 
-							<pre style={{ wordBreak: 'break-word' }}>
+							<button onClick={() => setCurrentProcess(value)}>Select</button>
+
+							<pre
+								style={{
+									width: '100%',
+									whiteSpace: 'pre-wrap',
+									wordWrap: 'break-word',
+								}}
+							>
 								{JSON.stringify(value, null, 2)}
 							</pre>
 						</div>
 					);
 				})}
+			</ScrollWindow>
+
+			<ScrollWindow className={'full'} innerClassName={'col robin-gap'}>
+				<pre
+					style={{
+						width: '100%',
+						whiteSpace: 'pre-wrap',
+						wordWrap: 'break-word',
+					}}
+				>
+					{state}
+				</pre>
 			</ScrollWindow>
 		</div>
 	);
@@ -183,17 +225,19 @@ function Topics() {
 			</ScrollWindow>
 
 			<div
-				className={'full robin-rounded col robin-pad robin-gap'}
+				className={'full robin-rounded col'}
 				style={{ backgroundColor: 'Brown' }}
 			>
-				{selectedTopic === undefined ? (
-					<div>No topic is selected</div>
-				) : (
-					<div>
-						Selected topic is{' '}
-						{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
-					</div>
-				)}
+				<div className={'robin-pad'}>
+					{selectedTopic === undefined ? (
+						<div>No topic is selected</div>
+					) : (
+						<div>
+							Selected topic is{' '}
+							{`${selectedTopic.id.category} - ${selectedTopic.id.key}`}
+						</div>
+					)}
+				</div>
 
 				<ScrollWindow style={{ flexGrow: 1 }} innerClassName={'full col'}>
 					{topicMessages?.[selectedTopic?.key ?? '']?.map((msg, idx) => (
@@ -222,22 +266,25 @@ export default function Home() {
 				<div>Hello world!</div>
 
 				<div className={'full robin-gap'} style={{ display: 'flex' }}>
-					<div className={'full'} style={{ maxWidth: '30rem' }}>
+					<div className={'full'}>
 						<Processes />
 					</div>
 
-					<div className={'full'} style={{ maxWidth: '30rem' }}>
+					<div className={'full'}>
 						<Topics />
 					</div>
+				</div>
 
-					<div
-						className={'full robin-rounded robin-pad'}
-						style={{ maxWidth: '30rem', backgroundColor: 'Gray' }}
-					>
-						<a href="/debug/pprof/" style={{ color: 'inherit' }}>
-							Profiler endpoint
-						</a>
-					</div>
+				<div
+					className={'robin-gap robin-pad robin-rounded'}
+					style={{
+						display: 'flex',
+						backgroundColor: 'Gray',
+					}}
+				>
+					<a href="/debug/pprof/" style={{ color: 'inherit' }}>
+						Profiler endpoint
+					</a>
 				</div>
 			</div>
 		</div>

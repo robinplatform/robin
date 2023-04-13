@@ -35,7 +35,7 @@ func (r *RHandle) Close() {
 	r.db.Close()
 }
 
-func (m *ProcessManager) FindById(id ProcessId) (*Process, error) {
+func (m *ProcessManager) FindById(id ProcessId) (Process, bool) {
 	r := m.ReadHandle()
 	defer r.Close()
 
@@ -56,6 +56,13 @@ func (m *ProcessManager) CopyOutData() []Process {
 	return r.CopyOutData()
 }
 
+func (m *ProcessManager) GetLogFile(id ProcessId) (LogFileResult, error) {
+	r := m.ReadHandle()
+	defer r.Close()
+
+	return r.GetLogFile(id)
+}
+
 func (m *ProcessManager) Remove(id ProcessId) error {
 	w := m.WriteHandle()
 	defer w.Close()
@@ -70,14 +77,14 @@ func (m *ProcessManager) Kill(id ProcessId) error {
 	return w.Kill(id)
 }
 
-func (m *ProcessManager) SpawnFromPathVar(config ProcessConfig) (*Process, error) {
+func (m *ProcessManager) SpawnFromPathVar(config ProcessConfig) (Process, error) {
 	w := m.WriteHandle()
 	defer w.Close()
 
 	return w.SpawnFromPathVar(config)
 }
 
-func (m *ProcessManager) Spawn(config ProcessConfig) (*Process, error) {
+func (m *ProcessManager) Spawn(config ProcessConfig) (Process, error) {
 	w := m.WriteHandle()
 	defer w.Close()
 
