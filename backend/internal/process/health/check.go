@@ -22,6 +22,22 @@ type SerializableHealthCheck struct {
 	Check HealthCheck `json:"check"`
 }
 
+func GetTypeFromHealthCheck(check HealthCheck) (string, error) {
+	switch check.(type) {
+	case ProcessHealthCheck:
+		return "process", nil
+
+	case TcpHealthCheck:
+		return "tcp", nil
+
+	case HttpHealthCheck:
+		return "http", nil
+
+	default:
+		return "", fmt.Errorf("did not recognize healthcheck type")
+	}
+}
+
 func (check *SerializableHealthCheck) UnmarshalJSON(data []byte) error {
 	obj := struct {
 		Type  string          `json:"type"`

@@ -37,6 +37,9 @@ type ProcessConfig struct {
 	// Ideally the port should be optional, and be somewhat integrated into
 	// whatever the healthcheck code ends up being, but for now this works decently well.
 	Port int
+
+	healthType  string
+	HealthCheck health.HealthCheck
 }
 
 type Process struct {
@@ -48,6 +51,8 @@ type Process struct {
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
 	Port      int               `json:"port"` // see docs in ProcessConfig
+
+	HealthCheck health.SerializableHealthCheck `json:"healthCheck"`
 
 	// NOTE: The fields below are only valid because
 	// the store doesn't re-load data from disk when the file is updated.
@@ -136,6 +141,16 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 		}
 
 		cfg.WorkDir = dir
+	}
+
+	if cfg.HealthCheck == nil {
+		cfg.HealthCheck = &health.ProcessHealthCheck{}
+	}
+
+	var err error
+	cfg.healthType, err = health.GetTypeFromHealthCheck(cfg.HealthCheck)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -352,6 +367,10 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 		Pid:       proc.Pid,
 		Env:       procConfig.Env,
 		Port:      procConfig.Port,
+		HealthCheck: health.SerializableHealthCheck{
+			Type:  procConfig.healthType,
+			Check: procConfig.HealthCheck,
+		},
 
 		logsTopic: topic,
 		Context:   ctx,
