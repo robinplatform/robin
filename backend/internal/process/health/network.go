@@ -35,7 +35,6 @@ func (healthCheck HttpHealthCheck) Check(info RunningProcessInfo) bool {
 
 type TcpHealthCheck struct {
 	IPv4 bool `json:"ipv4"`
-	Port int  `json:"port"`
 }
 
 func (healthCheck TcpHealthCheck) Check(info RunningProcessInfo) bool {
@@ -44,7 +43,7 @@ func (healthCheck TcpHealthCheck) Check(info RunningProcessInfo) bool {
 		host = "127.0.01"
 	}
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, healthCheck.Port))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, info.Port))
 	if err != nil {
 		return false
 	}
