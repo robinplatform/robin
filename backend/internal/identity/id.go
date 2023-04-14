@@ -35,6 +35,10 @@ func (id Id) String() string {
 
 // Cleans inputs and then creates a category from them. If you have a valid category already,
 // ust path.Join to combine it with another category.
+//
+// Example:
+// identity.Category("app", "appId") -> "/app/appId"
+// identity.Category("my", "app", "badString/../") -> "/my/app/badString%2F%2E%2E%2F
 func Category(ids ...string) string {
 	parts := make([]string, 0, len(ids))
 	for _, id := range ids {
