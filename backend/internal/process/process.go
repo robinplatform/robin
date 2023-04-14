@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
-
-	"github.com/nxadm/tail"
 
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
@@ -41,11 +38,6 @@ type ProcessConfig struct {
 	// Ideally the port should be optional, and be somewhat integrated into
 	// whatever the healthcheck code ends up being, but for now this works decently well.
 	Port int
-}
-
-func (m *ProcessManager) getLogFilePath(id ProcessId) string {
-	processLogsPath := filepath.Join(m.processLogsFolderPath, filepath.FromSlash(id.Category), id.Key+".log")
-	return processLogsPath
 }
 
 type Process struct {
@@ -104,32 +96,6 @@ func (process *Process) IsAlive() bool {
 type LogFileResult struct {
 	Text    string `json:"text"`
 	Counter int32  `json:"counter"` // TODO: bad name
-}
-
-func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, error) {
-	proc, found := r.FindById(id)
-	if !found {
-		return LogFileResult{}, processNotFound(id)
-	}
-
-	var info pubsub.TopicInfo
-	if proc.logsTopic != nil {
-		info = proc.logsTopic.LockWithInfo()
-		defer proc.logsTopic.Unlock()
-	}
-
-	path := r.m.getLogFilePath(id)
-	f, err := os.ReadFile(path)
-	if err != nil {
-		return LogFileResult{}, err
-	}
-
-	res := LogFileResult{
-		Text:    string(f),
-		Counter: info.Counter,
-	}
-
-	return res, nil
 }
 
 func osProcessIsAlive(pid int) bool {
@@ -250,7 +216,7 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 			cancel: proc.cancel,
 		})
 
-		topic, err := manager.topicForProcId(proc.Id)
+		topic, err := manager.logTopicForProcId(proc.Id)
 		if err != nil {
 			topicCreationErr = err
 			return
@@ -258,7 +224,7 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 
 		proc.logsTopic = topic
 
-		go manager.pipeTailIntoTopic(TopicTailInfo{
+		go manager.pipeTailIntoTopic(topicTailInfo{
 			processId: proc.Id,
 			logsTopic: topic,
 			Context:   proc.Context,
@@ -306,29 +272,6 @@ func pollForExit(processes []pollPidContext) {
 	}
 }
 
-func LogsTopicId(id ProcessId) pubsub.TopicId {
-	return pubsub.TopicId{
-		Category: path.Join("/logs", id.Category),
-		Key:      id.Key,
-	}
-
-}
-
-func (manager *ProcessManager) topicForProcId(id ProcessId) (*pubsub.Topic[string], error) {
-	topicId := LogsTopicId(id)
-
-	topic, err := pubsub.CreateTopic[string](manager.registry, topicId)
-	if err != nil {
-		logger.Err("error creating logging topic for process", log.Ctx{
-			"id":  id,
-			"err": err.Error(),
-		})
-		return nil, err
-	}
-
-	return topic, nil
-}
-
 func (r *RHandle) FindById(id ProcessId) (Process, bool) {
 	procEntry, found := r.db.Find(findById(id))
 	if !found {
@@ -343,56 +286,6 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 		return false
 	}
 	return process.IsAlive()
-}
-
-type TopicTailInfo struct {
-	processId ProcessId
-	logsTopic *pubsub.Topic[string]
-	Context   context.Context
-}
-
-func (m *ProcessManager) pipeTailIntoTopic(process TopicTailInfo) {
-	if process.logsTopic == nil || process.logsTopic.IsClosed() {
-		return
-	}
-
-	defer process.logsTopic.Close()
-
-	config := tail.Config{
-		ReOpen: true,
-		Follow: true,
-		Logger: tail.DiscardingLogger,
-	}
-	out, err := tail.TailFile(m.getLogFilePath(process.processId), config)
-	if err != nil {
-		logger.Err("failed to tail file", log.Ctx{
-			"err": err.Error(),
-		})
-		return
-	}
-
-	defer out.Cleanup()
-
-	for {
-		select {
-		case <-process.Context.Done():
-			return
-
-		case line, ok := <-out.Lines:
-			if !ok {
-				return
-			}
-
-			if line.Err != nil {
-				logger.Err("got error in tail line", log.Ctx{
-					"err": line.Err.Error(),
-				})
-				continue
-			}
-
-			process.logsTopic.Publish(line.Text)
-		}
-	}
 }
 
 // This reads the path variable to find the right executable.
@@ -471,7 +364,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	}
 	defer proc.Release()
 
-	topic, err := w.Read.m.topicForProcId(procConfig.Id)
+	topic, err := w.Read.m.logTopicForProcId(procConfig.Id)
 	if err != nil {
 		_ = proc.Kill()
 		return Process{}, err
@@ -495,7 +388,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	}
 
 	// Write output to file
-	go w.Read.m.pipeTailIntoTopic(TopicTailInfo{
+	go w.Read.m.pipeTailIntoTopic(topicTailInfo{
 		processId: entry.Id,
 		logsTopic: entry.logsTopic,
 		Context:   entry.Context,
