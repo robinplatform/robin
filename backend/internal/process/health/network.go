@@ -9,11 +9,11 @@ import (
 )
 
 type HttpHealthCheck struct {
-	Method string
-	Url    string
+	Method string `json:"method"`
+	Url    string `json:"url"`
 }
 
-func CheckHttp(healthCheck HttpHealthCheck) bool {
+func (healthCheck HttpHealthCheck) Check(info RunningProcessInfo) bool {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -29,23 +29,23 @@ func CheckHttp(healthCheck HttpHealthCheck) bool {
 	resp.Body.Close()
 	cancel()
 
-	// Non-200 status codes are fine, because we still got a response from an
-	// http server
-	return true
+	// We _must_ get a 200 OK response. If the service is designed to return anything
+	// else at this route, it should use a TCP health check instead.
+	return resp.StatusCode == http.StatusOK
 }
 
 type TcpHealthCheck struct {
-	ipv4 bool
-	port int
+	IPv4 bool `json:"ipv4"`
+	Port int  `json:"port"`
 }
 
-func CheckTcp(healthCheck TcpHealthCheck) bool {
+func (healthCheck TcpHealthCheck) Check(info RunningProcessInfo) bool {
 	host := "::1"
-	if healthCheck.ipv4 {
+	if healthCheck.IPv4 {
 		host = "127.0.01"
 	}
 
-	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, healthCheck.port))
+	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, healthCheck.Port))
 	if err != nil {
 		return false
 	}

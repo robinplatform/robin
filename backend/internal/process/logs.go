@@ -42,7 +42,7 @@ func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, error) {
 	return res, nil
 }
 
-func LogsTopicId(id ProcessId) pubsub.TopicId {
+func (id ProcessId) LogsTopicId() pubsub.TopicId {
 	return pubsub.TopicId{
 		Category: path.Join("/logs", id.Category),
 		Key:      id.Key,
@@ -50,7 +50,7 @@ func LogsTopicId(id ProcessId) pubsub.TopicId {
 }
 
 func (manager *ProcessManager) logTopicForProcId(id ProcessId) (*pubsub.Topic[string], error) {
-	topicId := LogsTopicId(id)
+	topicId := id.LogsTopicId()
 
 	topic, err := pubsub.CreateTopic[string](manager.registry, topicId)
 	if err != nil {
