@@ -38,7 +38,6 @@ type ProcessConfig struct {
 	// whatever the healthcheck code ends up being, but for now this works decently well.
 	Port int
 
-	healthType  string
 	HealthCheck health.HealthCheck
 }
 
@@ -145,12 +144,6 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 
 	if cfg.HealthCheck == nil {
 		cfg.HealthCheck = &health.ProcessHealthCheck{}
-	}
-
-	var err error
-	cfg.healthType, err = health.GetTypeFromHealthCheck(cfg.HealthCheck)
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -291,6 +284,11 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 		return Process{}, err
 	}
 
+	healthCheck, err := health.NewHealthCheck(procConfig.HealthCheck)
+	if err != nil {
+		return Process{}, err
+	}
+
 	prev, found := w.db.Find(findById(procConfig.Id))
 	if found {
 		if prev.IsAlive() {
@@ -359,18 +357,15 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	ctx, cancel := context.WithCancel(w.Read.m.ctx)
 
 	entry := Process{
-		Id:        procConfig.Id,
-		WorkDir:   procConfig.WorkDir,
-		StartedAt: time.Now(),
-		Command:   procConfig.Command,
-		Args:      procConfig.Args,
-		Pid:       proc.Pid,
-		Env:       procConfig.Env,
-		Port:      procConfig.Port,
-		HealthCheck: health.SerializableHealthCheck{
-			Type:  procConfig.healthType,
-			Check: procConfig.HealthCheck,
-		},
+		Id:          procConfig.Id,
+		WorkDir:     procConfig.WorkDir,
+		StartedAt:   time.Now(),
+		Command:     procConfig.Command,
+		Args:        procConfig.Args,
+		Pid:         proc.Pid,
+		Env:         procConfig.Env,
+		Port:        procConfig.Port,
+		HealthCheck: healthCheck,
 
 		logsTopic: topic,
 		Context:   ctx,

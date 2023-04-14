@@ -20,6 +20,7 @@ import (
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
+	"robinplatform.dev/internal/process/health"
 	"robinplatform.dev/internal/project"
 )
 
@@ -240,6 +241,10 @@ func (app *CompiledApp) StartServer() error {
 	// Add port info to the process config
 	processConfig.Env["PORT"] = strPortAvailable
 	processConfig.Port = portAvailable
+	processConfig.HealthCheck = health.HttpHealthCheck{
+		Method: http.MethodGet,
+		Url:    fmt.Sprintf("http://localhost:%s/api/health", strPortAvailable),
+	}
 
 	// Start the app server process
 	serverProcess, err := w.SpawnFromPathVar(processConfig)
@@ -259,28 +264,19 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Send a ping to the process
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Port))
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if serverProcess.HealthCheck.Check(health.RunningProcessInfo{Pid: serverProcess.Pid}) {
 			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 				go app.keepAlive()
 			}
 
 			return nil
 		}
-		if resp == nil {
-			logger.Debug("Failed to ping app server", log.Ctx{
-				"appId": app.Id,
-				"pid":   serverProcess.Pid,
-				"err":   err,
-			})
-		} else {
-			logger.Debug("Failed to ping app server", log.Ctx{
-				"appId":  app.Id,
-				"pid":    serverProcess.Pid,
-				"err":    err,
-				"status": resp.StatusCode,
-			})
-		}
+
+		logger.Debug("Failed to ping app server", log.Ctx{
+			"appId": app.Id,
+			"pid":   serverProcess.Pid,
+			"err":   err,
+		})
 
 		// Wait a bit
 		time.Sleep(500 * time.Millisecond)

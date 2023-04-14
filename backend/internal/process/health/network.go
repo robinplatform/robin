@@ -27,7 +27,6 @@ func (healthCheck HttpHealthCheck) Check(info RunningProcessInfo) bool {
 		return false
 	}
 	resp.Body.Close()
-	cancel()
 
 	// We _must_ get a 200 OK response. If the service is designed to return anything
 	// else at this route, it should use a TCP health check instead.

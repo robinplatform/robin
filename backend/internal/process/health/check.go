@@ -18,23 +18,39 @@ type HealthCheck interface {
 }
 
 type SerializableHealthCheck struct {
-	Type  string      `json:"type"`
-	Check HealthCheck `json:"check"`
+	checkType string
+	check     HealthCheck
 }
 
-func GetTypeFromHealthCheck(check HealthCheck) (string, error) {
-	switch check.(type) {
+func (check SerializableHealthCheck) Check(info RunningProcessInfo) bool {
+	return check.check.Check(info)
+}
+
+func NewHealthCheck(check HealthCheck) (SerializableHealthCheck, error) {
+	switch v := check.(type) {
+	case SerializableHealthCheck:
+		return v, nil
+
 	case ProcessHealthCheck:
-		return "process", nil
+		return SerializableHealthCheck{
+			checkType: "process",
+			check:     check,
+		}, nil
 
 	case TcpHealthCheck:
-		return "tcp", nil
+		return SerializableHealthCheck{
+			checkType: "tcp",
+			check:     check,
+		}, nil
 
 	case HttpHealthCheck:
-		return "http", nil
+		return SerializableHealthCheck{
+			checkType: "http",
+			check:     check,
+		}, nil
 
 	default:
-		return "", fmt.Errorf("did not recognize healthcheck type")
+		return SerializableHealthCheck{}, fmt.Errorf("did not recognize healthcheck type")
 	}
 }
 
@@ -49,17 +65,23 @@ func (check *SerializableHealthCheck) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	check.Type = obj.Type
+	check.checkType = obj.Type
 
 	switch obj.Type {
 	case "process":
-		check.Check = &ProcessHealthCheck{}
+		c := ProcessHealthCheck{}
+		err = json.Unmarshal(data, &c)
+		check.check = c
 
 	case "http":
-		check.Check = &HttpHealthCheck{}
+		c := HttpHealthCheck{}
+		err = json.Unmarshal(data, &c)
+		check.check = c
 
 	case "tcp":
-		check.Check = &TcpHealthCheck{}
+		c := TcpHealthCheck{}
+		err = json.Unmarshal(data, &c)
+		check.check = c
 
 	default:
 		if obj.Type == "" {
@@ -69,10 +91,13 @@ func (check *SerializableHealthCheck) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("found unrecognized health check type: '%s'", obj.Type)
 	}
 
-	err = json.Unmarshal(data, check.Check)
-	if err != nil {
-		return err
-	}
+	return err
 
-	return nil
+}
+
+func (check *SerializableHealthCheck) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"type":  check.checkType,
+		"check": check.check,
+	})
 }

@@ -164,7 +164,7 @@ func (store *Store[_]) flush() error {
 		return fmt.Errorf("failed to marshal datastore: %w", err)
 	}
 
-	if err := os.WriteFile(store.FilePath, buf, 0755); err != nil {
+	if err := os.WriteFile(store.FilePath, buf, 0666); err != nil {
 		return fmt.Errorf("failed to save datastore: %w", err)
 	}
 
