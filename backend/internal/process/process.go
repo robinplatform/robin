@@ -5,18 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
 	"time"
-
-	"github.com/nxadm/tail"
 
 	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/model"
+	"robinplatform.dev/internal/process/health"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -37,15 +33,9 @@ type ProcessConfig struct {
 	Env     map[string]string
 	Command string
 	Args    []string
+	Port    int
 
-	// Ideally the port should be optional, and be somewhat integrated into
-	// whatever the healthcheck code ends up being, but for now this works decently well.
-	Port int
-}
-
-func (m *ProcessManager) getLogFilePath(id ProcessId) string {
-	processLogsPath := filepath.Join(m.processLogsFolderPath, filepath.FromSlash(id.Category), id.Key+".log")
-	return processLogsPath
+	HealthCheck health.HealthCheck
 }
 
 type Process struct {
@@ -56,7 +46,9 @@ type Process struct {
 	Env       map[string]string `json:"env"`
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
-	Port      int               `json:"port"` // see docs in ProcessConfig
+	Port      int               `json:"port"`
+
+	HealthCheck health.SerializableHealthCheck `json:"healthCheck"`
 
 	// NOTE: The fields below are only valid because
 	// the store doesn't re-load data from disk when the file is updated.
@@ -106,60 +98,6 @@ type LogFileResult struct {
 	Counter int32  `json:"counter"` // TODO: bad name
 }
 
-func (r *RHandle) GetLogFile(id ProcessId) (LogFileResult, error) {
-	proc, found := r.FindById(id)
-	if !found {
-		return LogFileResult{}, processNotFound(id)
-	}
-
-	var info pubsub.TopicInfo
-	if proc.logsTopic != nil {
-		info = proc.logsTopic.LockWithInfo()
-		defer proc.logsTopic.Unlock()
-	}
-
-	path := r.m.getLogFilePath(id)
-	f, err := os.ReadFile(path)
-	if err != nil {
-		return LogFileResult{}, err
-	}
-
-	res := LogFileResult{
-		Text:    string(f),
-		Counter: info.Counter,
-	}
-
-	return res, nil
-}
-
-func osProcessIsAlive(pid int) bool {
-	// TODO: check the actual error, it might've been a permission error
-	// or something else.
-	osProcess, err := os.FindProcess(pid)
-	if err != nil {
-		logger.Debug("got error when checking process alive", log.Ctx{
-			"procIsNil": osProcess == nil,
-			"err":       err.Error(),
-		})
-		return false
-	}
-
-	// It turns out, `Release` is super duper important on Windows. Without calling release,
-	// the underlying Windows handle doesn't get closed, and the process stays in the "running"
-	// state, at least for the purpose of this check. This isn't a problem on unix, as Release is essentially
-	// a no-op there.
-	defer osProcess.Release()
-
-	// On windows, if we located a process, it's alive.
-	// On other platforms, we only have a handle, and need to send a signal
-	// to see if it's alive.
-	if runtime.GOOS == "windows" {
-		return true
-	}
-
-	return osProcess.Signal(syscall.Signal(0)) == nil
-}
-
 func findById(id ProcessId) func(row Process) bool {
 	return func(row Process) bool {
 		return row.Id == id
@@ -201,6 +139,10 @@ func (cfg *ProcessConfig) fillEmptyValues() error {
 		cfg.WorkDir = dir
 	}
 
+	if cfg.HealthCheck == nil {
+		cfg.HealthCheck = &health.ProcessHealthCheck{}
+	}
+
 	return nil
 }
 
@@ -240,7 +182,7 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 	err = manager.db.ForEachWriting(func(proc *Process) {
 		proc.Context, proc.cancel = context.WithCancel(manager.ctx)
 
-		if !osProcessIsAlive(proc.Pid) {
+		if !health.PidIsAlive(proc.Pid) {
 			proc.cancel()
 			return
 		}
@@ -250,7 +192,7 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 			cancel: proc.cancel,
 		})
 
-		topic, err := manager.topicForProcId(proc.Id)
+		topic, err := manager.logTopicForProcId(proc.Id)
 		if err != nil {
 			topicCreationErr = err
 			return
@@ -258,7 +200,7 @@ func NewProcessManager(registry *pubsub.Registry, logsPath string, dbPath string
 
 		proc.logsTopic = topic
 
-		go manager.pipeTailIntoTopic(TopicTailInfo{
+		go manager.pipeTailIntoTopic(topicTailInfo{
 			processId: proc.Id,
 			logsTopic: topic,
 			Context:   proc.Context,
@@ -293,7 +235,7 @@ func pollForExit(processes []pollPidContext) {
 
 		nextProcesses := make([]pollPidContext, 0, len(processes))
 		for _, proc := range processes {
-			if !osProcessIsAlive(proc.pid) {
+			if !health.PidIsAlive(proc.pid) {
 				proc.cancel()
 			} else {
 				nextProcesses = append(nextProcesses, proc)
@@ -304,29 +246,6 @@ func pollForExit(processes []pollPidContext) {
 
 		time.Sleep(200 * time.Millisecond)
 	}
-}
-
-func LogsTopicId(id ProcessId) pubsub.TopicId {
-	return pubsub.TopicId{
-		Category: path.Join("/logs", id.Category),
-		Key:      id.Key,
-	}
-
-}
-
-func (manager *ProcessManager) topicForProcId(id ProcessId) (*pubsub.Topic[string], error) {
-	topicId := LogsTopicId(id)
-
-	topic, err := pubsub.CreateTopic[string](manager.registry, topicId)
-	if err != nil {
-		logger.Err("error creating logging topic for process", log.Ctx{
-			"id":  id,
-			"err": err.Error(),
-		})
-		return nil, err
-	}
-
-	return topic, nil
 }
 
 func (r *RHandle) FindById(id ProcessId) (Process, bool) {
@@ -345,54 +264,8 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-type TopicTailInfo struct {
-	processId ProcessId
-	logsTopic *pubsub.Topic[string]
-	Context   context.Context
-}
-
-func (m *ProcessManager) pipeTailIntoTopic(process TopicTailInfo) {
-	if process.logsTopic == nil || process.logsTopic.IsClosed() {
-		return
-	}
-
-	defer process.logsTopic.Close()
-
-	config := tail.Config{
-		ReOpen: true,
-		Follow: true,
-		Logger: tail.DiscardingLogger,
-	}
-	out, err := tail.TailFile(m.getLogFilePath(process.processId), config)
-	if err != nil {
-		logger.Err("failed to tail file", log.Ctx{
-			"err": err.Error(),
-		})
-		return
-	}
-
-	defer out.Cleanup()
-
-	for {
-		select {
-		case <-process.Context.Done():
-			return
-
-		case line, ok := <-out.Lines:
-			if !ok {
-				return
-			}
-
-			if line.Err != nil {
-				logger.Err("got error in tail line", log.Ctx{
-					"err": line.Err.Error(),
-				})
-				continue
-			}
-
-			process.logsTopic.Publish(line.Text)
-		}
-	}
+func (proc *Process) IsHealthy() bool {
+	return proc.IsAlive() && proc.HealthCheck.Check(health.RunningProcessInfo{Pid: proc.Pid, Port: proc.Port})
 }
 
 // This reads the path variable to find the right executable.
@@ -409,6 +282,11 @@ func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (Process, error) {
 // This spawns a process using the given arguments and executable path.
 func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	if err := procConfig.fillEmptyValues(); err != nil {
+		return Process{}, err
+	}
+
+	healthCheck, err := health.NewHealthCheck(procConfig.HealthCheck)
+	if err != nil {
 		return Process{}, err
 	}
 
@@ -471,7 +349,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	}
 	defer proc.Release()
 
-	topic, err := w.Read.m.topicForProcId(procConfig.Id)
+	topic, err := w.Read.m.logTopicForProcId(procConfig.Id)
 	if err != nil {
 		_ = proc.Kill()
 		return Process{}, err
@@ -480,14 +358,15 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	ctx, cancel := context.WithCancel(w.Read.m.ctx)
 
 	entry := Process{
-		Id:        procConfig.Id,
-		WorkDir:   procConfig.WorkDir,
-		StartedAt: time.Now(),
-		Command:   procConfig.Command,
-		Args:      procConfig.Args,
-		Pid:       proc.Pid,
-		Env:       procConfig.Env,
-		Port:      procConfig.Port,
+		Id:          procConfig.Id,
+		WorkDir:     procConfig.WorkDir,
+		StartedAt:   time.Now(),
+		Command:     procConfig.Command,
+		Args:        procConfig.Args,
+		Pid:         proc.Pid,
+		Env:         procConfig.Env,
+		Port:        procConfig.Port,
+		HealthCheck: healthCheck,
 
 		logsTopic: topic,
 		Context:   ctx,
@@ -495,7 +374,7 @@ func (w *WHandle) Spawn(procConfig ProcessConfig) (Process, error) {
 	}
 
 	// Write output to file
-	go w.Read.m.pipeTailIntoTopic(TopicTailInfo{
+	go w.Read.m.pipeTailIntoTopic(topicTailInfo{
 		processId: entry.Id,
 		logsTopic: entry.logsTopic,
 		Context:   entry.Context,

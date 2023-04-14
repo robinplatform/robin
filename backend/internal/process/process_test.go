@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"robinplatform.dev/internal/process/health"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -32,7 +33,7 @@ func TestSpawnProcess(t *testing.T) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	if !osProcessIsAlive(proc.Pid) {
+	if !health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
@@ -46,7 +47,7 @@ func TestSpawnProcess(t *testing.T) {
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
-	if osProcessIsAlive(proc.Pid) {
+	if health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
@@ -72,7 +73,7 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("error spawning process: %s", err.Error())
 	}
 
-	if !osProcessIsAlive(proc.Pid) {
+	if !health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is dead before it dies")
 	}
 
@@ -82,7 +83,7 @@ func TestSpawnDead(t *testing.T) {
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
-	if osProcessIsAlive(proc.Pid) {
+	if health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
@@ -129,7 +130,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	if !osProcessIsAlive(procB.Pid) {
+	if !health.PidIsAlive(procB.Pid) {
 		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
@@ -139,7 +140,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("manager thinks process is alive after it died")
 	}
 
-	if osProcessIsAlive(procB.Pid) {
+	if health.PidIsAlive(procB.Pid) {
 		t.Fatalf("manager/OS thinks process is alive after it died")
 	}
 }
