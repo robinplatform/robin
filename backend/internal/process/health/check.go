@@ -31,6 +31,8 @@ func NewHealthCheck(check HealthCheck) (SerializableHealthCheck, error) {
 	switch v := check.(type) {
 	case SerializableHealthCheck:
 		return v, nil
+	case *SerializableHealthCheck:
+		return *v, nil
 
 	case ProcessHealthCheck, *ProcessHealthCheck:
 		return SerializableHealthCheck{
