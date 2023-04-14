@@ -264,6 +264,10 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
+func (proc *Process) IsHealthy() bool {
+	return proc.IsAlive() && proc.HealthCheck.Check(health.RunningProcessInfo{Pid: proc.Pid, Port: proc.Port})
+}
+
 // This reads the path variable to find the right executable.
 func (w *WHandle) SpawnFromPathVar(config ProcessConfig) (Process, error) {
 	var err error
