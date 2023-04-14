@@ -1,0 +1,78 @@
+name: Release Stable
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    if: "${{ github.ref == 'refs/heads/main' }}"
+    concurrency:
+      group: ${{ github.ref }}-release
+      cancel-in-progress: true
+
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Golang
+        uses: actions/setup-go@v3
+        with:
+          go-version: ~1.20
+
+      - name: Download go modules
+        run: |
+          cd backend/
+          go mod download
+
+      - name: Generate
+        run: |
+          cd backend/
+          go generate -x ./...
+
+      - id: node-version
+        name: Get node version
+        run: |
+          echo "version=`cat .nvmrc`" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js for use with actions
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ steps.node-version.outputs.version }}
+
+      - name: Install Node.js dependencies
+        run: yarn
+
+      - name: Build toolkit
+        run: |
+          yarn workspace @robinplatform/toolkit run build
+
+      - name: Build frontend
+        run: |
+          yarn workspace @robinplatform/frontend run build
+
+      - name: Install s3cmd
+        run: |
+          pip3 install s3cmd --no-cache
+
+      - name: Configure s3cmd
+        env:
+          S3CFG: ${{ secrets.S3CFG }}
+        run: |
+          echo $S3CFG | base64 --decode > ~/.s3cfg
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Install upx
+        run: |
+          sudo apt-get install -yq upx
+
+      - name: Release stable
+        run: |
+          yarn workspace @robinplatform/backend run release stable
+
+      - name: Flush CDN Cache
+        run: |
+          doctl compute cdn flush 98986f5e-330d-49a9-8d01-5344c7cf2cd0

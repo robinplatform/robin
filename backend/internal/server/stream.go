@@ -19,7 +19,6 @@ type Stream[Input any, Output any] struct {
 	Run func(req *StreamRequest[Input, Output]) error
 }
 
-// TODO: Add context stuffs so that requests can be cancelled
 type StreamRequest[Input any, Output any] streamRequest
 type streamRequest struct {
 	Method  string
@@ -251,8 +250,6 @@ func runMethod(method handler, rawReq *streamRequest) {
 
 	if err := method(rawReq); err != nil {
 		rawReq.SendRaw("error", err.Error())
-
-		return
 	}
 
 	rawReq.SendRaw("methodDone", nil)

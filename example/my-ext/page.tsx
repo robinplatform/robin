@@ -39,29 +39,10 @@ function Main() {
 	);
 }
 
-const AppPages = {
-	Main,
-	Pogo,
-} as const;
-
 function App() {
-	const [page, setPage] = React.useState<keyof typeof AppPages>('Pogo');
-	const Component = AppPages[page];
-
 	return (
 		<div className={'full col'}>
-			<div>
-				{Object.keys(AppPages).map((key) => (
-					<button
-						key={key}
-						onClick={() => setPage(key as keyof typeof AppPages)}
-					>
-						{key}
-					</button>
-				))}
-			</div>
-
-			<Component />
+			<Main />
 		</div>
 	);
 }

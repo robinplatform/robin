@@ -1,29 +1,8 @@
 package server
 
 import (
-	"sync"
-
-	"robinplatform.dev/internal/identity"
-	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/pubsub"
 )
-
-var topicMapMutex = sync.Mutex{}
-var topicMap = make(map[string]*pubsub.Topic[any])
-
-func getTopic(topicId pubsub.TopicId) *pubsub.Topic[any] {
-	topicMapMutex.Lock()
-	defer topicMapMutex.Unlock()
-
-	return topicMap[topicId.String()]
-}
-
-func setTopic(topic *pubsub.Topic[any]) {
-	topicMapMutex.Lock()
-	defer topicMapMutex.Unlock()
-
-	topicMap[topic.Id.String()] = topic
-}
 
 type CreateTopicInput struct {
 	AppId    string   `json:"appId"`
@@ -34,30 +13,15 @@ type CreateTopicInput struct {
 var CreateTopic = AppsRpcMethod[CreateTopicInput, struct{}]{
 	Name: "CreateTopic",
 	Run: func(req RpcRequest[CreateTopicInput]) (struct{}, *HttpError) {
-		if req.Data.AppId == "" {
-			return struct{}{}, Errorf(500, "App ID was an empty string")
-		}
-
-		categoryParts := []string{"app-topics", req.Data.AppId}
-		categoryParts = append(categoryParts, req.Data.Category...)
-		topicId := pubsub.TopicId{
-			Category: identity.Category(categoryParts...),
-			Key:      req.Data.Key,
-		}
-
-		topic := getTopic(topicId)
-		if topic != nil {
-			// We've already created the topic; since app topics can't be closed right now,
-			// it is easier to simply do this additional hack.
-			return struct{}{}, nil
-		}
-
-		topic, err := pubsub.CreateTopic[any](&pubsub.Topics, topicId)
+		app, _, err := req.Server.compiler.GetApp(req.Data.AppId)
 		if err != nil {
 			return struct{}{}, Errorf(500, "%s", err.Error())
 		}
 
-		setTopic(topic)
+		topicId := app.TopicId(req.Data.Category, req.Data.Key)
+		if _, err := app.UpsertTopic(topicId); err != nil {
+			return struct{}{}, Errorf(500, "%s", err.Error())
+		}
 
 		return struct{}{}, nil
 	},
@@ -73,26 +37,15 @@ type PublishTopicInput struct {
 var PublishTopic = AppsRpcMethod[PublishTopicInput, struct{}]{
 	Name: "PublishToTopic",
 	Run: func(req RpcRequest[PublishTopicInput]) (struct{}, *HttpError) {
-		logger.Debug("Publish to topic", log.Ctx{
-			"appId":    req.Data.AppId,
-			"category": req.Data.Category,
-			"key":      req.Data.Key,
-		})
-
-		if req.Data.AppId == "" {
-			return struct{}{}, Errorf(500, "App ID was an empty string")
+		app, _, err := req.Server.compiler.GetApp(req.Data.AppId)
+		if err != nil {
+			return struct{}{}, Errorf(500, "%s", err.Error())
 		}
 
-		categoryParts := []string{"app-topics", req.Data.AppId}
-		categoryParts = append(categoryParts, req.Data.Category...)
-		topicId := pubsub.TopicId{
-			Category: identity.Category(categoryParts...),
-			Key:      req.Data.Key,
-		}
-
-		topic := getTopic(topicId)
-		if topic == nil {
-			return struct{}{}, Errorf(500, "Topic not found: %s", topicId.String())
+		topicId := app.TopicId(req.Data.Category, req.Data.Key)
+		topic, err := app.UpsertTopic(topicId)
+		if err != nil {
+			return struct{}{}, Errorf(500, "topic '%s' not found: %s", topicId.String(), err.Error())
 		}
 
 		topic.Publish(req.Data.Data)
@@ -144,5 +97,36 @@ var SubscribeTopic = Stream[SubscribeTopicInput, any]{
 				return nil
 			}
 		}
+	},
+}
+
+type SubscribeAppTopicInput struct {
+	AppId    string   `json:"appId"`
+	Category []string `json:"category"`
+	Key      string   `json:"key"`
+}
+
+var SubscribeAppTopic = Stream[SubscribeAppTopicInput, any]{
+	Name: "SubscribeAppTopic",
+	Run: func(req *StreamRequest[SubscribeAppTopicInput, any]) error {
+		input, err := req.ParseInput()
+		if err != nil {
+			return err
+		}
+
+		app, _, err := req.Server.compiler.GetApp(input.AppId)
+		if err != nil {
+			// the error messages from GetApp() are already user-friendly
+			return err
+		}
+
+		if !app.IsAlive() {
+			if err := app.StartServer(); err != nil {
+				return err
+			}
+		}
+
+		topicId := app.TopicId(input.Category, input.Key)
+		return PipeTopic(topicId, req)
 	},
 }

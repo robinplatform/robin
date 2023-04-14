@@ -48,9 +48,9 @@ export function Sidebar() {
 						<Link
 							href={`/app/${app.id}`}
 							className={cx(styles.sidebarLink, 'robin-pad', {
-								'robin-bg-dark-purple': window.location.pathname.startsWith(
-									`/app/${app.id}`,
-								),
+								'robin-bg-dark-purple':
+									window.location.pathname.startsWith(`/app/${app.id}/`) ||
+									window.location.pathname === `/app/${app.id}`,
 							})}
 						>
 							<span>

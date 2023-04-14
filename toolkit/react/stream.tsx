@@ -12,6 +12,39 @@ const PubsubData = z.object({
 	data: z.unknown(),
 });
 
+// Subscribe to an app topic and track the messages received in relation
+// to state.
+export function useAppTopicQuery<State, Output>({
+	appId = process.env.ROBIN_APP_ID,
+	category,
+	key,
+	fetchState,
+	reducer,
+	resultType,
+	skip,
+}: {
+	appId?: string;
+	resultType: z.Schema<Output>;
+	category?: string[];
+	key?: string;
+	fetchState: () => Promise<{ state: State; counter: number }>;
+	reducer: (s: State, o: Output) => State;
+	skip?: boolean;
+}) {
+	return useTopicQueryInternal<State, Output>({
+		methodName: 'SubscribeAppTopic',
+		data: {
+			appId,
+			category,
+			key,
+		},
+		skip: skip || !appId || !category || !key,
+		resultType,
+		reducer,
+		fetchState,
+	});
+}
+
 // Subscribe to a topic and track the messages received in relation
 // to state.
 export function useTopicQuery<State, Output>({
@@ -23,6 +56,33 @@ export function useTopicQuery<State, Output>({
 }: {
 	resultType: z.Schema<Output>;
 	topicId?: { category: string; key: string };
+	fetchState: () => Promise<{ state: State; counter: number }>;
+	reducer: (s: State, o: Output) => State;
+	skip?: boolean;
+}) {
+	return useTopicQueryInternal<State, Output>({
+		methodName: 'SubscribeTopic',
+		data: { id: topicId },
+		skip: skip || !topicId,
+		resultType,
+		reducer,
+		fetchState,
+	});
+}
+
+// Subscribe to a topic and track the messages received in relation
+// to state.
+function useTopicQueryInternal<State, Output>({
+	methodName,
+	data,
+	fetchState,
+	reducer,
+	resultType,
+	skip,
+}: {
+	methodName: string;
+	data: object;
+	resultType: z.Schema<Output>;
 	fetchState: () => Promise<{ state: State; counter: number }>;
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
@@ -40,10 +100,10 @@ export function useTopicQuery<State, Output>({
 		  };
 
 	const { state, dispatch: rawDispatch } = useStreamMethod({
-		methodName: 'SubscribeTopic',
+		methodName,
 		resultType: PubsubData,
-		data: { id: topicId },
-		skip: skip || !topicId,
+		data,
+		skip: skip,
 		initialState: { kind: 'empty', seenMessages: [] },
 		onConnection: () => {
 			// This needs to run AFTER the connection completes so that there's no messages
@@ -158,9 +218,7 @@ export function useStreamMethod<State, Output>({
 			return;
 		}
 
-		const id = `${methodName}-${Math.random()}`;
-
-		const stream = new Stream(methodName, id);
+		let stream = new Stream(methodName);
 
 		stream.onmessage = (message) => {
 			const { kind, data } = message as { kind: string; data: string };
@@ -168,14 +226,16 @@ export function useStreamMethod<State, Output>({
 				return;
 			}
 
-			const res = resultType.safeParse(data);
-			if (!res.success) {
-				// TODO: handle the error
-				stream.onerror(res.error);
-				return;
-			}
+			const res = resultType.parse(data);
+			dispatch(res);
+		};
 
-			dispatch(res.data);
+		stream.onclose = (cause) => {
+			if (cause === 'WebsocketClosed') {
+				// Retry the stream if the connection was lost.
+				stream = stream.newStreamWithSameHandlers();
+				stream.start(initialData).then(() => onConnRef.current?.());
+			}
 		};
 
 		stream.start(initialData).then(() => onConnRef.current?.());

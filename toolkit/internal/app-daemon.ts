@@ -105,10 +105,10 @@ async function main() {
 		});
 		console.log(`Started listening on :${process.env.PORT}`);
 
-		// Start a timer to automatically exit after 5 minutes of inactivity
+		// Start a timer to automatically exit after 5 seconds of inactivity
 		setInterval(() => {
-			if (Date.now() - lastRequest > 1000) {
-				console.log('No requests in 5 minutes, exiting');
+			if (Date.now() - lastRequest > 5000) {
+				console.log('No requests in 5 seconds, exiting');
 				process.exit(0);
 			}
 		}, 1000);

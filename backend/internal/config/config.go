@@ -24,3 +24,7 @@ func init() {
 func GetRobinPath() string {
 	return robinPath
 }
+
+func GetHttpCachePath() string {
+	return filepath.Join(robinPath, "data", "http-cache.json")
+}

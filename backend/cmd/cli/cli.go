@@ -30,6 +30,7 @@ var (
 		&RemoveCommand{},
 		&CreateCommand{},
 		&VersionCommand{},
+		&CompileCommand{},
 	}
 )
 

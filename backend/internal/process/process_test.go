@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"robinplatform.dev/internal/process/health"
 	"robinplatform.dev/internal/pubsub"
 )
 
@@ -32,7 +33,7 @@ func TestSpawnProcess(t *testing.T) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	if !proc.osProcessIsAlive() {
+	if !health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
@@ -46,7 +47,7 @@ func TestSpawnProcess(t *testing.T) {
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
-	if proc.osProcessIsAlive() {
+	if health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
@@ -72,7 +73,7 @@ func TestSpawnDead(t *testing.T) {
 		t.Fatalf("error spawning process: %s", err.Error())
 	}
 
-	if !proc.osProcessIsAlive() {
+	if !health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is dead before it dies")
 	}
 
@@ -82,7 +83,7 @@ func TestSpawnDead(t *testing.T) {
 	if manager.IsAlive(id) {
 		t.Fatalf("manager thinks the process is still alive")
 	}
-	if proc.osProcessIsAlive() {
+	if health.PidIsAlive(proc.Pid) {
 		t.Fatalf("manager/OS thinks the process is still alive")
 	}
 }
@@ -120,16 +121,16 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("error loading DB: %s", err.Error())
 	}
 
-	procB, err := managerB.FindById(id)
-	if err != nil {
-		t.Fatalf("error finding process: %s", err.Error())
+	procB, found := managerB.FindById(id)
+	if !found {
+		t.Fatalf("error finding processs")
 	}
 
 	if !managerB.IsAlive(id) {
 		t.Fatalf("manager doesn't think process is alive, even though it just spawned it")
 	}
 
-	if !procB.osProcessIsAlive() {
+	if !health.PidIsAlive(procB.Pid) {
 		t.Fatalf("manager/OS doesn't think process is alive, even though it just spawned it")
 	}
 
@@ -139,7 +140,7 @@ func TestSpawnedBeforeManagerStarted(t *testing.T) {
 		t.Fatalf("manager thinks process is alive after it died")
 	}
 
-	if procB.osProcessIsAlive() {
+	if health.PidIsAlive(procB.Pid) {
 		t.Fatalf("manager/OS thinks process is alive after it died")
 	}
 }

@@ -13,7 +13,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -21,18 +20,13 @@ import (
 	"robinplatform.dev/internal/config"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
+	"robinplatform.dev/internal/process/health"
 	"robinplatform.dev/internal/project"
 )
 
-var (
-	// TODO: add something like a write handle to processManager so we don't
-	// need to use our own mutex
-	daemonProcessMux = &sync.Mutex{}
-)
-
 func (app *CompiledApp) IsAlive() bool {
-	process, err := process.Manager.FindById(app.ProcessId)
-	if err != nil {
+	process, found := process.Manager.FindById(app.ProcessId)
+	if !found {
 		return false
 	}
 
@@ -65,13 +59,7 @@ func (app *CompiledApp) keepAlive() {
 			}
 		}
 
-		// TODO: This should be less frequent. I've set it to be higher right now
-		// to make development of robin apps easier/faster, but it should be lower.
-		if config.GetReleaseChannel() == "dev" {
-			time.Sleep(time.Second / 4)
-		} else {
-			time.Sleep(10 * time.Second)
-		}
+		time.Sleep(2 * time.Second)
 	}
 }
 
@@ -194,8 +182,12 @@ func (app *CompiledApp) copyAppFiles(appConfig project.RobinAppConfig, appDir st
 }
 
 func (app *CompiledApp) StartServer() error {
-	daemonProcessMux.Lock()
-	defer daemonProcessMux.Unlock()
+	w := process.Manager.WriteHandle()
+	defer w.Close()
+
+	if proc, found := w.Read.FindById(app.ProcessId); found && proc.IsAlive() {
+		return nil
+	}
 
 	appDir, err := app.GetAppDir()
 	if err != nil {
@@ -249,9 +241,13 @@ func (app *CompiledApp) StartServer() error {
 	// Add port info to the process config
 	processConfig.Env["PORT"] = strPortAvailable
 	processConfig.Port = portAvailable
+	processConfig.HealthCheck = health.HttpHealthCheck{
+		Method: http.MethodGet,
+		Url:    fmt.Sprintf("http://localhost:%s/api/health", strPortAvailable),
+	}
 
 	// Start the app server process
-	serverProcess, err := process.Manager.SpawnFromPathVar(processConfig)
+	serverProcess, err := w.SpawnFromPathVar(processConfig)
 	if err != nil && !errors.Is(err, process.ErrProcessAlreadyExists) {
 		logger.Err("Failed to start app server", log.Ctx{
 			"appId": app.Id,
@@ -268,34 +264,30 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Send a ping to the process
-		resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", serverProcess.Port))
-		if err == nil && resp.StatusCode == http.StatusOK {
+		if serverProcess.IsHealthy() {
 			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 				go app.keepAlive()
 			}
 
 			return nil
 		}
-		if resp == nil {
-			logger.Debug("Failed to ping app server", log.Ctx{
-				"appId": app.Id,
-				"pid":   serverProcess.Pid,
-				"err":   err,
-			})
-		} else {
-			logger.Debug("Failed to ping app server", log.Ctx{
-				"appId":  app.Id,
-				"pid":    serverProcess.Pid,
-				"err":    err,
-				"status": resp.StatusCode,
-			})
-		}
+
+		logger.Debug("Failed to ping app server", log.Ctx{
+			"appId": app.Id,
+			"pid":   serverProcess.Pid,
+			"err":   err,
+		})
 
 		// Wait a bit
 		time.Sleep(500 * time.Millisecond)
 	}
 
-	if err := app.StopServer(); err != nil {
+	logger.Warn("Stopping unhealthy server", log.Ctx{
+		"appId": app.Id,
+		"pid":   serverProcess.Pid,
+	})
+
+	if err := app.stopServer(w); err != nil {
 		logger.Warn("Failed to stop unhealthy app server", log.Ctx{
 			"appId": app.Id,
 			"pid":   serverProcess.Pid,
@@ -306,11 +298,18 @@ func (app *CompiledApp) StartServer() error {
 	return fmt.Errorf("failed to start app server: process did not become ready")
 }
 
-func (app *CompiledApp) StopServer() error {
-	daemonProcessMux.Lock()
-	defer daemonProcessMux.Unlock()
+func (app *CompiledApp) stopServer(w process.WHandle) error {
+	if err := w.Kill(app.ProcessId); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
+		return err
+	}
+	return nil
+}
 
-	if err := process.Manager.Kill(app.ProcessId); err != nil && !errors.Is(err, process.ErrProcessNotFound) {
+func (app *CompiledApp) StopServer() error {
+	w := process.Manager.WriteHandle()
+	defer w.Close()
+
+	if err := app.stopServer(w); err != nil {
 		return fmt.Errorf("failed to stop app server: %w", err)
 	}
 	return nil
@@ -323,13 +322,9 @@ type AppResponse struct {
 }
 
 func (app *CompiledApp) Request(ctx context.Context, method string, reqPath string, body any) AppResponse {
-	if app.httpClient == nil {
-		app.httpClient = &http.Client{}
-	}
-
-	serverProcess, err := process.Manager.FindById(app.ProcessId)
-	if err != nil {
-		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
+	serverProcess, found := process.Manager.FindById(app.ProcessId)
+	if !found {
+		return AppResponse{StatusCode: 500, Err: "failed to make app request: app process not found"}
 	}
 
 	serializedBody, err := json.Marshal(body)
@@ -354,7 +349,7 @@ func (app *CompiledApp) Request(ctx context.Context, method string, reqPath stri
 		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to create app request: %s", err)}
 	}
 
-	resp, err := app.httpClient.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return AppResponse{StatusCode: 500, Err: fmt.Sprintf("failed to make app request: %s", err)}
 	}

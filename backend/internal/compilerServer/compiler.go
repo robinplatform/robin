@@ -6,32 +6,49 @@ import (
 	"os"
 	"strconv"
 	"sync"
-	"sync/atomic"
 
 	"robinplatform.dev/internal/compile/compileClient"
 	"robinplatform.dev/internal/compile/compileDaemon"
+	"robinplatform.dev/internal/config"
+	"robinplatform.dev/internal/httpcache"
+	"robinplatform.dev/internal/identity"
 	"robinplatform.dev/internal/log"
 	"robinplatform.dev/internal/process"
 	"robinplatform.dev/internal/project"
+	"robinplatform.dev/internal/pubsub"
 )
 
 var (
 	logger log.Logger = log.New("compile")
 
+	httpClient httpcache.CacheClient
+
 	CacheEnabled = os.Getenv("ROBIN_CACHE") != "false"
 )
+
+func init() {
+	var err error
+	cacheFilename := config.GetHttpCachePath()
+	httpClient, err = httpcache.NewClient(cacheFilename, 100*1024*1024)
+	if err != nil {
+		httpLogger := log.New("http")
+		httpLogger.Debug("Failed to load HTTP cache, will recreate", log.Ctx{
+			"error": err,
+			"path":  cacheFilename,
+		})
+	}
+}
 
 type Compiler struct {
 	ServerPort int
 
 	mux  sync.RWMutex
-	apps map[string]CompiledApp
+	apps map[string]*CompiledApp
 }
 
 type CompiledApp struct {
 	shouldCache bool
 
-	httpClient       *http.Client
 	compiler         *Compiler
 	keepAliveRunning *int64
 	builderMux       *sync.RWMutex
@@ -39,11 +56,11 @@ type CompiledApp struct {
 	Id        string
 	ProcessId process.ProcessId
 
+	topicMux sync.Mutex
+	topicMap map[string]*pubsub.Topic[any]
+
 	// Html holds the HTML to be rendered on the client
 	Html string
-
-	// ClientJs holds the compiled JS bundle for the client-side app
-	ClientJs string
 
 	// ClientMetafile holds the parsed metafile for the client-side app (useful for debugging)
 	ClientMetafile map[string]any
@@ -61,7 +78,7 @@ func (compiler *Compiler) ResetAppCache(id string) {
 	compiler.mux.Unlock()
 }
 
-func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
+func (compiler *Compiler) GetApp(id string) (*CompiledApp, bool, error) {
 	compiler.mux.Lock()
 	defer compiler.mux.Unlock()
 
@@ -70,12 +87,12 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	}
 
 	if compiler.apps == nil && CacheEnabled {
-		compiler.apps = make(map[string]CompiledApp)
+		compiler.apps = make(map[string]*CompiledApp)
 	}
 
 	appConfig, err := project.LoadRobinAppById(id)
 	if err != nil {
-		return CompiledApp{}, false, fmt.Errorf("failed to load app config: %w", err)
+		return nil, false, fmt.Errorf("failed to load app config: %w", err)
 	}
 
 	processId := process.ProcessId{
@@ -83,10 +100,11 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 		Key:      appConfig.Id,
 	}
 
-	app := CompiledApp{
+	app := &CompiledApp{
 		shouldCache:      CacheEnabled && appConfig.ConfigPath.Scheme != "file",
 		compiler:         compiler,
 		keepAliveRunning: new(int64),
+		topicMap:         make(map[string]*pubsub.Topic[any]),
 		builderMux:       &sync.RWMutex{},
 
 		Id:        id,
@@ -99,23 +117,6 @@ func (compiler *Compiler) GetApp(id string) (CompiledApp, bool, error) {
 	}
 
 	return app, false, nil
-}
-
-func (compiler *Compiler) Precompile(id string) {
-	if !CacheEnabled {
-		return
-	}
-
-	app, _, err := compiler.GetApp(id)
-	if err != nil {
-		return
-	}
-
-	go app.buildClient()
-
-	if app.IsAlive() && atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
-		go app.keepAlive()
-	}
 }
 
 func (compiler *Compiler) RenderClient(id string, res http.ResponseWriter) error {
@@ -165,7 +166,7 @@ func (app *CompiledApp) buildClient() error {
 	app.builderMux.Lock()
 	defer app.builderMux.Unlock()
 
-	if app.ClientJs != "" && app.shouldCache {
+	if app.Html != "" && app.shouldCache {
 		return nil
 	}
 
@@ -179,7 +180,6 @@ func (app *CompiledApp) buildClient() error {
 		return err
 	}
 
-	app.ClientJs = bundle.JS
 	app.ClientMetafile = bundle.Metafile
 	app.Html = bundle.Html
 	app.serverExports = bundle.ServerExports
@@ -209,4 +209,39 @@ func (app *CompiledApp) buildServerBundle() error {
 	app.ServerJs = bundle.ServerJS
 
 	return nil
+}
+
+func (app *CompiledApp) GetTopic(topicId pubsub.TopicId) *pubsub.Topic[any] {
+	app.topicMux.Lock()
+	defer app.topicMux.Unlock()
+
+	return app.topicMap[topicId.String()]
+}
+
+func (app *CompiledApp) UpsertTopic(topicId pubsub.TopicId) (*pubsub.Topic[any], error) {
+	app.topicMux.Lock()
+	defer app.topicMux.Unlock()
+
+	if topic, found := app.topicMap[topicId.String()]; found {
+		return topic, nil
+	}
+
+	topic, err := pubsub.CreateTopic[any](&pubsub.Topics, topicId)
+	if err != nil {
+		return nil, err
+	}
+
+	app.topicMap[topicId.String()] = topic
+
+	return topic, nil
+
+}
+
+func (app *CompiledApp) TopicId(category []string, key string) pubsub.TopicId {
+	categoryParts := []string{"app-topics", app.Id}
+	categoryParts = append(categoryParts, category...)
+	return pubsub.TopicId{
+		Category: identity.Category(categoryParts...),
+		Key:      key,
+	}
 }

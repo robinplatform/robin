@@ -62,6 +62,8 @@ func (server *Server) loadRpcMethods() {
 	GetConfig.Register(server)
 	UpdateConfig.Register(server)
 
+	GetProcessLogs.Register(server)
+
 	GetAppById.Register(server)
 	GetApps.Register(server)
 	RunAppMethod.Register(server)
@@ -86,6 +88,7 @@ func (server *Server) loadRpcMethods() {
 	server.router.GET("/api/websocket", wsHandler.WebsocketHandler(server))
 
 	SubscribeTopic.Register(wsHandler)
+	SubscribeAppTopic.Register(wsHandler)
 }
 
 func createErrorJs(errMessage string) string {
@@ -129,21 +132,6 @@ func (server *Server) Run() error {
 		mux.Handle("/debug/pprof/trace", http.HandlerFunc(pprof.Trace))
 		server.pprofRouter = mux
 	}
-
-	// Start precompiling apps, and ignore the errors for now
-	// The errors will get handled when the app is requested
-	go func() {
-		if compilerServer.CacheEnabled {
-			apps, err := project.GetAllProjectApps()
-			if err != nil {
-				return
-			}
-
-			for _, app := range apps {
-				go server.compiler.Precompile(app.Id)
-			}
-		}
-	}()
 
 	// TODO: Move the compiler routes to a separate file/into compiler
 	// Apps
