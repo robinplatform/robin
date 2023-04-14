@@ -33,10 +33,7 @@ type ProcessConfig struct {
 	Env     map[string]string
 	Command string
 	Args    []string
-
-	// Ideally the port should be optional, and be somewhat integrated into
-	// whatever the healthcheck code ends up being, but for now this works decently well.
-	Port int
+	Port    int
 
 	HealthCheck health.HealthCheck
 }
@@ -49,7 +46,7 @@ type Process struct {
 	Env       map[string]string `json:"env"`
 	Command   string            `json:"command"`
 	Args      []string          `json:"args"`
-	Port      int               `json:"port"` // see docs in ProcessConfig
+	Port      int               `json:"port"`
 
 	HealthCheck health.SerializableHealthCheck `json:"healthCheck"`
 

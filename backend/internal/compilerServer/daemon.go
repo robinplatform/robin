@@ -264,7 +264,7 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Send a ping to the process
-		if serverProcess.HealthCheck.Check(health.RunningProcessInfo{Pid: serverProcess.Pid}) {
+		if serverProcess.HealthCheck.Check(health.RunningProcessInfo{Pid: serverProcess.Pid, Port: serverProcess.Port}) {
 			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 				go app.keepAlive()
 			}

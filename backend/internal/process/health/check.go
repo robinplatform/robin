@@ -10,7 +10,8 @@ import (
 var logger = log.New("process.health")
 
 type RunningProcessInfo struct {
-	Pid int
+	Pid  int
+	Port int
 }
 
 type HealthCheck interface {
