@@ -33,18 +33,21 @@ func NewHealthCheck(check HealthCheck) (SerializableHealthCheck, error) {
 		return v, nil
 
 	case ProcessHealthCheck:
+	case *ProcessHealthCheck:
 		return SerializableHealthCheck{
 			checkType: "process",
 			check:     check,
 		}, nil
 
 	case TcpHealthCheck:
+	case *TcpHealthCheck:
 		return SerializableHealthCheck{
 			checkType: "tcp",
 			check:     check,
 		}, nil
 
 	case HttpHealthCheck:
+	case *HttpHealthCheck:
 		return SerializableHealthCheck{
 			checkType: "http",
 			check:     check,
