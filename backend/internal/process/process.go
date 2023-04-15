@@ -264,6 +264,14 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
+func (r *RHandle) IsHealthy(id ProcessId) bool {
+	process, found := r.FindById(id)
+	if !found {
+		return false
+	}
+	return process.IsHealthy()
+}
+
 func (proc *Process) IsHealthy() bool {
 	return proc.IsAlive() && proc.HealthCheck.Check(health.RunningProcessInfo{Pid: proc.Pid, Port: proc.Port})
 }

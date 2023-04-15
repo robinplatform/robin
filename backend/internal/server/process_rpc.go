@@ -75,11 +75,11 @@ var CheckProcessHealth = AppsRpcMethod[CheckProcessHealthInput, map[string]any]{
 			Key:      req.Data.ProcessKey,
 		}
 
-		isAlive := process.Manager.IsAlive(id)
+		isHealthy := process.Manager.IsHealthy(id)
 
 		return map[string]any{
 			"processKey": id,
-			"isAlive":    isAlive,
+			"isHealthy":  isHealthy,
 		}, nil
 	},
 }
