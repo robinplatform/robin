@@ -30,16 +30,7 @@ func (app *CompiledApp) IsAlive() bool {
 		return false
 	}
 
-	if !process.IsAlive() {
-		return false
-	}
-
-	// Send a ping to the process
-	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/api/health", process.Port))
-	if resp != nil {
-		resp.Body.Close()
-	}
-	return err == nil && resp.StatusCode == http.StatusOK
+	return process.IsHealthy()
 }
 
 func (app *CompiledApp) keepAlive() {
