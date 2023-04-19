@@ -77,7 +77,7 @@ export function useAppTopicQuery<State, Output>({
 
 // Subscribe to a topic and track the messages received in relation
 // to state.
-export function useTopicQuery<State, Output>({
+export function useTopic<State, Output>({
 	topicId,
 	fetchState,
 	reducer,

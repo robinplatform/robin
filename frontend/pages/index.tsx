@@ -3,7 +3,7 @@ import React from 'react';
 import { z } from 'zod';
 import { runRpcQuery, useRpcQuery } from '../hooks/useRpcQuery';
 import toast from 'react-hot-toast';
-import { useTopicQuery } from '../../toolkit/react/stream';
+import { useTopic } from '../../toolkit/react/stream';
 import { ScrollWindow } from '../components/ScrollWindow';
 
 type Process = z.infer<typeof Process>;
@@ -26,7 +26,7 @@ function Processes() {
 	});
 
 	const [currentProcess, setCurrentProcess] = React.useState<Process>();
-	const { state } = useTopicQuery({
+	const { state } = useTopic({
 		topicId: currentProcess && {
 			category: `/logs${currentProcess.id.category}`,
 			key: currentProcess.id.key,
@@ -131,7 +131,7 @@ function Topics() {
 		TopicInfo & { key: string }
 	>();
 
-	const { state: topics } = useTopicQuery({
+	const { state: topics } = useTopic({
 		resultType: MetaTopicInfo,
 		topicId: {
 			category: '/topics',
@@ -166,10 +166,7 @@ function Topics() {
 		},
 	});
 
-	const { state: topicMessages } = useTopicQuery<
-		Record<string, string[]>,
-		unknown
-	>({
+	const { state: topicMessages } = useTopic<Record<string, string[]>, unknown>({
 		resultType: z.unknown(),
 		skip: !selectedTopic?.id,
 		topicId: selectedTopic?.id,
