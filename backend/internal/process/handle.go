@@ -49,11 +49,11 @@ func (m *ProcessManager) IsAlive(id ProcessId) bool {
 	return r.IsAlive(id)
 }
 
-func (m *ProcessManager) IsHealthy(id ProcessId) bool {
+func (m *ProcessManager) CheckHealth(id ProcessId) bool {
 	r := m.ReadHandle()
 	defer r.Close()
 
-	return r.IsHealthy(id)
+	return r.CheckHealth(id)
 }
 
 func (m *ProcessManager) CopyOutData() []Process {

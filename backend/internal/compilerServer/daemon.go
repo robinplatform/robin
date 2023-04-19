@@ -30,7 +30,7 @@ func (app *CompiledApp) IsAlive() bool {
 		return false
 	}
 
-	return process.IsHealthy()
+	return process.CheckHealth()
 }
 
 func (app *CompiledApp) keepAlive() {
@@ -255,7 +255,7 @@ func (app *CompiledApp) StartServer() error {
 		}
 
 		// Send a ping to the process
-		if serverProcess.IsHealthy() {
+		if serverProcess.CheckHealth() {
 			if atomic.CompareAndSwapInt64(app.keepAliveRunning, 0, 1) {
 				go app.keepAlive()
 			}
