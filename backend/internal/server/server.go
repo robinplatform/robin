@@ -78,6 +78,10 @@ func (server *Server) loadRpcMethods() {
 	CreateTopic.Register(server)
 	PublishTopic.Register(server)
 
+	StartProcessForApp.Register(server)
+	StopProcessForApp.Register(server)
+	CheckProcessHealth.Register(server)
+
 	// Streaming methods
 
 	wsHandler := &RpcWebsocket{}

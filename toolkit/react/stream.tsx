@@ -15,7 +15,6 @@ const PubsubData = z.object({
 // Subscribe to an app topic and track the messages received in relation
 // to state.
 export function useAppTopicQuery<State, Output>({
-	appId = process.env.ROBIN_APP_ID,
 	category,
 	key,
 	fetchState,
@@ -23,7 +22,6 @@ export function useAppTopicQuery<State, Output>({
 	resultType,
 	skip,
 }: {
-	appId?: string;
 	resultType: z.Schema<Output>;
 	category?: string[];
 	key?: string;
@@ -31,7 +29,8 @@ export function useAppTopicQuery<State, Output>({
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
 }) {
-	return useTopicQueryInternal<State, Output>({
+	const appId = process.env.ROBIN_APP_ID;
+	return useIndexedStream<State, Output>({
 		methodName: 'SubscribeAppTopic',
 		data: {
 			appId,
@@ -47,7 +46,7 @@ export function useAppTopicQuery<State, Output>({
 
 // Subscribe to a topic and track the messages received in relation
 // to state.
-export function useTopicQuery<State, Output>({
+export function useTopic<State, Output>({
 	topicId,
 	fetchState,
 	reducer,
@@ -60,7 +59,7 @@ export function useTopicQuery<State, Output>({
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
 }) {
-	return useTopicQueryInternal<State, Output>({
+	return useIndexedStream<State, Output>({
 		methodName: 'SubscribeTopic',
 		data: { id: topicId },
 		skip: skip || !topicId,
@@ -70,9 +69,9 @@ export function useTopicQuery<State, Output>({
 	});
 }
 
-// Subscribe to a topic and track the messages received in relation
-// to state.
-function useTopicQueryInternal<State, Output>({
+// Read data from a stream and track the stream data in lock-step with
+// state fetched from an external source.
+export function useIndexedStream<State, Output>({
 	methodName,
 	data,
 	fetchState,

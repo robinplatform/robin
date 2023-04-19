@@ -264,8 +264,16 @@ func (r *RHandle) IsAlive(id ProcessId) bool {
 	return process.IsAlive()
 }
 
-func (proc *Process) IsHealthy() bool {
-	return proc.IsAlive() && proc.HealthCheck.Check(health.RunningProcessInfo{Pid: proc.Pid, Port: proc.Port})
+func (r *RHandle) CheckHealth(id ProcessId) bool {
+	process, found := r.FindById(id)
+	if !found {
+		return false
+	}
+	return process.CheckHealth()
+}
+
+func (proc *Process) CheckHealth() bool {
+	return proc.HealthCheck.Check(health.RunningProcessInfo{Pid: proc.Pid, Port: proc.Port})
 }
 
 // This reads the path variable to find the right executable.
