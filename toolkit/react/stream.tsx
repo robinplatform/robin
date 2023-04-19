@@ -12,10 +12,40 @@ const PubsubData = z.object({
 	data: z.unknown(),
 });
 
+type ProcessInfo = z.infer<typeof ProcessInfo>;
+const ProcessInfo = z.object({});
+
+// Subscribe to app process information
+export function useAppProcessInfo<State>({
+	category,
+	key,
+	reducer,
+	skip,
+}: {
+	category?: string[];
+	key?: string;
+	reducer: (s: State, o: ProcessInfo) => State;
+	skip?: boolean;
+}) {
+	const appId = process.env.ROBIN_APP_ID;
+
+	return useIndexedStream<State, ProcessInfo>({
+		methodName: 'SubscribeAppProcessInfo',
+		data: {
+			appId,
+			category,
+			key,
+		},
+		skip: skip || !appId || !category || !key,
+		resultType: ProcessInfo,
+		reducer,
+		fetchState: () => undefined as any,
+	});
+}
+
 // Subscribe to an app topic and track the messages received in relation
 // to state.
 export function useAppTopicQuery<State, Output>({
-	appId = process.env.ROBIN_APP_ID,
 	category,
 	key,
 	fetchState,
@@ -23,7 +53,6 @@ export function useAppTopicQuery<State, Output>({
 	resultType,
 	skip,
 }: {
-	appId?: string;
 	resultType: z.Schema<Output>;
 	category?: string[];
 	key?: string;
@@ -31,7 +60,8 @@ export function useAppTopicQuery<State, Output>({
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
 }) {
-	return useTopicQueryInternal<State, Output>({
+	const appId = process.env.ROBIN_APP_ID;
+	return useIndexedStream<State, Output>({
 		methodName: 'SubscribeAppTopic',
 		data: {
 			appId,
@@ -60,7 +90,7 @@ export function useTopicQuery<State, Output>({
 	reducer: (s: State, o: Output) => State;
 	skip?: boolean;
 }) {
-	return useTopicQueryInternal<State, Output>({
+	return useIndexedStream<State, Output>({
 		methodName: 'SubscribeTopic',
 		data: { id: topicId },
 		skip: skip || !topicId,
@@ -70,9 +100,9 @@ export function useTopicQuery<State, Output>({
 	});
 }
 
-// Subscribe to a topic and track the messages received in relation
-// to state.
-function useTopicQueryInternal<State, Output>({
+// Read data from a stream and track the stream data in lock-step with
+// state fetched from an external source.
+export function useIndexedStream<State, Output>({
 	methodName,
 	data,
 	fetchState,
