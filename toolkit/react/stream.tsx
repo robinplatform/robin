@@ -12,37 +12,6 @@ const PubsubData = z.object({
 	data: z.unknown(),
 });
 
-type ProcessInfo = z.infer<typeof ProcessInfo>;
-const ProcessInfo = z.object({});
-
-// Subscribe to app process information
-export function useAppProcessInfo<State>({
-	category,
-	key,
-	reducer,
-	skip,
-}: {
-	category?: string[];
-	key?: string;
-	reducer: (s: State, o: ProcessInfo) => State;
-	skip?: boolean;
-}) {
-	const appId = process.env.ROBIN_APP_ID;
-
-	return useIndexedStream<State, ProcessInfo>({
-		methodName: 'SubscribeAppProcessInfo',
-		data: {
-			appId,
-			category,
-			key,
-		},
-		skip: skip || !appId || !category || !key,
-		resultType: ProcessInfo,
-		reducer,
-		fetchState: () => undefined as any,
-	});
-}
-
 // Subscribe to an app topic and track the messages received in relation
 // to state.
 export function useAppTopicQuery<State, Output>({
