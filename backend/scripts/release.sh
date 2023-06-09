@@ -51,7 +51,7 @@ if test -z "$ROBIN_VERSION"; then
     export ROBIN_VERSION=`git describe --tags --always`
 fi
 if test "$TARGET_CHANNEL" == "stable" && (test "${ROBIN_VERSION:0:1}" != "v" || echo "$ROBIN_VERSION" | grep '-' &>/dev/null); then
-    echo "Latest commit is not tagged, cannot release to stable channel"
+    echo "Latest commit is not tagged, cannot release to stable channel (ROBIN_VERSION=${ROBIN_VERSION})"
     echo ""
     exit 1
 fi
